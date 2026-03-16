@@ -20,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18 # Oder die Node-Version, die du nutzt
+          node-version: 20 # Oder die Node-Version, die du nutzt
           
       - name: Install dependencies
         run: npm install
@@ -40,7 +40,7 @@ jobs:
         with:
           # WICHTIG: Wenn du Vite nutzt, heißt der Ordner './dist'. 
           # Wenn du Create React App nutzt, ändere das hier zu './build'
-          path: './dist' 
+          path: './out' 
           
       - name: Deploy to GitHub Pages
         id: deployment

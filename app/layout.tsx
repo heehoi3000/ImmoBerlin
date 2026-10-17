@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
-import { Open_Sans } from "next/font/google";
+import { Outfit } from "next/font/google";
 import "./globals.css";
 
-const openSans = Open_Sans({
+const outfit = Outfit({
   subsets: ["latin"],
-  weight: ["300", "400", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "ImmoBerlin - Wohnungssuche",
-  description: "Finde deine Traumwohnung in Berlin basierend auf ÖPNV-Anbindung und Bezirksfiltern.",
+  title: "Immobil - Wohnungssuche am ÖPNV",
+  description: "Finde dein Zuhause in Berlin basierend auf ÖPNV-Anbindung.",
 };
 
 export default function RootLayout({
@@ -19,7 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de">
-      <body className={`${openSans.className} antialiased min-h-screen flex flex-col bg-zinc-50`}>
+      <body className={`${outfit.className} antialiased min-h-screen flex flex-col bg-zinc-50`}>
         
         {/* --- KOPFZEILE START --- */}
         <header className="sticky top-0 flex items-center justify-between px-6 py-4 bg-white border-b border-zinc-200 z-50 shadow-sm">
@@ -27,7 +26,7 @@ export default function RootLayout({
           {/* Linker Teil: Menü & Logo */}
           <div className="flex items-center gap-5">
             
-            {/* Menü-Button (Am unteren Rand ausgerichtet) */}
+            {/* Menü-Button */}
             <button className="flex flex-col items-center justify-end pb-1.5 text-zinc-500 hover:text-black hover:bg-zinc-100 rounded-lg transition cursor-pointer h-12 w-12">
               <svg className="mb-1" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -37,14 +36,26 @@ export default function RootLayout({
               <span className="text-[9px] leading-none font-bold uppercase tracking-widest text-zinc-900">Menü</span>
             </button>
             
-            {/* Logo (Ebenfalls am unteren Rand ausgerichtet) */}
-            <div className="flex flex-col justify-end pb-1.5 h-12 leading-none">
-              <h1 className="text-[26px] font-extrabold text-black tracking-tighter uppercase mb-1">
-                Immo<span className="font-light text-zinc-400">Berlin</span>
+            {/* --- NEUES LOGO: IMMOBIL --- */}
+            {/* w-max sorgt dafür, dass der Container exakt so breit ist wie das h1 */}
+            <div className="flex flex-col justify-end pb-1.5 h-12 leading-none w-max">
+              <h1 className="text-[26px] uppercase mb-1 flex items-baseline tracking-tighter">
+                {/* 1. "IM" - aufrecht und fett (Fundament) */}
+                <span className="font-extrabold text-black">IM</span>
+                
+                {/* 2. "MO" - kursiv ABER fett (Die Brücke zwischen beiden Worten) */}
+                <span className="font-extrabold text-black italic">MO</span>
+                
+                {/* 3. "BIL" - kursiv, dünn und grau (Mobilität & Leichtigkeit) */}
+                <span className="font-light italic text-zinc-400 tracking-normal ml-[1px]">BIL</span>
               </h1>
-              <span className="text-[9px] leading-none font-bold text-zinc-400 uppercase tracking-[0.3em] ml-0.5">
-                Wohnungssuche
-              </span>
+              
+              {/* Untertitel: Bündig ausgerichtet durch justify-between und einzelne Buchstaben */}
+              <div className="flex w-full justify-between text-[9px] leading-none font-bold text-zinc-400 uppercase">
+                {"Wohnungssuche".split("").map((char, index) => (
+                  <span key={index}>{char}</span>
+                ))}
+              </div>
             </div>
             
           </div>

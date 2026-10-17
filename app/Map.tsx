@@ -2,9 +2,10 @@
 import { useEffect, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 // NEU: GeoJSON importieren
-import { MapContainer, TileLayer, Marker, Popup, GeoJSON } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON, Circle, CircleMarker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { supabase } from '../lib/supabase';
+import { Linie, Kartenausschnitt } from '../lib/oepnv';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -19,15 +20,25 @@ const houseIcon = L.divIcon({
   iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -15]
 });
 
-function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371e3;
-  const p1 = lat1 * Math.PI/180;
-  const p2 = lat2 * Math.PI/180;
-  const dp = (lat2-lat1) * Math.PI/180;
-  const dl = (lon2-lon1) * Math.PI/180;
-  const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
+interface Haltestelle { stop_id: string; name: string; lat: number; lon: number; }
+interface NaechsteHaltestelle { anzeige_id: string; distanz_m: number; haltestelle: string; linie: string; }
+
+// Umkreis in Metern, auf 50 bis 5000 m begrenzt
+function umkreisMeter(eingabe?: string) {
+  return Math.min(Math.max(parseInt(eingabe || '') || 1500, 50), 5000);
+}
+
+// Meldet den sichtbaren Kartenausschnitt an die Seite, damit sie die Linien dort laden kann.
+function AusschnittMelder({ onChange }: { onChange?: (a: Kartenausschnitt) => void }) {
+  const map = useMapEvents({
+    moveend: () => melden(),
+  });
+  function melden() {
+    const b = map.getBounds();
+    onChange?.({ minLon: b.getWest(), minLat: b.getSouth(), maxLon: b.getEast(), maxLat: b.getNorth() });
+  }
+  useEffect(() => { melden(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
 }
 
 interface MapProps {
@@ -36,21 +47,31 @@ interface MapProps {
     priceMin: string; priceMax: string;
     roomsMin: string; roomsMax: string;
     spaceMin: string; spaceMax: string;
-    selectedRoutes: string[]; selectedDistricts: string[];
+    selectedRoutes: Linie[]; selectedDistricts: string[];
     routeRadius: string;
-  }
+  };
+  onAusschnittChange?: (a: Kartenausschnitt) => void;
 }
 
-export default function Map({ filters }: MapProps) {
+export default function Map({ filters, onAusschnittChange }: MapProps) {
   const berlinPosition: [number, number] = [52.516, 13.42]; 
   const [anzeigen, setAnzeigen] = useState<any[]>([]);
   // NEU: Speicher für unsere Bezirksgrenzen
   const [bezirkGrenzen, setBezirkGrenzen] = useState<any[]>([]);
+  const [haltestellen, setHaltestellen] = useState<Haltestelle[]>([]);
+  const [naechste, setNaechste] = useState<Record<string, NaechsteHaltestelle>>({});
 
   useEffect(() => {
     async function fetchAnzeigenUndGrenzen() {
       try {
-        let query = supabase.from('anzeigen').select('*');
+        const linienIds = (filters?.selectedRoutes || []).map(l => l.linie_id);
+        const radius = umkreisMeter(filters?.routeRadius);
+
+        // Mit Linien: Supabase sucht die Anzeigen im Umkreis der Haltestellen (PostGIS),
+        // die übrigen Filter werden an dieselbe Abfrage angehängt.
+        let query = linienIds.length > 0
+          ? supabase.rpc('anzeigen_nahe_linien', { linien_ids: linienIds, radius_m: radius }).select('*') as unknown as ReturnType<ReturnType<typeof supabase.from>['select']>
+          : supabase.from('anzeigen').select('*');
 
         if (filters) {
           if (filters.transactionType) query = query.eq('transaktions_typ', filters.transactionType);
@@ -68,29 +89,20 @@ export default function Map({ filters }: MapProps) {
 
         const { data: wohnungenData, error: wohnungenError } = await query;
         if (wohnungenError) throw wohnungenError;
-        let finaleWohnungen = wohnungenData || [];
+        const finaleWohnungen = wohnungenData || [];
 
-        // --- ÖPNV Filter ---
-        if (filters?.selectedRoutes && filters.selectedRoutes.length > 0) {
-          const { data: routesData } = await supabase.from('routes').select('route_id').in('route_short_name', filters.selectedRoutes);
-          if (routesData && routesData.length > 0) {
-            const routeIds = routesData.map(r => r.route_id);
-            const { data: routeStopsData } = await supabase.from('route_stops').select('stop_id').in('route_id', routeIds);
-            if (routeStopsData && routeStopsData.length > 0) {
-              const stopIds = routeStopsData.map(rs => rs.stop_id);
-              const { data: stopsData } = await supabase.from('stops').select('stop_lat, stop_lon').in('stop_id', stopIds);
-              
-              if (stopsData && stopsData.length > 0) {
-                const maxRadius = filters.routeRadius ? parseInt(filters.routeRadius) : 1500;
-                finaleWohnungen = finaleWohnungen.filter(wohnung => {
-                  return stopsData.some(station => {
-                    if (!wohnung.koordinate_lat || !wohnung.koordinate_lon || !station.stop_lat || !station.stop_lon) return false;
-                    return getDistance(wohnung.koordinate_lat, wohnung.koordinate_lon, station.stop_lat, station.stop_lon) <= maxRadius;
-                  });
-                });
-              } else finaleWohnungen = [];
-            } else finaleWohnungen = [];
-          } else finaleWohnungen = [];
+        // --- ÖPNV: Haltestellen für die Umkreise und nächste Haltestelle je Anzeige ---
+        let haltestellenZumZeigen: Haltestelle[] = [];
+        const naechsteJeAnzeige: Record<string, NaechsteHaltestelle> = {};
+        if (linienIds.length > 0) {
+          const [haltRes, naechsteRes] = await Promise.all([
+            supabase.rpc('haltestellen_der_linien', { linien_ids: linienIds }),
+            supabase.rpc('anzeigen_naechste_haltestelle', { linien_ids: linienIds, radius_m: radius }),
+          ]);
+          if (haltRes.error) console.error("Fehler beim Laden der Haltestellen:", haltRes.error);
+          if (naechsteRes.error) console.error("Fehler beim Laden der Entfernungen:", naechsteRes.error);
+          haltestellenZumZeigen = (haltRes.data as Haltestelle[]) || [];
+          for (const n of (naechsteRes.data as NaechsteHaltestelle[]) || []) naechsteJeAnzeige[n.anzeige_id] = n;
         }
 
         // --- NEU: GRENZEN LADEN ---
@@ -109,6 +121,8 @@ export default function Map({ filters }: MapProps) {
 
         setAnzeigen(finaleWohnungen);
         setBezirkGrenzen(grenzenZumZeigen);
+        setHaltestellen(haltestellenZumZeigen);
+        setNaechste(naechsteJeAnzeige);
 
       } catch (err) {
         console.error("Ladefehler:", err);
@@ -120,11 +134,25 @@ export default function Map({ filters }: MapProps) {
 
   return (
     <div style={{ height: '100%', width: '100%', minHeight: '100vh', position: 'relative' }}>
-      <MapContainer center={berlinPosition} zoom={11} style={{ height: "100%", width: "100%", position: "absolute", top: 0, left: 0, bottom: 0, right: 0 }}>
+      <MapContainer center={berlinPosition} zoom={11} preferCanvas style={{ height: "100%", width: "100%", position: "absolute", top: 0, left: 0, bottom: 0, right: 0 }}>
         <TileLayer
-          attribution='&copy; OpenStreetMap &copy; CARTO'
+          attribution='&copy; OpenStreetMap &copy; CARTO | Fahrplandaten: <a href="https://www.delfi.de">DELFI e.V.</a>, CC BY 4.0'
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         />
+
+        <AusschnittMelder onChange={onAusschnittChange} />
+
+        {/* Umkreis um jede Haltestelle der gewählten Linien */}
+        {haltestellen.map((h) => (
+          <Circle key={`umkreis-${h.stop_id}`} center={[h.lat, h.lon]} radius={umkreisMeter(filters?.routeRadius)}
+            pathOptions={{ color: '#1E88E5', weight: 1, opacity: 0.4, fillColor: '#1E88E5', fillOpacity: 0.06 }} interactive={false} />
+        ))}
+        {haltestellen.map((h) => (
+          <CircleMarker key={`halt-${h.stop_id}`} center={[h.lat, h.lon]} radius={4}
+            pathOptions={{ color: '#333', weight: 2, fillColor: '#fff', fillOpacity: 1 }}>
+            <Popup>{h.name}</Popup>
+          </CircleMarker>
+        ))}
 
         {/* NEU: DIE GRENZEN AUF DIE KARTE ZEICHNEN */}
         {bezirkGrenzen.map((grenze, idx) => (
@@ -154,6 +182,9 @@ export default function Map({ filters }: MapProps) {
                   <strong>Preis:</strong> {anzeige.preis} €<br/>
                   <strong>Bezirk:</strong> {anzeige.bezirk}<br/>
                   <strong>Fläche:</strong> {anzeige.quadratmeter} m²
+                  {naechste[anzeige.id] && (
+                    <><br/><strong>ÖPNV:</strong> {naechste[anzeige.id].distanz_m} m zur {naechste[anzeige.id].linie}, {naechste[anzeige.id].haltestelle}</>
+                  )}
                 </div>
               </Popup>
             </Marker>

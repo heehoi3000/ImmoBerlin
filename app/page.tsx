@@ -24,32 +24,17 @@ const BALD = [
   { titel: 'Takt, Nachtverkehr, Barrierefreiheit', text: 'Filtere nach Linien, die nachts fahren, dichtem Takt oder barrierefreien Haltestellen.', symbol: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
 ];
 
-// Kleine Illustration: eine Linie mit Haltestellen und Preis-Pins
-function Linienbild() {
+// Hintergrund des Einstiegs: zarte Linienverläufe mit Haltestellen über die ganze Breite
+function Linienhintergrund() {
   return (
-    <svg viewBox="0 0 420 320" className="w-full h-auto" aria-hidden="true">
-      <defs>
-        <pattern id="raster" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M28 0H0v28" fill="none" stroke="#e7e5e4" strokeWidth="1" /></pattern>
-      </defs>
-      <rect width="420" height="320" rx="28" fill="#fafaf9" />
-      <rect width="420" height="320" rx="28" fill="url(#raster)" />
-      <path d="M-10 250 C 80 250, 110 120, 200 140 S 330 60, 430 70" fill="none" stroke="#2563eb" strokeWidth="10" strokeLinecap="round" opacity="0.9" />
-      <path d="M40 -10 C 60 90, 180 200, 260 210 S 380 260, 400 330" fill="none" stroke="#f59e0b" strokeWidth="10" strokeLinecap="round" opacity="0.85" />
-      {[[70, 236], [200, 140], [318, 84], [214, 198]].map(([x, y], i) => (
-        <g key={i}>
-          <circle cx={x} cy={y} r="60" fill="#2563eb" opacity="0.06" />
-          <circle cx={x} cy={y} r="9" fill="#fff" stroke="#111" strokeWidth="3.5" />
-        </g>
+    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1440 560" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <path d="M-40 430 C 260 420, 360 250, 620 270 S 1000 120, 1480 150" fill="none" stroke="#2563eb" strokeWidth="6" strokeLinecap="round" opacity="0.14" />
+      <path d="M-40 140 C 220 160, 330 330, 560 380 S 1100 470, 1480 380" fill="none" stroke="#f59e0b" strokeWidth="6" strokeLinecap="round" opacity="0.16" />
+      <path d="M180 -20 C 240 200, 120 360, 260 600" fill="none" stroke="#10b981" strokeWidth="6" strokeLinecap="round" opacity="0.12" />
+      <path d="M1250 -20 C 1180 180, 1330 340, 1220 600" fill="none" stroke="#e11d48" strokeWidth="6" strokeLinecap="round" opacity="0.1" />
+      {[[620, 270, '#2563eb'], [1000, 175, '#2563eb'], [560, 380, '#f59e0b'], [1080, 455, '#f59e0b'], [215, 300, '#10b981'], [1262, 260, '#e11d48']].map(([x, y, f], i) => (
+        <circle key={i} cx={x} cy={y} r="7" fill="#fff" stroke={f as string} strokeWidth="3.5" opacity="0.5" />
       ))}
-      {[[118, 196, '890 €'], [250, 108, '1.240 €'], [282, 238, '760 €'], [352, 128, '1.050 €']].map(([x, y, t], i) => (
-        <g key={i} transform={`translate(${x} ${y})`}>
-          <rect x="-34" y="-15" width="68" height="30" rx="15" fill={i === 1 ? '#111' : '#fff'} stroke="#e7e5e4" />
-          <text textAnchor="middle" y="5" fontSize="13" fontWeight="700" fill={i === 1 ? '#fff' : '#111'} fontFamily="inherit">{t}</text>
-        </g>
-      ))}
-      <g transform="translate(24 24)">
-        <rect width="92" height="30" rx="15" fill="#2563eb" /><text x="46" y="20" textAnchor="middle" fontSize="13" fontWeight="700" fill="#fff" fontFamily="inherit">U8 · 600 m</text>
-      </g>
     </svg>
   );
 }
@@ -80,35 +65,55 @@ export default function Startseite() {
     <div className="w-full flex flex-col">
 
       {/* --- EINSTIEG --- */}
-      <section className="bg-white border-b border-zinc-200">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-12 md:py-20 grid lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-16 items-center">
-          <div className="flex flex-col gap-6">
-            <span className="self-start px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">Kostenlos · deutschlandweit</span>
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.05]">
-              Wohnen an <span className="text-blue-600">deiner Linie.</span>
-            </h1>
-            <p className="text-lg text-zinc-600 max-w-xl">
-              Wähle deine Bahn-, Tram- oder Buslinie und wie weit die Haltestelle höchstens entfernt sein darf. IMMOBIL zeigt dir nur Wohnungen und Häuser, die dazu passen.
-            </p>
-            <div className="bg-white border border-zinc-200 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-2 flex flex-col sm:flex-row gap-2">
-              <div className="flex shrink-0 bg-zinc-100 rounded-full p-1 h-12 self-start sm:self-auto">
-                {(['mieten', 'kaufen'] as const).map(t => (
-                  <button key={t} onClick={() => setTransaktion(t)} className={`px-4 rounded-full text-sm font-semibold transition ${transaktion === t ? 'bg-white shadow-sm' : 'text-zinc-500 hover:text-black'}`}>
-                    {t === 'mieten' ? 'Mieten' : 'Kaufen'}
-                  </button>
-                ))}
-              </div>
-              <div className="flex-1 min-w-0 flex items-center pl-2 [&_input]:border-0 [&_input]:focus:ring-0 [&_input]:h-12 [&_input]:text-base [&_input]:bg-transparent">
-                <Ortssuche ort={ort} onChange={setOrt} />
-              </div>
-              <button onClick={() => suchen({ transaktion, ort })} className="h-12 px-7 rounded-full bg-zinc-900 text-white font-semibold hover:bg-black transition">Suchen</button>
+      <section className="relative overflow-hidden bg-gradient-to-b from-white to-zinc-50 border-b border-zinc-200">
+        <Linienhintergrund />
+        <div className="relative max-w-4xl mx-auto px-4 pt-16 pb-14 md:pt-28 md:pb-24 flex flex-col items-center text-center gap-6">
+          <span className="px-3 py-1 rounded-full bg-white/80 border border-zinc-200 text-zinc-600 text-xs font-semibold backdrop-blur">Kostenlos · deutschlandweit · für Bahn, Tram und Bus</span>
+          <h1 className="text-[2.6rem] leading-[1.05] md:text-7xl font-bold tracking-tight">
+            Wohnen an<br className="sm:hidden" /> deiner Linie.
+          </h1>
+          <p className="text-base md:text-xl text-zinc-600 max-w-2xl">
+            Wähle Bahn, Tram oder Bus und wie nah die Haltestelle sein soll. Du siehst nur Wohnungen und Häuser, die dazu passen.
+          </p>
+
+          <div className="w-full max-w-3xl mt-2 bg-white border border-zinc-200 rounded-[28px] shadow-[0_12px_40px_rgba(0,0,0,0.10)] p-2 flex flex-col sm:flex-row sm:items-center gap-2 text-left">
+            <div className="flex shrink-0 bg-zinc-100 rounded-full p-1 h-12 self-stretch sm:self-auto">
+              {(['mieten', 'kaufen'] as const).map(t => (
+                <button key={t} onClick={() => setTransaktion(t)} className={`flex-1 sm:flex-none px-5 rounded-full text-sm font-semibold transition ${transaktion === t ? 'bg-white shadow-sm' : 'text-zinc-500 hover:text-black'}`}>
+                  {t === 'mieten' ? 'Mieten' : 'Kaufen'}
+                </button>
+              ))}
             </div>
-            <p className="text-sm text-zinc-500">
-              {anzahl !== null ? <><strong className="text-zinc-900">{anzahl.toLocaleString('de-DE')}</strong> Angebote · </> : null}
-              über 21.000 Linien und 380.000 Haltestellen in ganz Deutschland
-            </p>
+            <div className="flex-1 min-w-0 flex items-center gap-2 pl-3 sm:border-l sm:border-zinc-200 [&_input]:border-0 [&_input]:focus:ring-0 [&_input]:h-12 [&_input]:text-base [&_input]:bg-transparent">
+              <svg className="w-5 h-5 text-zinc-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+              <div className="flex-1 min-w-0"><Ortssuche ort={ort} onChange={setOrt} /></div>
+            </div>
+            <button onClick={() => suchen({ transaktion, ort })} className="h-12 px-8 rounded-full bg-zinc-900 text-white font-semibold hover:bg-black transition flex items-center justify-center gap-2">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+              Suchen
+            </button>
           </div>
-          <div className="hidden md:block"><Linienbild /></div>
+
+          <div className="flex flex-wrap justify-center items-center gap-2 text-sm">
+            <span className="text-zinc-500">Beliebt:</span>
+            {STAEDTE.slice(0, 4).map(stadt => (
+              <button key={stadt.name} onClick={() => suchen({ transaktion, ort: stadt })}
+                className="px-3 py-1.5 rounded-full bg-white border border-zinc-200 font-medium text-zinc-700 hover:border-zinc-900 hover:text-black transition">{stadt.kurzname}</button>
+            ))}
+          </div>
+
+          <dl className="grid grid-cols-3 gap-6 md:gap-16 mt-6 md:mt-10">
+            {[
+              [anzahl !== null ? anzahl.toLocaleString('de-DE') : '…', 'Angebote'],
+              ['21.800', 'ÖPNV-Linien'],
+              ['382.000', 'Haltestellen'],
+            ].map(([w, n]) => (
+              <div key={n} className="flex flex-col items-center">
+                <dt className="order-2 text-xs md:text-sm text-zinc-500">{n}</dt>
+                <dd className="order-1 text-xl md:text-3xl font-bold tracking-tight">{w}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 

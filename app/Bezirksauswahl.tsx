@@ -59,7 +59,8 @@ export default function Bezirksauswahl({ ort, ausgewaehlt, onChange }: Props) {
             <p className="px-4 py-3 text-xs text-zinc-500">{eintraege.length === 0 ? 'Für diesen Ort sind keine Bezirke bekannt.' : 'Kein passender Bezirk.'}</p>
           )}
           {treffer.slice(0, MAX_LISTE).map(b => (
-            <button key={b.id} disabled={laedtGrenze !== null} onClick={() => waehlen(b)} className="w-full text-left px-4 py-1.5 hover:bg-zinc-100 transition flex items-baseline gap-2 disabled:opacity-50">
+            <button key={b.id} disabled={laedtGrenze !== null} onClick={() => waehlen(b)}
+              onMouseEnter={() => { bezirksgrenzeLaden(b).catch(() => {}); }} className="w-full text-left px-4 py-1.5 hover:bg-zinc-100 transition flex items-baseline gap-2 disabled:opacity-50">
               <span className="text-sm font-bold text-zinc-900">{b.name}</span>
               <span className="text-[11px] text-zinc-500">{laedtGrenze === b.id ? 'lädt…' : b.ebene === 'bezirk' ? 'Bezirk' : 'Ortsteil'}</span>
             </button>

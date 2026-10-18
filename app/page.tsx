@@ -12,6 +12,7 @@ import {
   Filter, STANDARD_FILTER, OBJEKTARTEN, AUSSTATTUNG, ENERGIEKLASSEN, UMKREISE_KM, SORTIERUNGEN,
   weitereFilterAnzahl,
 } from '../lib/filter';
+import { bezirkeLaden, bezirksgrenzeLaden } from '../lib/bezirke';
 import { anzeigenSuchen, erweiterteFelderVorhanden, linienUmkreisM, Suchergebnis } from '../lib/suche';
 
 const Map = dynamic(() => import("./Map"), {
@@ -104,6 +105,14 @@ export default function Home() {
   const setze = (teil: Partial<Filter>) => setFilter(f => ({ ...f, ...teil }));
 
   useEffect(() => { erweiterteFelderVorhanden().then(setErweitert); }, []);
+
+  // Bezirksliste und Ortsgrenze schon beim Wählen des Orts im Hintergrund laden
+  useEffect(() => {
+    const ort = filter.ort;
+    if (!ort?.osmRelation) return;
+    bezirkeLaden(ort).catch(() => {});
+    bezirksgrenzeLaden({ id: ort.osmRelation, name: ort.name }).catch(() => {});
+  }, [filter.ort]);
 
   useEffect(() => {
     const nr = ++anfrageNr.current;
@@ -230,7 +239,7 @@ export default function Home() {
                 <VonBis min={filter.flaecheMin} max={filter.flaecheMax} onMin={(v) => setze({ flaecheMin: v })} onMax={(v) => setze({ flaecheMax: v })} einheit="m²" />
               )}
               {panel === 'linien' && (
-                <Linienauswahl ausschnitt={ausschnitt} ausgewaehlt={filter.linien} onChange={(l) => setze({ linien: l })}
+                <Linienauswahl bezug={filter.ort ?? (ausschnitt ? { lat: (ausschnitt.minLat + ausschnitt.maxLat) / 2, lon: (ausschnitt.minLon + ausschnitt.maxLon) / 2 } : null)} ausgewaehlt={filter.linien} onChange={(l) => setze({ linien: l })}
                   umkreis={filter.linienUmkreisM} onUmkreis={(v) => setze({ linienUmkreisM: v })} />
               )}
               {panel === 'weitere' && (

@@ -1,110 +1,106 @@
 "use client";
-// Auswahl einer oder mehrerer ÖPNV-Linien, die im sichtbaren Kartenausschnitt halten.
+// Auswahl einer oder mehrerer ÖPNV-Linien. Gesucht wird in ganz Deutschland,
+// Linien nahe dem gewählten Ort bzw. der Kartenmitte stehen oben.
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Linie, Kartenausschnitt, LINIENTYPEN, MAX_AUSSCHNITT_BREITE } from '../lib/oepnv';
+import { Linie, LINIENTYPEN, punktAusEwkb } from '../lib/oepnv';
+import { entfernungM } from '../lib/filter';
 
-const MAX_LISTE = 150;
+const MAX_LISTE = 60;
+// Breite Suche (Betreiber, Endpunkte, Nummernanfang) liefert höchstens so viele Linien
+const MAX_TREFFER = 400;
+
+type Treffer = Linie & { km: number | null; guete: number };
 
 interface Props {
-  ausschnitt: Kartenausschnitt | null;
+  bezug: { lat: number; lon: number } | null;   // Ort oder Kartenmitte, nur fürs Sortieren
   ausgewaehlt: Linie[];
   onChange: (linien: Linie[]) => void;
   umkreis: string;
   onUmkreis: (wert: string) => void;
 }
 
-export default function Linienauswahl({ ausschnitt, ausgewaehlt, onChange, umkreis, onUmkreis }: Props) {
+// Zeichen, die in PostgREST-Filtern eine Bedeutung haben, entfernen
+function bereinigen(text: string) {
+  return text.replace(/[,()*%"\\:]/g, ' ').trim();
+}
+
+export default function Linienauswahl({ bezug, ausgewaehlt, onChange, umkreis, onUmkreis }: Props) {
   const [suchtext, setSuchtext] = useState('');
-  const [linienImAusschnitt, setLinienImAusschnitt] = useState<Linie[]>([]);
-  const [ladeStatus, setLadeStatus] = useState<'bereit' | 'laedt' | 'fehler'>('bereit');
+  const [ergebnis, setErgebnis] = useState<{ fuer: string; linien: (Linie & { mitte?: string })[] } | null>(null);
+  const [fehler, setFehler] = useState(false);
   const anfrageNr = useRef(0);
 
-  const zuGross = !!ausschnitt && ausschnitt.maxLon - ausschnitt.minLon > MAX_AUSSCHNITT_BREITE;
-  const status = zuGross ? 'zu_gross' : ladeStatus;
+  const begriff = bereinigen(suchtext);
 
   useEffect(() => {
-    if (!ausschnitt || zuGross) return;
+    if (begriff === '') return;
     const nr = ++anfrageNr.current;
-    // kurz warten, damit beim Verschieben der Karte nicht jede Bewegung eine Anfrage auslöst
     const timer = setTimeout(async () => {
-      setLadeStatus('laedt');
-      const laden = () => supabase
-        .rpc('linien_im_ausschnitt', {
-          min_lon: ausschnitt.minLon, min_lat: ausschnitt.minLat,
-          max_lon: ausschnitt.maxLon, max_lat: ausschnitt.maxLat,
-        })
-        .select('linie_id, typ, nummer, betreiber, endpunkte');
-      let { data, error } = await laden();
-      // Die erste Abfrage in einer Gegend kann das Zeitlimit (3 s) reißen, solange die
-      // Datenbank die Haltestellen dort noch nicht im Speicher hat. Ein zweiter Versuch klappt dann.
-      for (let versuch = 0; error?.code === '57014' && versuch < 2 && nr === anfrageNr.current; versuch++) {
-        ({ data, error } = await laden());
-      }
+      const spalten = 'linie_id, typ, nummer, betreiber, endpunkte, mitte';
+      // Genau passende Nummern immer vollständig, dazu eine begrenzte breite Suche
+      const [genau, breit] = await Promise.all([
+        supabase.from('oepnv_linien').select(spalten).ilike('nummer', begriff).limit(500),
+        supabase.from('oepnv_linien').select(spalten)
+          .or(`nummer.ilike.${begriff}*,betreiber.ilike.*${begriff}*,endpunkte.ilike.*${begriff}*`)
+          .limit(MAX_TREFFER),
+      ]);
       if (nr !== anfrageNr.current) return;
-      if (error) {
-        console.error("Fehler beim Laden der Linien:", error);
-        setLadeStatus('fehler');
+      if (genau.error || breit.error) {
+        console.error("Fehler beim Suchen der Linien:", genau.error ?? breit.error);
+        setFehler(true);
         return;
       }
-      const linien = (data as Linie[]) || [];
-      const typen = Object.keys(LINIENTYPEN);
-      linien.sort((a, b) =>
-        (typen.indexOf(a.typ) - typen.indexOf(b.typ)) ||
-        a.nummer.localeCompare(b.nummer, undefined, { numeric: true, sensitivity: 'base' }) ||
-        a.betreiber.localeCompare(b.betreiber));
-      setLinienImAusschnitt(linien);
-      setLadeStatus('bereit');
-    }, 400);
+      const alle = new Map<number, Linie & { mitte?: string }>();
+      for (const l of [...(genau.data ?? []), ...(breit.data ?? [])]) alle.set(l.linie_id, l);
+      setErgebnis({ fuer: begriff, linien: [...alle.values()] });
+      setFehler(false);
+    }, 250);
     return () => clearTimeout(timer);
-  }, [ausschnitt, zuGross]);
+  }, [begriff]);
 
-  const begriff = suchtext.trim().toLowerCase();
-  // Vorschläge erst zeigen, wenn mindestens ein Zeichen eingegeben ist
-  const treffer = begriff === '' ? [] : linienImAusschnitt.filter(linie =>
-    !ausgewaehlt.some(s => s.linie_id === linie.linie_id) &&
-    (linie.nummer.toLowerCase().includes(begriff) ||
-      linie.betreiber.toLowerCase().includes(begriff) ||
-      linie.endpunkte.toLowerCase().includes(begriff))
-  );
+  const typen = Object.keys(LINIENTYPEN);
+  const klein = begriff.toLowerCase();
+  const treffer: Treffer[] = begriff === '' || !ergebnis ? [] : ergebnis.linien
+    .filter(l => !ausgewaehlt.some(s => s.linie_id === l.linie_id))
+    .map(l => {
+      const p = punktAusEwkb(l.mitte);
+      const nummer = l.nummer.toLowerCase();
+      return {
+        linie_id: l.linie_id, typ: l.typ, nummer: l.nummer, betreiber: l.betreiber, endpunkte: l.endpunkte,
+        km: p && bezug ? entfernungM(bezug.lat, bezug.lon, p.lat, p.lon) / 1000 : null,
+        guete: nummer === klein ? 0 : nummer.startsWith(klein) ? 1 : 2,
+      };
+    })
+    // Erst wie gut die Nummer passt, Ersatzverkehr hinten, dann wie nah die Linie ist
+    .sort((a, b) => (a.guete - b.guete) || (Number(a.typ === 'ersatzverkehr') - Number(b.typ === 'ersatzverkehr')) ||
+      ((a.km ?? 1e9) - (b.km ?? 1e9)) ||
+      (typen.indexOf(a.typ) - typen.indexOf(b.typ)) ||
+      a.nummer.localeCompare(b.nummer, undefined, { numeric: true, sensitivity: 'base' }));
+  const laedt = begriff !== '' && ergebnis?.fuer !== begriff && !fehler;
 
   return (
-    <div>
-      <p className="text-[11px] text-zinc-500 mb-2">Linien im Kartenausschnitt. Verschiebe oder zoome die Karte, um Linien in anderen Orten zu sehen.</p>
-      <input type="text" placeholder="Filtern (z.B. U2, BVG, Ruhleben)" value={suchtext} onChange={(e) => setSuchtext(e.target.value)} className="w-full h-[38px] bg-white border border-zinc-200 rounded-md px-3 text-sm font-medium focus:ring-1 focus:ring-black outline-none placeholder:text-zinc-400" />
-      <div className="mt-1 w-full bg-white border border-zinc-200 rounded-lg max-h-56 overflow-y-auto">
-        {status === 'zu_gross' && (
-          <p className="px-4 py-3 text-xs text-zinc-500">Der Kartenausschnitt ist zu groß. Zoome näher an einen Ort heran.</p>
-        )}
-        {status === 'laedt' && begriff !== '' && linienImAusschnitt.length === 0 && (
-          <p className="px-4 py-3 text-xs text-zinc-500">Linien werden geladen…</p>
-        )}
-        {status === 'fehler' && (
-          <p className="px-4 py-3 text-xs text-red-600">Die Linien konnten nicht geladen werden.</p>
-        )}
-        {(status === 'bereit' || status === 'laedt') && begriff === '' && (
-          <p className="px-4 py-3 text-xs text-zinc-500">Tippe eine Linie, einen Betreiber oder eine Endstation, z.B. U2.</p>
-        )}
-        {status === 'bereit' && begriff !== '' && treffer.length === 0 && (
-          <p className="px-4 py-3 text-xs text-zinc-500">Keine passenden Linien in diesem Ausschnitt.</p>
-        )}
-        {status !== 'zu_gross' && treffer.slice(0, MAX_LISTE).map((linie, i) => (
-          <div key={linie.linie_id}>
-            {(i === 0 || treffer[i - 1].typ !== linie.typ) && (
-              <div className="sticky top-0 bg-zinc-50 px-4 py-1 text-[10px] font-extrabold text-zinc-400 uppercase tracking-widest border-b border-zinc-100">
-                {LINIENTYPEN[linie.typ] || linie.typ}
-              </div>
-            )}
-            <button onClick={() => { onChange([...ausgewaehlt, linie]); setSuchtext(''); }} className="w-full text-left px-4 py-1.5 hover:bg-zinc-100 transition flex items-baseline gap-2">
+    <div className="md:w-[460px]">
+      <p className="text-[11px] text-zinc-500 mb-2">Suche nach Liniennummer, Betreiber oder Endstation in ganz Deutschland. Linien in deiner Nähe stehen oben.</p>
+      <input type="text" placeholder="z.B. U2, BVG, Ruhleben" value={suchtext} onChange={(e) => setSuchtext(e.target.value)} className="w-full h-[38px] bg-white border border-zinc-200 rounded-md px-3 text-sm font-medium focus:ring-1 focus:ring-black outline-none placeholder:text-zinc-400" />
+      {begriff !== '' && (
+        <div className="mt-1 w-full bg-white border border-zinc-200 rounded-lg max-h-64 overflow-y-auto">
+          {fehler && <p className="px-4 py-3 text-xs text-red-600">Die Linien konnten nicht geladen werden.</p>}
+          {laedt && treffer.length === 0 && <p className="px-4 py-3 text-xs text-zinc-500">Linien werden gesucht…</p>}
+          {!laedt && !fehler && treffer.length === 0 && <p className="px-4 py-3 text-xs text-zinc-500">Keine passende Linie gefunden.</p>}
+          {treffer.slice(0, MAX_LISTE).map(linie => (
+            <button key={linie.linie_id} onClick={() => { onChange([...ausgewaehlt, linie]); setSuchtext(''); }} className="w-full text-left px-4 py-1.5 hover:bg-zinc-100 transition flex items-baseline gap-2">
               <span className="text-sm font-bold text-zinc-900 shrink-0">{linie.nummer}</span>
-              <span className="text-[11px] text-zinc-500 truncate">{linie.betreiber}{linie.endpunkte ? ` · ${linie.endpunkte}` : ''}</span>
+              <span className="text-[10px] text-zinc-400 shrink-0">{LINIENTYPEN[linie.typ] || linie.typ}</span>
+              <span className="text-[11px] text-zinc-500 truncate flex-1">{linie.betreiber}{linie.endpunkte ? ` · ${linie.endpunkte}` : ''}</span>
+              {linie.km !== null && linie.km >= 20 && <span className="text-[10px] text-zinc-400 shrink-0">{Math.round(linie.km)} km</span>}
             </button>
-          </div>
-        ))}
-        {status !== 'zu_gross' && treffer.length > MAX_LISTE && (
-          <p className="px-4 py-2 text-[11px] text-zinc-500">{treffer.length - MAX_LISTE} weitere Linien. Tippe oben, um die Liste einzugrenzen.</p>
-        )}
-      </div>
+          ))}
+          {treffer.length > MAX_LISTE && (
+            <p className="px-4 py-2 text-[11px] text-zinc-500">Weitere Linien gefunden. Tippe genauer, um die Liste einzugrenzen.</p>
+          )}
+        </div>
+      )}
 
       {ausgewaehlt.length > 0 && (
         <div className="flex flex-col gap-3 mt-3">

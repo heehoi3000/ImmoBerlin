@@ -10,13 +10,27 @@ export interface BezirkEintrag extends Bezirk {
 }
 
 const listenCache: Record<number, Promise<BezirkEintrag[]>> = {};
-const grenzenCache: Record<number, Bezirk['grenze']> = {};
+const grenzenCache: Record<number, Promise<Bezirk['grenze']>> = {};
+
+// Bezirkslisten ändern sich selten: im Browser für eine Woche merken, dann ist die Liste beim nächsten Besuch sofort da
+const SPEICHER_DAUER_MS = 7 * 24 * 3600 * 1000;
+function gemerkt<T>(schluessel: string): T | null {
+  try {
+    const eintrag = JSON.parse(localStorage.getItem(schluessel) ?? 'null');
+    return eintrag && Date.now() - eintrag.zeit < SPEICHER_DAUER_MS ? eintrag.wert : null;
+  } catch { return null; }
+}
+function merken(schluessel: string, wert: unknown) {
+  try { localStorage.setItem(schluessel, JSON.stringify({ zeit: Date.now(), wert })); } catch { /* Speicher voll oder gesperrt */ }
+}
 
 // Bezirke (admin_level 9) und Ortsteile (admin_level 10) innerhalb der Stadtgrenze
 export function bezirkeLaden(ort: Ort): Promise<BezirkEintrag[]> {
   const id = ort.osmRelation;
   if (!id) return Promise.resolve([]);
   if (!listenCache[id]) {
+    const vorhanden = gemerkt<BezirkEintrag[]>(`bezirke:${id}`);
+    if (vorhanden) return (listenCache[id] = Promise.resolve(vorhanden));
     const abfrage = `[out:json][timeout:25];area(id:${3600000000 + id})->.stadt;` +
       `rel(area.stadt)["boundary"="administrative"]["admin_level"~"^(9|10)$"];out tags center;`;
     listenCache[id] = fetch(OVERPASS_URL, { method: 'POST', body: 'data=' + encodeURIComponent(abfrage), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
@@ -38,6 +52,7 @@ export function bezirkeLaden(ort: Ort): Promise<BezirkEintrag[]> {
           liste.push({ id: el.id, name, ebene: el.tags.admin_level === '9' ? 'bezirk' : 'ortsteil' });
         }
         liste.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+        merken(`bezirke:${id}`, liste);
         return liste;
       })
       .catch(err => { delete listenCache[id]; throw err; });
@@ -47,15 +62,21 @@ export function bezirkeLaden(ort: Ort): Promise<BezirkEintrag[]> {
 
 // Grenze eines Bezirks oder Orts (OSM-Relation) als GeoJSON, vereinfacht auf etwa 10 m
 export async function bezirksgrenzeLaden(bezirk: Bezirk): Promise<Bezirk> {
-  if (!grenzenCache[bezirk.id]) {
-    const antwort = await fetch(`${NOMINATIM_URL}?osm_ids=R${bezirk.id}&format=geojson&polygon_geojson=1&polygon_threshold=0.0001`);
-    if (!antwort.ok) throw new Error(`Nominatim antwortet mit ${antwort.status}`);
-    const daten = await antwort.json();
-    const g = daten.features?.[0]?.geometry;
-    if (!g || (g.type !== 'Polygon' && g.type !== 'MultiPolygon')) throw new Error(`Keine Grenze für ${bezirk.name}`);
-    grenzenCache[bezirk.id] = g;
+  const id = bezirk.id;
+  if (!grenzenCache[id]) {
+    const vorhanden = gemerkt<Bezirk['grenze']>(`grenze:${id}`);
+    grenzenCache[id] = vorhanden ? Promise.resolve(vorhanden) : (async () => {
+      const antwort = await fetch(`${NOMINATIM_URL}?osm_ids=R${id}&format=geojson&polygon_geojson=1&polygon_threshold=0.0001`);
+      if (!antwort.ok) throw new Error(`Nominatim antwortet mit ${antwort.status}`);
+      const daten = await antwort.json();
+      const g = daten.features?.[0]?.geometry;
+      if (!g || (g.type !== 'Polygon' && g.type !== 'MultiPolygon')) throw new Error(`Keine Grenze für ${bezirk.name}`);
+      merken(`grenze:${id}`, g);
+      return g;
+    })();
+    grenzenCache[id].catch(() => { delete grenzenCache[id]; });
   }
-  return { id: bezirk.id, name: bezirk.name, grenze: grenzenCache[bezirk.id] };
+  return { id, name: bezirk.name, grenze: await grenzenCache[id] };
 }
 
 function ringe(grenze: NonNullable<Bezirk['grenze']>): number[][][][] {

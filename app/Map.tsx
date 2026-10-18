@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
+import 'maplibre-gl/dist/maplibre-gl.css';
 // NEU: GeoJSON importieren
-import { MapContainer, TileLayer, Marker, Popup, GeoJSON, Circle, CircleMarker, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, Popup, GeoJSON, Circle, CircleMarker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import '@maplibre/maplibre-gl-leaflet';
 import { supabase } from '../lib/supabase';
 import { Linie, Kartenausschnitt } from '../lib/oepnv';
 
@@ -20,12 +22,25 @@ const houseIcon = L.divIcon({
   iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -15]
 });
 
-// Hintergrundkarte: basemap.de vom Bundesamt für Kartographie und Geodäsie,
-// kostenlos und ohne API-Schlüssel, nur Deutschland. (CARTO verlangt seit
-// Oktober 2026 einen Schlüssel.) Achtung: Reihenfolge {y}/{x}.
-const KARTE_URL = 'https://sgx.geodatenzentrum.de/wmts_basemapde/tile/1.0.0/de_basemapde_web_raster_farbe/default/GLOBAL_WEBMERCATOR/{z}/{y}/{x}.png';
-const KARTE_HINWEIS = '&copy; <a href="https://www.bkg.bund.de">GeoBasis-DE / BKG</a> (' + new Date().getFullYear() + ') <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>';
-const FAHRPLAN_HINWEIS = ' | Fahrplandaten: <a href="https://www.delfi.de">DELFI e.V.</a>, CC BY 4.0';
+// Hintergrundkarte: OpenFreeMap (weltweit, kostenlos, ohne API-Schlüssel).
+// Liefert Vektorkacheln, die MapLibre über das Leaflet-Plugin zeichnet.
+const KARTE_STIL = 'https://tiles.openfreemap.org/styles/positron';
+const KARTE_HINWEIS = '<a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/">OpenMapTiles</a> Daten von <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+const FAHRPLAN_HINWEIS = 'Fahrplandaten: <a href="https://www.delfi.de">DELFI e.V.</a>, CC BY 4.0';
+
+function Hintergrundkarte() {
+  const map = useMap();
+  useEffect(() => {
+    const ebene = L.maplibreGL({ style: KARTE_STIL, attributionControl: { customAttribution: KARTE_HINWEIS } });
+    ebene.addTo(map);
+    map.attributionControl.addAttribution(FAHRPLAN_HINWEIS);
+    return () => {
+      map.attributionControl.removeAttribution(FAHRPLAN_HINWEIS);
+      ebene.remove();
+    };
+  }, [map]);
+  return null;
+}
 
 interface Haltestelle { stop_id: string; name: string; lat: number; lon: number; }
 interface NaechsteHaltestelle { anzeige_id: string; distanz_m: number; haltestelle: string; linie: string; }
@@ -140,12 +155,9 @@ export default function Map({ filters, onAusschnittChange }: MapProps) {
   }, [filters]);
 
   return (
-    <div style={{ height: '100%', width: '100%', minHeight: '100vh', position: 'relative' }}>
+    <div style={{ height: '100%', width: '100%', position: 'relative' }}>
       <MapContainer center={berlinPosition} zoom={11} preferCanvas style={{ height: "100%", width: "100%", position: "absolute", top: 0, left: 0, bottom: 0, right: 0 }}>
-        <TileLayer
-          attribution={KARTE_HINWEIS + FAHRPLAN_HINWEIS}
-          url={KARTE_URL}
-        />
+        <Hintergrundkarte />
 
         <AusschnittMelder onChange={onAusschnittChange} />
 

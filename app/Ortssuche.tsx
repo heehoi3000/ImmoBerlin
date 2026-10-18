@@ -73,6 +73,8 @@ export default function Ortssuche({ ort, onChange }: { ort: Ort | null; onChange
         onChange={(e) => { setText(e.target.value); setOffen(true); if (e.target.value === '') onChange(null); }}
         onFocus={() => setOffen(true)}
         onBlur={() => setTimeout(() => setOffen(false), 150)}
+        // Enter übernimmt den ersten Vorschlag
+        onKeyDown={(e) => { if (e.key === 'Enter' && sichtbar[0]) { onChange(sichtbar[0]); setText(sichtbar[0].name); setOffen(false); } }}
         className="w-full h-[38px] bg-white border border-zinc-200 rounded-md px-3 pr-8 text-sm font-medium focus:ring-1 focus:ring-black outline-none placeholder:text-zinc-400"
       />
       {ort && (

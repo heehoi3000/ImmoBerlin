@@ -17,6 +17,21 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         
+      - name: Bezirksdaten holen
+        # vom Workflow "Bezirksdaten erzeugen"; fehlt der Branch, fragt die Seite Overpass/Nominatim
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: gebiete
+          path: gebiete-daten
+
+      - name: Bezirksdaten in die Seite legen
+        run: |
+          if [ -f gebiete-daten/stand.json ]; then
+            mkdir -p public/gebiete && cp -r gebiete-daten/l gebiete-daten/g gebiete-daten/stand.json public/gebiete/
+          fi
+          rm -rf gebiete-daten
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useRef } from 'react';
-import Link from 'next/link';
 import 'leaflet/dist/leaflet.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { MapContainer, Marker, Popup, Circle, CircleMarker, Rectangle, GeoJSON, useMap, useMapEvents } from 'react-leaflet';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import { MapContainer, Popup, Circle, CircleMarker, Rectangle, GeoJSON, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import '@maplibre/maplibre-gl-leaflet';
+import 'leaflet.markercluster';
 import { setWorkerUrl } from 'maplibre-gl';
 import { Kartenausschnitt } from '../lib/oepnv';
 import { Bezirk } from '../lib/filter';
@@ -19,11 +20,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: '/ImmoBerlin/leaflet/marker-shadow.png',
 });
 
-const houseIcon = L.divIcon({
-  html: '<div style="font-size: 28px; text-shadow: 0 2px 5px rgba(0,0,0,0.3);">🏠</div>',
-  className: 'custom-house-icon',
-  iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -15]
-});
 
 // Hintergrundkarte: OpenFreeMap (weltweit, kostenlos, ohne API-Schlüssel).
 // Liefert Vektorkacheln, die MapLibre über das Leaflet-Plugin zeichnet.
@@ -92,7 +88,82 @@ function BezirkeAnzeige({ bezirke }: { bezirke: Bezirk[] }) {
   return <>{bezirke.filter(b => b.grenze).map(b => <GeoJSON key={b.id} data={b.grenze!} style={stil} interactive={false} />)}</>;
 }
 
-const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+// Preis kurz für den Pin: 1.160 €, 485 Tsd. €, 1,2 Mio. €
+function kurzPreis(a: Anzeige) {
+  const n = Number(a.transaktions_typ === 'mieten' && a.warmmiete ? a.warmmiete : a.preis);
+  if (n >= 1e6) return `${(n / 1e6).toLocaleString('de-DE', { maximumFractionDigits: 1 })} Mio. €`;
+  if (n >= 1e4) return `${Math.round(n / 1e3).toLocaleString('de-DE')} Tsd. €`;
+  return `${n.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €`;
+}
+
+const pinIcon = (a: Anzeige, aktiv: boolean) => L.divIcon({
+  html: `<span>${kurzPreis(a)}</span>`,
+  className: `preis-pin${aktiv ? ' aktiv' : ''}`,
+  iconSize: null as unknown as L.PointExpression, iconAnchor: [0, 0],
+});
+
+const gruppenIcon = (c: L.MarkerCluster) => {
+  const n = c.getChildCount();
+  const groesse = n < 10 ? 36 : n < 100 ? 44 : 52;
+  return L.divIcon({ html: `<span>${n}</span>`, className: 'preis-gruppe', iconSize: [groesse, groesse] });
+};
+
+// Preis-Pins der Anzeigen, nah beieinander liegende werden zu Gruppen mit Anzahl zusammengefasst
+function PreisPins({ anzeigen, aktivId, onAuswahl }: { anzeigen: Anzeige[]; aktivId: string | null; onAuswahl?: (id: string) => void }) {
+  const map = useMap();
+  const gruppe = useRef<L.MarkerClusterGroup | null>(null);
+  const pins = useRef<Record<string, { m: L.Marker; a: Anzeige }>>({});
+  const vorher = useRef<string | null>(null);
+  const auswahl = useRef(onAuswahl);
+  useEffect(() => { auswahl.current = onAuswahl; }, [onAuswahl]);
+
+  useEffect(() => {
+    const g = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 50, spiderfyOnMaxZoom: true, iconCreateFunction: gruppenIcon });
+    gruppe.current = g;
+    map.addLayer(g);
+    return () => { map.removeLayer(g); };
+  }, [map]);
+
+  useEffect(() => {
+    const g = gruppe.current!;
+    g.clearLayers();
+    pins.current = {};
+    const marker = anzeigen.map(a => {
+      const m = L.marker([a.koordinate_lat, a.koordinate_lon], { icon: pinIcon(a, false), riseOnHover: true });
+      m.on('click', () => auswahl.current?.(a.id));
+      pins.current[a.id] = { m, a };
+      return m;
+    });
+    g.addLayers(marker);
+    vorher.current = null;
+  }, [anzeigen]);
+
+  // Aktiven Pin (Hover in der Liste oder ausgewählt) schwarz und nach vorn
+  useEffect(() => {
+    const alt = vorher.current && pins.current[vorher.current];
+    if (alt) { alt.m.setIcon(pinIcon(alt.a, false)); alt.m.setZIndexOffset(0); }
+    const neu = aktivId && pins.current[aktivId];
+    if (neu) { neu.m.setIcon(pinIcon(neu.a, true)); neu.m.setZIndexOffset(1000); }
+    vorher.current = aktivId;
+  }, [aktivId, anzeigen]);
+  return null;
+}
+
+// Springt zu einer Anzeige (z. B. nach Klick in der Liste auf dem Handy)
+function Fokus({ fokus, anzeigen }: { fokus: MapProps['fokus']; anzeigen: Anzeige[] }) {
+  const map = useMap();
+  useEffect(() => {
+    const a = fokus && anzeigen.find(x => x.id === fokus.id);
+    if (a) map.setView([a.koordinate_lat, a.koordinate_lon], Math.max(map.getZoom(), 16));
+  }, [map, fokus]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
+// Klick auf die freie Karte hebt die Auswahl auf
+function KlickLeer({ onKlick }: { onKlick?: () => void }) {
+  useMapEvents({ click: () => onKlick?.() });
+  return null;
+}
 
 interface MapProps {
   anzeigen: Anzeige[];
@@ -102,69 +173,61 @@ interface MapProps {
   ortKreis: OrtKreis | null;
   bezirke: Bezirk[];
   // Anzeige, zu der die Karte springen soll (nr ändert sich bei jedem Klick)
-  fokus: { id: string; nr: number } | null;
+  fokus?: { id: string; nr: number } | null;
+  aktivId?: string | null;
+  onAuswahl?: (id: string | null) => void;
   onAusschnittChange?: (a: Kartenausschnitt) => void;
 }
 
-// Springt zur angeklickten Anzeige aus der Ergebnisliste und öffnet ihr Popup
-function Fokus({ fokus, marker }: { fokus: MapProps['fokus']; marker: React.RefObject<Record<string, L.Marker>> }) {
-  const map = useMap();
-  useEffect(() => {
-    const m = fokus && marker.current[fokus.id];
-    if (!m) return;
-    map.setView(m.getLatLng(), Math.max(map.getZoom(), 15));
-    m.openPopup();
-  }, [map, fokus, marker]);
-  return null;
-}
-
-export default function Map({ anzeigen, haltestellen, naechste, linienUmkreisM, ortKreis, bezirke, fokus, onAusschnittChange }: MapProps) {
+export default function Map({ anzeigen, haltestellen, linienUmkreisM, ortKreis, bezirke, fokus = null, aktivId = null, onAuswahl, onAusschnittChange }: MapProps) {
   const berlinPosition: [number, number] = [52.516, 13.42];
-  const marker = useRef<Record<string, L.Marker>>({});
 
   return (
     <div style={{ height: '100%', width: '100%', position: 'relative' }}>
-      <MapContainer center={berlinPosition} zoom={11} preferCanvas style={{ height: "100%", width: "100%", position: "absolute", top: 0, left: 0, bottom: 0, right: 0 }}>
+      <MapContainer center={berlinPosition} zoom={11} maxZoom={19} preferCanvas zoomControl={false} style={{ height: "100%", width: "100%", position: "absolute", top: 0, left: 0, bottom: 0, right: 0 }}>
         <Hintergrundkarte />
+        <Zoomknoepfe />
+        <GroesseBeobachten />
         <AusschnittMelder onChange={onAusschnittChange} />
         <OrtAnzeige ort={ortKreis} />
         <BezirkeAnzeige bezirke={bezirke} />
-        <Fokus fokus={fokus} marker={marker} />
+        <Fokus fokus={fokus} anzeigen={anzeigen} />
+        <KlickLeer onKlick={() => onAuswahl?.(null)} />
 
         {/* Umkreis um jede Haltestelle der gewählten Linien */}
         {haltestellen.map((h) => (
           <Circle key={`umkreis-${h.stop_id}`} center={[h.lat, h.lon]} radius={linienUmkreisM}
-            pathOptions={{ color: '#1E88E5', weight: 1, opacity: 0.4, fillColor: '#1E88E5', fillOpacity: 0.06 }} interactive={false} />
+            pathOptions={{ color: '#2563eb', weight: 1, opacity: 0.35, fillColor: '#2563eb', fillOpacity: 0.06 }} interactive={false} />
         ))}
         {haltestellen.map((h) => (
           <CircleMarker key={`halt-${h.stop_id}`} center={[h.lat, h.lon]} radius={4}
-            pathOptions={{ color: '#333', weight: 2, fillColor: '#fff', fillOpacity: 1 }}>
+            pathOptions={{ color: '#1d4ed8', weight: 2, fillColor: '#fff', fillOpacity: 1 }}>
             <Popup>{h.name}</Popup>
           </CircleMarker>
         ))}
 
-        {anzeigen.map((anzeige) => (
-          <Marker key={anzeige.id} position={[anzeige.koordinate_lat, anzeige.koordinate_lon]} icon={houseIcon}
-            ref={(m) => { if (m) marker.current[anzeige.id] = m; else delete marker.current[anzeige.id]; }}>
-            <Popup>
-              <h3 style={{ margin: '0 0 5px 0', fontSize: '15px', fontWeight: 'bold' }}>{anzeige.titel}</h3>
-              <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
-                <span style={{ display: 'inline-block', backgroundColor: 'black', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
-                  {anzeige.transaktions_typ}
-                </span><br/>
-                <strong>{anzeige.transaktions_typ === 'mieten' ? 'Kaltmiete' : 'Kaufpreis'}:</strong> {euro.format(Number(anzeige.preis))}<br/>
-                {anzeige.warmmiete && <><strong>Warmmiete:</strong> {euro.format(Number(anzeige.warmmiete))}<br/></>}
-                <strong>Fläche:</strong> {anzeige.quadratmeter} m² · <strong>Zimmer:</strong> {anzeige.zimmer}<br/>
-                {anzeige.adresse}
-                <br/><Link href={`/anzeige/?id=${anzeige.id}`} style={{ display: 'inline-block', marginTop: '6px', fontWeight: 'bold' }}>Zum Inserat →</Link>
-                {naechste[anzeige.id] && (
-                  <><br/><strong>ÖPNV:</strong> {naechste[anzeige.id].distanz_m} m zur {naechste[anzeige.id].linie}, {naechste[anzeige.id].haltestelle}</>
-                )}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+        <PreisPins anzeigen={anzeigen} aktivId={aktivId} onAuswahl={(id) => onAuswahl?.(id)} />
       </MapContainer>
     </div>
   );
+}
+
+function Zoomknoepfe() {
+  const map = useMap();
+  useEffect(() => {
+    const z = L.control.zoom({ position: 'topright', zoomInTitle: 'Hineinzoomen', zoomOutTitle: 'Herauszoomen' }).addTo(map);
+    return () => { z.remove(); };
+  }, [map]);
+  return null;
+}
+
+// Leaflet merkt nicht, wenn der Kartenbereich ein- oder ausgeblendet wird (Umschalter auf dem Handy)
+function GroesseBeobachten() {
+  const map = useMap();
+  useEffect(() => {
+    const ro = new ResizeObserver(() => map.invalidateSize());
+    ro.observe(map.getContainer());
+    return () => ro.disconnect();
+  }, [map]);
+  return null;
 }

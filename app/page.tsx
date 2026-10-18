@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useRef, ReactNode } from 'react';
 import dynamic from 'next/dynamic';
-import Banner from './Banner';
 import Ortssuche from './Ortssuche';
 import Linienauswahl from './Linienauswahl';
 import Bezirksauswahl from './Bezirksauswahl';
-import Ergebnisliste from './Ergebnisliste';
+import Ergebnisliste, { AnzeigeKachel } from './Ergebnisliste';
 import { Kartenausschnitt } from '../lib/oepnv';
 import {
   Filter, STANDARD_FILTER, OBJEKTARTEN, AUSSTATTUNG, ENERGIEKLASSEN, UMKREISE_KM, SORTIERUNGEN,
@@ -17,7 +16,7 @@ import { anzeigenSuchen, erweiterteFelderVorhanden, linienUmkreisM, Suchergebnis
 
 const Map = dynamic(() => import("./Map"), {
   ssr: false,
-  loading: () => <div className="p-6 text-zinc-500 font-bold tracking-widest uppercase flex h-full w-full items-center justify-center bg-white">Karte lädt...</div>
+  loading: () => <div className="h-full w-full bg-zinc-100 animate-pulse" />
 });
 
 type Panel = 'bezirke' | 'preis' | 'zimmer' | 'flaeche' | 'linien' | 'weitere' | null;
@@ -28,9 +27,9 @@ const LEER: Suchergebnis = { anzeigen: [], haltestellen: [], naechste: {} };
 
 function Umschalter<T extends string>({ werte, wert, onChange }: { werte: { wert: T; name: string }[]; wert: T; onChange: (w: T) => void }) {
   return (
-    <div className="flex bg-white border border-zinc-200 rounded-lg p-1 h-[48px] shadow-sm">
+    <div className="flex shrink-0 bg-zinc-100 rounded-full p-1 h-10">
       {werte.map(w => (
-        <button key={w.wert} onClick={() => onChange(w.wert)} className={`px-3 md:px-4 rounded-md text-xs font-bold transition-all ${wert === w.wert ? 'bg-black text-white' : 'text-zinc-600 hover:text-black'}`}>
+        <button key={w.wert} onClick={() => onChange(w.wert)} className={`px-3.5 rounded-full text-[13px] font-semibold transition-all ${wert === w.wert ? 'bg-white text-black shadow-sm' : 'text-zinc-500 hover:text-black'}`}>
           {w.name}
         </button>
       ))}
@@ -40,8 +39,8 @@ function Umschalter<T extends string>({ werte, wert, onChange }: { werte: { wert
 
 function FilterKnopf({ titel, wert, aktiv, offen, onClick }: { titel: string; wert?: string; aktiv: boolean; offen: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick} className={`flex items-center gap-2 h-[40px] px-3 rounded-lg border text-xs font-bold transition-all whitespace-nowrap ${aktiv ? 'border-black bg-black text-white' : 'border-zinc-200 bg-white text-zinc-700 hover:border-black'}`}>
-      <span>{titel}{wert ? `: ${wert}` : ''}</span>
+    <button onClick={onClick} className={`flex shrink-0 items-center gap-1.5 h-9 px-3.5 rounded-full border text-[13px] font-semibold transition-all whitespace-nowrap ${aktiv ? 'border-zinc-900 bg-zinc-900 text-white' : offen ? 'border-zinc-900 bg-white text-black' : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400'}`}>
+      <span className="max-w-[220px] truncate">{titel}{wert ? `: ${wert}` : ''}</span>
       <svg className={`w-3.5 h-3.5 transition-transform ${offen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
     </button>
   );
@@ -50,18 +49,18 @@ function FilterKnopf({ titel, wert, aktiv, offen, onClick }: { titel: string; we
 function Abschnitt({ titel, children }: { titel: string; children: ReactNode }) {
   return (
     <div>
-      <h4 className="text-[10px] font-extrabold text-zinc-400 mb-1.5 uppercase tracking-widest">{titel}</h4>
+      <h4 className="text-xs font-semibold text-zinc-500 mb-2">{titel}</h4>
       {children}
     </div>
   );
 }
 
 function VonBis({ min, max, onMin, onMax, einheit }: { min: string; max: string; onMin: (v: string) => void; onMax: (v: string) => void; einheit?: string }) {
-  const feld = "flex-1 w-full min-w-0 h-[36px] bg-white border border-zinc-200 rounded-md px-2 text-xs text-center font-medium focus:ring-1 focus:ring-black outline-none placeholder:text-zinc-400";
+  const feld = "flex-1 w-full min-w-0 h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium focus:ring-2 focus:ring-black/10 focus:border-zinc-900 outline-none placeholder:text-zinc-400";
   return (
     <div className="flex gap-1.5 w-full items-center">
       <input type="number" placeholder="von" value={min} onChange={(e) => onMin(e.target.value)} className={feld} />
-      <span className="text-zinc-300">–</span>
+      <span className="text-zinc-400">–</span>
       <input type="number" placeholder="bis" value={max} onChange={(e) => onMax(e.target.value)} className={feld} />
       {einheit && <span className="text-xs text-zinc-500 w-8">{einheit}</span>}
     </div>
@@ -70,7 +69,7 @@ function VonBis({ min, max, onMin, onMax, einheit }: { min: string; max: string;
 
 function Chip({ aktiv, onClick, children }: { aktiv: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button onClick={onClick} className={`px-2.5 py-1.5 rounded-md border text-[11px] font-bold transition-all ${aktiv ? 'border-black bg-black text-white' : 'border-zinc-200 bg-white text-zinc-600 hover:border-black hover:text-black'}`}>
+    <button onClick={onClick} className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${aktiv ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 hover:text-black'}`}>
       {children}
     </button>
   );
@@ -98,7 +97,10 @@ export default function Home() {
   const [ergebnis, setErgebnis] = useState<Suchergebnis>(LEER);
   const [laedt, setLaedt] = useState(true);
   const [fehler, setFehler] = useState(false);
-  const [fokus, setFokus] = useState<{ id: string; nr: number } | null>(null);
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const [auswahlId, setAuswahlId] = useState<string | null>(null);
+  const [ansicht, setAnsicht] = useState<'liste' | 'karte'>('liste');   // nur auf schmalen Bildschirmen
+  const [leisteUnten, setLeisteUnten] = useState(180);
   const leiste = useRef<HTMLDivElement>(null);
   const anfrageNr = useRef(0);
 
@@ -122,6 +124,17 @@ export default function Home() {
       .finally(() => { if (nr === anfrageNr.current) setLaedt(false); });
   }, [angewendet, erweitert]);
 
+  // Karte klebt direkt unter der Filterleiste; deren Höhe hängt von der Bildschirmbreite ab
+  useEffect(() => {
+    const el = leiste.current;
+    if (!el) return;
+    const messen = () => setLeisteUnten(el.getBoundingClientRect().height + 64);
+    messen();
+    const ro = new ResizeObserver(messen);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Aufklappbereich schließen, wenn außerhalb der Filterleiste geklickt wird
   useEffect(() => {
     function klick(e: MouseEvent) {
@@ -133,6 +146,7 @@ export default function Home() {
 
   const suchen = (neu: Filter = filter) => {
     setLaedt(true);
+    setAuswahlId(null);
     setAngewendet(neu);
     setPanel(null);
   };
@@ -155,43 +169,48 @@ export default function Home() {
     ? { lat: angewendet.ort.lat, lon: angewendet.ort.lon, m: angewendet.umkreisKm * 1000, ausdehnung: angewendet.ort.ausdehnung }
     : null;
 
+  const ortText = angewendet.ort ? (angewendet.bezirke.length ? `in ${angewendet.bezirke.map(b => b.name).join(', ')}` : `in ${angewendet.ort.kurzname ?? angewendet.ort.name}${angewendet.umkreisKm ? ` + ${angewendet.umkreisKm} km` : ''}`) : 'in ganz Deutschland';
+  const ausgewaehlt = auswahlId ? ergebnis.anzeigen.find(a => a.id === auswahlId) : undefined;
+  const pinWaehlen = (id: string | null) => {
+    setAuswahlId(id);
+    if (id && window.matchMedia('(min-width: 1024px)').matches) document.getElementById(`kachel-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const artWahl = (
+    <>
+      <Umschalter werte={[{ wert: 'mieten', name: 'Mieten' }, { wert: 'kaufen', name: 'Kaufen' }]} wert={filter.transaktion}
+        onChange={(t) => setze({ transaktion: t, preisMin: '', preisMax: '', wbs: 'egal' })} />
+      <Umschalter werte={[{ wert: 'wohnung', name: 'Wohnung' }, { wert: 'haus', name: 'Haus' }]} wert={filter.immobilientyp}
+        onChange={(t) => setze({ immobilientyp: t, objektarten: [], etageMin: '', etageMax: '' })} />
+    </>
+  );
+
   return (
-    <div className="flex flex-col w-full overflow-x-hidden">
-      <Banner />
+    <div className="flex flex-col w-full">
 
-      <div className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-8 py-6 flex flex-col gap-4">
-
-        {/* --- FILTERLEISTE --- */}
-        <div ref={leiste} className="flex flex-col gap-3 w-full relative z-20">
-
-          {/* Zeile 1: Was und wo */}
-          <div className="flex flex-col lg:flex-row gap-2 w-full">
-            <div className="flex gap-2">
-              <Umschalter werte={[{ wert: 'mieten', name: 'Mieten' }, { wert: 'kaufen', name: 'Kaufen' }]} wert={filter.transaktion}
-                onChange={(t) => setze({ transaktion: t, preisMin: '', preisMax: '', wbs: 'egal' })} />
-              <Umschalter werte={[{ wert: 'wohnung', name: 'Wohnung' }, { wert: 'haus', name: 'Haus' }]} wert={filter.immobilientyp}
-                onChange={(t) => setze({ immobilientyp: t, objektarten: [], etageMin: '', etageMax: '' })} />
-            </div>
-            <div className="flex flex-1 gap-2 items-center bg-white border border-zinc-200 rounded-lg px-2 h-[48px] shadow-sm">
-              <Ortssuche ort={filter.ort} onChange={(o) => setze({ ort: o, bezirke: [] })} />
+      {/* --- FILTERLEISTE (klebt unter der Kopfzeile) --- */}
+      <div ref={leiste} className="sticky top-16 z-[900] bg-white border-b border-zinc-200">
+        <div className="px-4 lg:px-6 py-3 flex flex-col gap-2.5">
+          <div className="flex items-center gap-2">
+            <div className="flex flex-1 min-w-0 max-w-3xl items-center gap-1 h-12 pl-4 pr-1.5 bg-white border border-zinc-200 rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.06)] focus-within:border-zinc-900 transition">
+              <svg className="w-4 h-4 text-zinc-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+              <div className="flex-1 min-w-0 [&_input]:border-0 [&_input]:focus:ring-0 [&_input]:h-10 [&_input]:bg-transparent [&_input]:text-[15px]">
+                <Ortssuche ort={filter.ort} onChange={(o) => setze({ ort: o, bezirke: [] })} />
+              </div>
               <select value={filter.umkreisKm} onChange={(e) => setze({ umkreisKm: parseInt(e.target.value) })} disabled={!filter.ort || filter.bezirke.length > 0}
-                title={filter.bezirke.length > 0 ? 'Bei gewählten Bezirken wird genau in deren Grenzen gesucht' : undefined}
-                className="h-[38px] border border-zinc-200 rounded-md px-2 text-xs font-bold bg-white disabled:text-zinc-300">
+                title={filter.bezirke.length > 0 ? 'Bei gewählten Bezirken wird genau in deren Grenzen gesucht' : 'Umkreis'}
+                className="hidden sm:block h-9 border-l border-zinc-200 pl-3 pr-1 text-[13px] font-semibold bg-transparent outline-none disabled:text-zinc-300">
                 {UMKREISE_KM.map(km => <option key={km} value={km}>{km === 0 ? 'Nur Ort' : `+ ${km} km`}</option>)}
               </select>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={zuruecksetzen} title="Filter zurücksetzen" className="flex-none w-[48px] h-[48px] border border-zinc-200 bg-white text-zinc-500 rounded-lg shadow-sm hover:border-black hover:text-black transition-all flex items-center justify-center group cursor-pointer">
-                <svg className="w-4 h-4 group-hover:-rotate-180 transition-transform duration-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-              </button>
-              <button onClick={() => suchen()} className="flex-1 lg:w-[180px] h-[48px] bg-black text-white font-extrabold text-sm rounded-lg uppercase tracking-[0.2em] shadow-lg hover:bg-zinc-800 hover:-translate-y-0.5 transition-all duration-300">
+              <button onClick={() => suchen()} aria-label="Suchen" className="shrink-0 h-9 px-4 sm:px-5 rounded-full bg-zinc-900 text-white text-sm font-semibold hover:bg-black transition">
                 Suchen
               </button>
             </div>
+            <div className="hidden md:flex gap-2">{artWahl}</div>
           </div>
 
-          {/* Zeile 2: Detailfilter */}
-          <div className="flex gap-2 flex-wrap items-center">
+          <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] -mx-4 px-4 lg:mx-0 lg:px-0">
+            <div className="flex md:hidden gap-2">{artWahl}</div>
             {filter.ort?.osmRelation && (
               <FilterKnopf titel="Bezirke" wert={filter.bezirke.length ? filter.bezirke.map(b => b.name).join(', ') : undefined}
                 aktiv={filter.bezirke.length > 0} offen={panel === 'bezirke'} onClick={() => oeffne('bezirke')} />
@@ -206,11 +225,13 @@ export default function Home() {
               aktiv={filter.linien.length > 0} offen={panel === 'linien'} onClick={() => oeffne('linien')} />
             <FilterKnopf titel="Weitere Filter" wert={weitere ? String(weitere) : undefined}
               aktiv={weitere > 0} offen={panel === 'weitere'} onClick={() => oeffne('weitere')} />
+            <button onClick={zuruecksetzen} className="shrink-0 h-9 px-3 text-[13px] font-semibold text-zinc-500 hover:text-black underline-offset-4 hover:underline">Zurücksetzen</button>
           </div>
+        </div>
 
           {/* Aufklappbereiche */}
           {panel && (
-            <div className="absolute top-full left-0 w-full md:w-auto md:min-w-[420px] max-w-full mt-2 p-4 border border-zinc-200 rounded-lg shadow-xl bg-white z-50 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+            <div className="absolute top-full left-4 right-4 md:right-auto lg:left-6 md:min-w-[440px] mt-2 p-5 border border-zinc-200 rounded-2xl shadow-2xl bg-white z-50 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
               {panel === 'bezirke' && filter.ort && (
                 <Bezirksauswahl ort={filter.ort} ausgewaehlt={filter.bezirke} onChange={(b) => setze({ bezirke: b })} />
               )}
@@ -270,11 +291,11 @@ export default function Home() {
                       )}
                       <Abschnitt titel="Bezugsfrei bis">
                         <input type="date" value={filter.bezugsfreiBis} onChange={(e) => setze({ bezugsfreiBis: e.target.value })}
-                          className="w-full h-[36px] bg-white border border-zinc-200 rounded-md px-2 text-xs font-medium focus:ring-1 focus:ring-black outline-none" />
+                          className="w-full h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium focus:ring-1 focus:ring-black outline-none" />
                       </Abschnitt>
                       <Abschnitt titel="Energieeffizienz mindestens">
                         <select value={filter.energieMindestens} onChange={(e) => setze({ energieMindestens: e.target.value })}
-                          className="w-full h-[36px] bg-white border border-zinc-200 rounded-md px-2 text-xs font-medium">
+                          className="w-full h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium">
                           <option value="">Egal</option>
                           {ENERGIEKLASSEN.map(k => <option key={k} value={k}>Klasse {k}{k !== 'A+' ? ' oder besser' : ''}</option>)}
                         </select>
@@ -295,36 +316,78 @@ export default function Home() {
                 )
               )}
               <div className="flex justify-end">
-                <button onClick={() => suchen()} className="h-[38px] px-5 bg-black text-white font-bold text-xs rounded-md uppercase tracking-widest hover:bg-zinc-800">Ergebnisse anzeigen</button>
+                <button onClick={() => suchen()} className="h-10 px-5 bg-zinc-900 text-white font-semibold text-sm rounded-full hover:bg-black">Ergebnisse anzeigen</button>
               </div>
             </div>
           )}
-        </div>
+      </div>
 
-        {/* --- ERGEBNISKOPF --- */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mt-1">
-          <p className="text-sm text-zinc-700">
-            {laedt ? 'Suche läuft…' : fehler ? 'Die Suche ist fehlgeschlagen. Bitte versuche es noch einmal.' : (
-              <><strong className="text-black">{ergebnis.anzeigen.length}</strong> {typName} {transaktionName}{angewendet.ort ? (angewendet.bezirke.length ? ` in ${angewendet.bezirke.map(b => b.name).join(', ')} (${angewendet.ort.kurzname ?? angewendet.ort.name})` : ` in ${angewendet.ort.name}${angewendet.umkreisKm ? ` + ${angewendet.umkreisKm} km` : ''}`) : ''}{angewendet.linien.length ? ` nahe ${angewendet.linien.map(l => l.nummer).join(', ')}` : ''}</>
-            )}
-          </p>
-          <select value={angewendet.sortierung} onChange={(e) => { setze({ sortierung: e.target.value }); suchen({ ...angewendet, sortierung: e.target.value }); }}
-            className="h-[36px] border border-zinc-200 rounded-md px-2 text-xs font-bold bg-white self-start md:self-auto">
-            {sortierungen.map(s => <option key={s.wert} value={s.wert}>{s.name}</option>)}
-          </select>
-        </div>
+      {/* --- LISTE LINKS, KARTE RECHTS --- */}
+      <div className="flex w-full">
+        <section className={`${ansicht === 'karte' ? 'hidden' : 'block'} lg:block w-full lg:w-[55%] xl:w-[58%] 2xl:w-[60%] px-4 lg:px-6 pt-5 pb-24 lg:pb-10`}>
+          <div className="flex items-end justify-between gap-3 mb-5">
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight">
+                {laedt ? 'Suche läuft…' : fehler ? 'Suche fehlgeschlagen' : `${ergebnis.anzeigen.length.toLocaleString('de-DE')} ${typName} ${transaktionName}`}
+              </h1>
+              <p className="text-sm text-zinc-500 truncate">
+                {fehler ? 'Bitte versuche es noch einmal.' : `${ortText}${angewendet.linien.length ? `, nahe ${angewendet.linien.map(l => l.nummer).join(', ')}` : ''}`}
+              </p>
+            </div>
+            <select value={angewendet.sortierung} onChange={(e) => { setze({ sortierung: e.target.value }); suchen({ ...angewendet, sortierung: e.target.value }); }}
+              aria-label="Sortierung" className="shrink-0 h-9 border border-zinc-200 rounded-full px-3 text-[13px] font-semibold bg-white outline-none hover:border-zinc-400">
+              {sortierungen.map(s => <option key={s.wert} value={s.wert}>{s.name}</option>)}
+            </select>
+          </div>
 
-        {/* --- MAP --- */}
-        <section id="karte" className="w-full h-[550px] rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-zinc-200 relative bg-white z-0">
-          <Map anzeigen={ergebnis.anzeigen} haltestellen={ergebnis.haltestellen} naechste={ergebnis.naechste}
-            linienUmkreisM={linienUmkreisM(angewendet.linienUmkreisM)} ortKreis={ortKreis} bezirke={grenzen} fokus={fokus}
-            onAusschnittChange={setAusschnitt} />
+          {laedt ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-5 gap-y-8">
+              {Array.from({ length: 6 }, (_, i) => (
+                <div key={i} className="flex flex-col gap-3 animate-pulse">
+                  <div className="aspect-[4/3] rounded-2xl bg-zinc-200/70" />
+                  <div className="h-4 w-1/3 rounded bg-zinc-200/70" /><div className="h-3 w-2/3 rounded bg-zinc-200/70" />
+                </div>
+              ))}
+            </div>
+          ) : ergebnis.anzeigen.length === 0 && !fehler ? (
+            <div className="rounded-2xl border border-dashed border-zinc-300 p-10 text-center flex flex-col items-center gap-3">
+              <p className="font-semibold">Keine passenden Angebote</p>
+              <p className="text-sm text-zinc-500 max-w-sm">Vergrößere den Umkreis, entferne einzelne Filter oder wähle einen größeren Abstand zur Haltestelle.</p>
+              <button onClick={zuruecksetzen} className="h-9 px-4 rounded-full border border-zinc-300 text-sm font-semibold hover:border-black">Filter zurücksetzen</button>
+            </div>
+          ) : (
+            <Ergebnisliste anzeigen={ergebnis.anzeigen} naechste={ergebnis.naechste} aktivId={auswahlId} onHover={setHoverId}
+              raster="grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" />
+          )}
         </section>
 
-        {/* --- ERGEBNISLISTE --- */}
-        <Ergebnisliste anzeigen={ergebnis.anzeigen} naechste={ergebnis.naechste}
-          onZeigen={(id) => { setFokus(f => ({ id, nr: (f?.nr ?? 0) + 1 })); document.getElementById('karte')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} />
+        <section className={`${ansicht === 'liste' ? 'hidden' : 'block'} lg:block flex-1 lg:sticky z-0`}
+          style={{ top: leisteUnten, height: `calc(100dvh - ${leisteUnten}px)` }}>
+          <div className="relative h-full w-full lg:p-3 lg:pl-0">
+            <div className="relative h-full w-full overflow-hidden lg:rounded-2xl">
+              <Map anzeigen={ergebnis.anzeigen} haltestellen={ergebnis.haltestellen} naechste={ergebnis.naechste}
+                linienUmkreisM={linienUmkreisM(angewendet.linienUmkreisM)} ortKreis={ortKreis} bezirke={grenzen}
+                aktivId={hoverId ?? auswahlId} onAuswahl={pinWaehlen} onAusschnittChange={setAusschnitt} />
+              {ausgewaehlt && (
+                <div className="absolute z-[1000] left-3 right-3 bottom-3 sm:left-auto sm:right-3 sm:w-[380px] bg-white rounded-2xl shadow-2xl p-2.5 pr-9">
+                  <AnzeigeKachel a={ausgewaehlt} n={ergebnis.naechste[ausgewaehlt.id]} kompakt />
+                  <button onClick={() => setAuswahlId(null)} aria-label="Schließen" className="absolute right-2 top-2 w-7 h-7 rounded-full hover:bg-zinc-100 text-zinc-500 text-lg leading-none">×</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
+
+      {/* Umschalter Liste/Karte auf schmalen Bildschirmen */}
+      <button onClick={() => { setAnsicht(ansicht === 'liste' ? 'karte' : 'liste'); window.scrollTo({ top: 0 }); }}
+        className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[950] h-12 px-5 rounded-full bg-zinc-900 text-white text-sm font-semibold shadow-2xl flex items-center gap-2">
+        {ansicht === 'liste' ? (
+          <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14" /></svg>Karte</>
+        ) : (
+          <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>Liste</>
+        )}
+      </button>
     </div>
   );
 }

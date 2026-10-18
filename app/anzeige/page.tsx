@@ -10,6 +10,7 @@ import { useMerkliste } from '../../lib/merkliste';
 import { useNutzer } from '../../lib/konto';
 import { useMelden } from '../Meldedialog';
 import Kontaktformular from '../Kontaktformular';
+import { KeinFoto } from '../Ergebnisliste';
 
 const Map = dynamic(() => import('../Map'), { ssr: false, loading: () => <div className="h-full w-full bg-zinc-100" /> });
 
@@ -62,7 +63,7 @@ export default function AnzeigeSeite() {
       <Link href="/" className="text-sm text-zinc-500 hover:text-black w-max">← Zurück zur Suche</Link>
 
       {/* Fotos */}
-      <div className="relative rounded-2xl overflow-hidden bg-zinc-100 aspect-[16/9] md:aspect-[21/9]">
+      <div className={`relative rounded-2xl overflow-hidden bg-zinc-100 ${bilder.length ? 'aspect-[16/9] md:aspect-[21/9]' : 'h-40 md:h-56'}`}>
         {bilder.length > 0 ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -75,7 +76,7 @@ export default function AnzeigeSeite() {
               </>
             )}
           </>
-        ) : <div className="w-full h-full flex items-center justify-center text-6xl">🏠</div>}
+        ) : <KeinFoto id={a.id} />}
       </div>
 
       <div className="grid lg:grid-cols-[1fr_360px] gap-6 items-start">

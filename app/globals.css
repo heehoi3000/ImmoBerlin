@@ -11,3 +11,28 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
+
+/* Preis-Pins und Gruppen auf der Karte */
+.leaflet-container { font-family: inherit !important; }
+.preis-pin { background: none; border: none; }
+.preis-pin span {
+  position: absolute; transform: translate(-50%, -50%);
+  white-space: nowrap; padding: 5px 10px; border-radius: 999px;
+  background: #fff; color: #111; font-weight: 700; font-size: 12.5px; line-height: 1; font-family: inherit;
+  box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 4px 12px rgba(0,0,0,.12);
+  border: 1px solid rgba(0,0,0,.06);
+  transition: transform .15s ease, background .15s ease, color .15s ease;
+  cursor: pointer;
+}
+.preis-pin span:hover { transform: translate(-50%, -50%) scale(1.08); }
+.preis-pin.aktiv span { background: #111; color: #fff; transform: translate(-50%, -50%) scale(1.12); }
+.preis-gruppe { background: none; border: none; }
+.preis-gruppe span {
+  display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
+  border-radius: 999px; background: #111; color: #fff; font-weight: 700; font-size: 13px; font-family: inherit;
+  box-shadow: 0 0 0 5px rgba(17,17,17,.15), 0 4px 12px rgba(0,0,0,.2);
+  transition: transform .15s ease; cursor: pointer;
+}
+.preis-gruppe span:hover { transform: scale(1.08); }
+.leaflet-control-zoom { border: none !important; box-shadow: 0 2px 10px rgba(0,0,0,.15) !important; border-radius: 12px !important; overflow: hidden; }
+.leaflet-control-zoom a { width: 36px !important; height: 36px !important; line-height: 36px !important; color: #111 !important; }

@@ -73,7 +73,7 @@ function Kopfzeile() {
   return (
     <>
     <header className="sticky top-0 z-[1000] bg-white/85 backdrop-blur-md border-b border-zinc-200/70">
-      <div className="max-w-7xl mx-auto h-16 px-4 md:px-8 flex items-center gap-4">
+      <div className="h-16 px-4 lg:px-6 flex items-center gap-4">
         <button onClick={() => setMenueOffen(true)} aria-label="Menü öffnen" className="md:hidden -ml-1 p-2 rounded-lg text-zinc-700 hover:bg-zinc-100">{Symbol.menue}</button>
         <Logo />
         <nav className="hidden md:flex items-center gap-1 ml-6">

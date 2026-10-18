@@ -61,7 +61,7 @@ function Kopfzeile() {
     return <Link href={href} className={`flex items-center px-3 py-2 rounded-lg text-sm font-semibold transition ${aktiv ? 'text-black bg-zinc-100' : 'text-zinc-500 hover:text-black hover:bg-zinc-50'}`}>{text}{abzeichen(zahl)}</Link>;
   };
   const menueEintraege: { href?: string; text: string; aktion?: () => void }[] = [
-    { href: '/', text: 'Wohnungen suchen' },
+    { href: '/suche/', text: 'Wohnungen suchen' },
     { href: '/inserieren/', text: 'Inserat aufgeben' },
     { href: '/meine-inserate/', text: 'Meine Inserate' },
     { href: '/nachrichten/', text: `Nachrichten${ungelesen ? ` (${ungelesen} neu)` : ''}` },
@@ -77,7 +77,7 @@ function Kopfzeile() {
         <button onClick={() => setMenueOffen(true)} aria-label="Menü öffnen" className="md:hidden -ml-1 p-2 rounded-lg text-zinc-700 hover:bg-zinc-100">{Symbol.menue}</button>
         <Logo />
         <nav className="hidden md:flex items-center gap-1 ml-6">
-          {navLink('/', 'Suchen')}
+          {navLink('/suche/', 'Suchen')}
           {navLink('/meine-inserate/', 'Meine Inserate')}
           {nutzer && navLink('/nachrichten/', 'Nachrichten', ungelesen)}
           <button onClick={() => melden({ art: 'fehler' })} className="px-3 py-2 rounded-lg text-sm font-semibold text-zinc-500 hover:text-black hover:bg-zinc-50 transition">Fehler melden</button>
@@ -151,7 +151,7 @@ function Fusszeile() {
         <div className="flex flex-wrap gap-x-12 gap-y-6">
           <div className="flex flex-col gap-2">
             <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">Angebot</span>
-            <Link href="/" className="text-zinc-600 hover:text-black">Suchen</Link>
+            <Link href="/suche/" className="text-zinc-600 hover:text-black">Suchen</Link>
             <Link href="/inserieren/" className="text-zinc-600 hover:text-black">Inserat aufgeben</Link>
             <Link href="/merkliste/" className="text-zinc-600 hover:text-black">Merkliste</Link>
           </div>

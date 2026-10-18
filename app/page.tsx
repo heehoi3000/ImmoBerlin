@@ -1,393 +1,194 @@
 "use client";
-
-import { useState, useEffect, useRef, ReactNode } from 'react';
-import dynamic from 'next/dynamic';
+// Startseite: Einstieg in die Suche, neueste Angebote, Städte und geplante Bereiche.
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Ortssuche from './Ortssuche';
-import Linienauswahl from './Linienauswahl';
-import Bezirksauswahl from './Bezirksauswahl';
-import Ergebnisliste, { AnzeigeKachel } from './Ergebnisliste';
-import { Kartenausschnitt } from '../lib/oepnv';
-import {
-  Filter, STANDARD_FILTER, OBJEKTARTEN, AUSSTATTUNG, ENERGIEKLASSEN, UMKREISE_KM, SORTIERUNGEN,
-  weitereFilterAnzahl,
-} from '../lib/filter';
-import { bezirkeLaden, bezirksgrenzeLaden } from '../lib/bezirke';
-import { anzeigenSuchen, erweiterteFelderVorhanden, linienUmkreisM, Suchergebnis } from '../lib/suche';
+import { AnzeigeKachel } from './Ergebnisliste';
+import { supabase } from '../lib/supabase';
+import { Filter, Ort } from '../lib/filter';
+import { Anzeige } from '../lib/suche';
 
-const Map = dynamic(() => import("./Map"), {
-  ssr: false,
-  loading: () => <div className="h-full w-full bg-zinc-100 animate-pulse" />
-});
+const STAEDTE: (Ort & { bild: string })[] = [
+  { name: 'Berlin', kurzname: 'Berlin', lat: 52.517, lon: 13.389, osmRelation: 62422, ausdehnung: [13.088, 52.338, 13.761, 52.675], bild: 'from-amber-100 to-orange-200' },
+  { name: 'Hamburg', kurzname: 'Hamburg', lat: 53.55, lon: 10.0, osmRelation: 62782, ausdehnung: [9.73, 53.395, 10.325, 53.74], bild: 'from-sky-100 to-blue-200' },
+  { name: 'München', kurzname: 'München', lat: 48.137, lon: 11.575, osmRelation: 62428, ausdehnung: [11.36, 48.061, 11.723, 48.248], bild: 'from-emerald-100 to-teal-200' },
+  { name: 'Köln', kurzname: 'Köln', lat: 50.938, lon: 6.96, osmRelation: 62578, ausdehnung: [6.772, 50.83, 7.162, 51.085], bild: 'from-rose-100 to-pink-200' },
+  { name: 'Frankfurt am Main', kurzname: 'Frankfurt', lat: 50.11, lon: 8.68, osmRelation: 62400, ausdehnung: [8.472, 50.015, 8.8, 50.227], bild: 'from-violet-100 to-indigo-200' },
+  { name: 'Leipzig', kurzname: 'Leipzig', lat: 51.34, lon: 12.375, osmRelation: 62649, ausdehnung: [12.237, 51.238, 12.543, 51.448], bild: 'from-lime-100 to-green-200' },
+];
 
-type Panel = 'bezirke' | 'preis' | 'zimmer' | 'flaeche' | 'linien' | 'weitere' | null;
+const BALD = [
+  { titel: 'Studierende und Wohnheime', text: 'Hochschule wählen, die Linien dorthin sind vorausgewählt. Wohnheime zeigen freie Plätze, WG-Zimmer und Zwischenmiete inklusive.', symbol: 'M12 3 2 8l10 5 10-5-10-5zM6 10.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.5' },
+  { titel: 'Wohnungstausch', text: '2 Zimmer an der U8 gegen 3 Zimmer an der S41: Wir finden passende Tauschpartner entlang deiner Linien.', symbol: 'M7 7h13l-4-4M17 17H4l4 4' },
+  { titel: 'Takt, Nachtverkehr, Barrierefreiheit', text: 'Filtere nach Linien, die nachts fahren, dichtem Takt oder barrierefreien Haltestellen.', symbol: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
+];
 
-const LEER: Suchergebnis = { anzeigen: [], haltestellen: [], naechste: {} };
-
-// --- kleine Bausteine der Filterleiste ---
-
-function Umschalter<T extends string>({ werte, wert, onChange }: { werte: { wert: T; name: string }[]; wert: T; onChange: (w: T) => void }) {
+// Kleine Illustration: eine Linie mit Haltestellen und Preis-Pins
+function Linienbild() {
   return (
-    <div className="flex shrink-0 bg-zinc-100 rounded-full p-1 h-10">
-      {werte.map(w => (
-        <button key={w.wert} onClick={() => onChange(w.wert)} className={`px-3.5 rounded-full text-[13px] font-semibold transition-all ${wert === w.wert ? 'bg-white text-black shadow-sm' : 'text-zinc-500 hover:text-black'}`}>
-          {w.name}
-        </button>
+    <svg viewBox="0 0 420 320" className="w-full h-auto" aria-hidden="true">
+      <defs>
+        <pattern id="raster" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M28 0H0v28" fill="none" stroke="#e7e5e4" strokeWidth="1" /></pattern>
+      </defs>
+      <rect width="420" height="320" rx="28" fill="#fafaf9" />
+      <rect width="420" height="320" rx="28" fill="url(#raster)" />
+      <path d="M-10 250 C 80 250, 110 120, 200 140 S 330 60, 430 70" fill="none" stroke="#2563eb" strokeWidth="10" strokeLinecap="round" opacity="0.9" />
+      <path d="M40 -10 C 60 90, 180 200, 260 210 S 380 260, 400 330" fill="none" stroke="#f59e0b" strokeWidth="10" strokeLinecap="round" opacity="0.85" />
+      {[[70, 236], [200, 140], [318, 84], [214, 198]].map(([x, y], i) => (
+        <g key={i}>
+          <circle cx={x} cy={y} r="60" fill="#2563eb" opacity="0.06" />
+          <circle cx={x} cy={y} r="9" fill="#fff" stroke="#111" strokeWidth="3.5" />
+        </g>
       ))}
-    </div>
+      {[[118, 196, '890 €'], [250, 108, '1.240 €'], [282, 238, '760 €'], [352, 128, '1.050 €']].map(([x, y, t], i) => (
+        <g key={i} transform={`translate(${x} ${y})`}>
+          <rect x="-34" y="-15" width="68" height="30" rx="15" fill={i === 1 ? '#111' : '#fff'} stroke="#e7e5e4" />
+          <text textAnchor="middle" y="5" fontSize="13" fontWeight="700" fill={i === 1 ? '#fff' : '#111'} fontFamily="inherit">{t}</text>
+        </g>
+      ))}
+      <g transform="translate(24 24)">
+        <rect width="92" height="30" rx="15" fill="#2563eb" /><text x="46" y="20" textAnchor="middle" fontSize="13" fontWeight="700" fill="#fff" fontFamily="inherit">U8 · 600 m</text>
+      </g>
+    </svg>
   );
 }
 
-function FilterKnopf({ titel, wert, aktiv, offen, onClick }: { titel: string; wert?: string; aktiv: boolean; offen: boolean; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className={`flex shrink-0 items-center gap-1.5 h-9 px-3.5 rounded-full border text-[13px] font-semibold transition-all whitespace-nowrap ${aktiv ? 'border-zinc-900 bg-zinc-900 text-white' : offen ? 'border-zinc-900 bg-white text-black' : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400'}`}>
-      <span className="max-w-[220px] truncate">{titel}{wert ? `: ${wert}` : ''}</span>
-      <svg className={`w-3.5 h-3.5 transition-transform ${offen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
-    </button>
-  );
+function Symbol({ d }: { d: string }) {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
 }
 
-function Abschnitt({ titel, children }: { titel: string; children: ReactNode }) {
-  return (
-    <div>
-      <h4 className="text-xs font-semibold text-zinc-500 mb-2">{titel}</h4>
-      {children}
-    </div>
-  );
-}
-
-function VonBis({ min, max, onMin, onMax, einheit }: { min: string; max: string; onMin: (v: string) => void; onMax: (v: string) => void; einheit?: string }) {
-  const feld = "flex-1 w-full min-w-0 h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium focus:ring-2 focus:ring-black/10 focus:border-zinc-900 outline-none placeholder:text-zinc-400";
-  return (
-    <div className="flex gap-1.5 w-full items-center">
-      <input type="number" placeholder="von" value={min} onChange={(e) => onMin(e.target.value)} className={feld} />
-      <span className="text-zinc-400">–</span>
-      <input type="number" placeholder="bis" value={max} onChange={(e) => onMax(e.target.value)} className={feld} />
-      {einheit && <span className="text-xs text-zinc-500 w-8">{einheit}</span>}
-    </div>
-  );
-}
-
-function Chip({ aktiv, onClick, children }: { aktiv: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button onClick={onClick} className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${aktiv ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 hover:text-black'}`}>
-      {children}
-    </button>
-  );
-}
-
-function bereichText(min: string, max: string, einheit: string) {
-  const e = einheit ? ` ${einheit}` : '';
-  if (min && max) return `${min}–${max}${e}`;
-  if (min) return `ab ${min}${e}`;
-  if (max) return `bis ${max}${e}`;
-  return undefined;
-}
-
-function umschalten(liste: string[], wert: string) {
-  return liste.includes(wert) ? liste.filter(w => w !== wert) : [...liste, wert];
-}
-
-export default function Home() {
-  // Entwurf: was im Formular steht. Angewendet: womit zuletzt gesucht wurde.
-  const [filter, setFilter] = useState<Filter>(STANDARD_FILTER);
-  const [angewendet, setAngewendet] = useState<Filter>(STANDARD_FILTER);
-  const [panel, setPanel] = useState<Panel>(null);
-  const [ausschnitt, setAusschnitt] = useState<Kartenausschnitt | null>(null);
-  const [erweitert, setErweitert] = useState(false);
-  const [ergebnis, setErgebnis] = useState<Suchergebnis>(LEER);
-  const [laedt, setLaedt] = useState(true);
-  const [fehler, setFehler] = useState(false);
-  const [hoverId, setHoverId] = useState<string | null>(null);
-  const [auswahlId, setAuswahlId] = useState<string | null>(null);
-  const [ansicht, setAnsicht] = useState<'liste' | 'karte'>('liste');   // nur auf schmalen Bildschirmen
-  const [leisteUnten, setLeisteUnten] = useState(180);
-  const leiste = useRef<HTMLDivElement>(null);
-  const anfrageNr = useRef(0);
-
-  const setze = (teil: Partial<Filter>) => setFilter(f => ({ ...f, ...teil }));
-
-  useEffect(() => { erweiterteFelderVorhanden().then(setErweitert); }, []);
-
-  // Bezirksliste und Ortsgrenze schon beim Wählen des Orts im Hintergrund laden
-  useEffect(() => {
-    const ort = filter.ort;
-    if (!ort?.osmRelation) return;
-    bezirkeLaden(ort).catch(() => {});
-    bezirksgrenzeLaden({ id: ort.osmRelation, name: ort.name }).catch(() => {});
-  }, [filter.ort]);
+export default function Startseite() {
+  const router = useRouter();
+  const [transaktion, setTransaktion] = useState<Filter['transaktion']>('mieten');
+  const [ort, setOrt] = useState<Ort | null>(null);
+  const [neueste, setNeueste] = useState<Anzeige[] | null>(null);
+  const [anzahl, setAnzahl] = useState<number | null>(null);
 
   useEffect(() => {
-    const nr = ++anfrageNr.current;
-    anzeigenSuchen(angewendet, erweitert)
-      .then(e => { if (nr === anfrageNr.current) { setErgebnis(e); setFehler(false); } })
-      .catch(err => { console.error("Ladefehler:", err); if (nr === anfrageNr.current) { setErgebnis(LEER); setFehler(true); } })
-      .finally(() => { if (nr === anfrageNr.current) setLaedt(false); });
-  }, [angewendet, erweitert]);
-
-  // Karte klebt direkt unter der Filterleiste; deren Höhe hängt von der Bildschirmbreite ab
-  useEffect(() => {
-    const el = leiste.current;
-    if (!el) return;
-    const messen = () => setLeisteUnten(el.getBoundingClientRect().height + 64);
-    messen();
-    const ro = new ResizeObserver(messen);
-    ro.observe(el);
-    return () => ro.disconnect();
+    supabase.from('anzeigen').select('*').order('erstellt_am', { ascending: false }).limit(4)
+      .then(({ data }) => setNeueste((data as Anzeige[]) ?? []));
+    supabase.from('anzeigen').select('id', { count: 'exact', head: true }).then(({ count }) => setAnzahl(count ?? null));
   }, []);
 
-  // Aufklappbereich schließen, wenn außerhalb der Filterleiste geklickt wird
-  useEffect(() => {
-    function klick(e: MouseEvent) {
-      if (leiste.current && !leiste.current.contains(e.target as Node)) setPanel(null);
-    }
-    document.addEventListener('mousedown', klick);
-    return () => document.removeEventListener('mousedown', klick);
-  }, []);
-
-  const suchen = (neu: Filter = filter) => {
-    setLaedt(true);
-    setAuswahlId(null);
-    setAngewendet(neu);
-    setPanel(null);
-  };
-
-  const zuruecksetzen = () => {
-    const neu = { ...STANDARD_FILTER, transaktion: filter.transaktion, immobilientyp: filter.immobilientyp };
-    setFilter(neu);
-    suchen(neu);
-  };
-
-  const oeffne = (p: Panel) => setPanel(panel === p ? null : p);
-  const istMiete = filter.transaktion === 'mieten';
-  const weitere = weitereFilterAnzahl(filter);
-  const sortierungen = SORTIERUNGEN.filter(s => !s.nurMitLinien || angewendet.linien.length > 0);
-
-  const typName = angewendet.immobilientyp === 'wohnung' ? 'Wohnungen' : 'Häuser';
-  const transaktionName = angewendet.transaktion === 'mieten' ? 'zur Miete' : 'zum Kauf';
-  const grenzen = angewendet.bezirke.length ? angewendet.bezirke : ergebnis.ortGrenze ? [ergebnis.ortGrenze] : [];
-  const ortKreis = angewendet.ort && grenzen.length === 0
-    ? { lat: angewendet.ort.lat, lon: angewendet.ort.lon, m: angewendet.umkreisKm * 1000, ausdehnung: angewendet.ort.ausdehnung }
-    : null;
-
-  const ortText = angewendet.ort ? (angewendet.bezirke.length ? `in ${angewendet.bezirke.map(b => b.name).join(', ')}` : `in ${angewendet.ort.kurzname ?? angewendet.ort.name}${angewendet.umkreisKm ? ` + ${angewendet.umkreisKm} km` : ''}`) : 'in ganz Deutschland';
-  const ausgewaehlt = auswahlId ? ergebnis.anzeigen.find(a => a.id === auswahlId) : undefined;
-  const pinWaehlen = (id: string | null) => {
-    setAuswahlId(id);
-    if (id && window.matchMedia('(min-width: 1024px)').matches) document.getElementById(`kachel-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  };
-
-  const artWahl = (
-    <>
-      <Umschalter werte={[{ wert: 'mieten', name: 'Mieten' }, { wert: 'kaufen', name: 'Kaufen' }]} wert={filter.transaktion}
-        onChange={(t) => setze({ transaktion: t, preisMin: '', preisMax: '', wbs: 'egal' })} />
-      <Umschalter werte={[{ wert: 'wohnung', name: 'Wohnung' }, { wert: 'haus', name: 'Haus' }]} wert={filter.immobilientyp}
-        onChange={(t) => setze({ immobilientyp: t, objektarten: [], etageMin: '', etageMax: '' })} />
-    </>
-  );
+  function suchen(teil: Partial<Filter>) {
+    try { sessionStorage.setItem('startsuche', JSON.stringify(teil)); } catch { /* Speicher gesperrt */ }
+    router.push('/suche/');
+  }
 
   return (
-    <div className="flex flex-col w-full">
+    <div className="w-full flex flex-col">
 
-      {/* --- FILTERLEISTE (klebt unter der Kopfzeile) --- */}
-      <div ref={leiste} className="sticky top-16 z-[900] bg-white border-b border-zinc-200">
-        <div className="px-4 lg:px-6 py-3 flex flex-col gap-2.5">
-          <div className="flex items-center gap-2">
-            <div className="flex flex-1 min-w-0 max-w-3xl items-center gap-1 h-12 pl-4 pr-1.5 bg-white border border-zinc-200 rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.06)] focus-within:border-zinc-900 transition">
-              <svg className="w-4 h-4 text-zinc-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-              <div className="flex-1 min-w-0 [&_input]:border-0 [&_input]:focus:ring-0 [&_input]:h-10 [&_input]:bg-transparent [&_input]:text-[15px]">
-                <Ortssuche ort={filter.ort} onChange={(o) => setze({ ort: o, bezirke: [] })} />
+      {/* --- EINSTIEG --- */}
+      <section className="bg-white border-b border-zinc-200">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-12 md:py-20 grid lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-16 items-center">
+          <div className="flex flex-col gap-6">
+            <span className="self-start px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">Kostenlos · deutschlandweit</span>
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.05]">
+              Wohnen an <span className="text-blue-600">deiner Linie.</span>
+            </h1>
+            <p className="text-lg text-zinc-600 max-w-xl">
+              Wähle deine Bahn-, Tram- oder Buslinie und wie weit die Haltestelle höchstens entfernt sein darf. IMMOBIL zeigt dir nur Wohnungen und Häuser, die dazu passen.
+            </p>
+            <div className="bg-white border border-zinc-200 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-2 flex flex-col sm:flex-row gap-2">
+              <div className="flex shrink-0 bg-zinc-100 rounded-full p-1 h-12 self-start sm:self-auto">
+                {(['mieten', 'kaufen'] as const).map(t => (
+                  <button key={t} onClick={() => setTransaktion(t)} className={`px-4 rounded-full text-sm font-semibold transition ${transaktion === t ? 'bg-white shadow-sm' : 'text-zinc-500 hover:text-black'}`}>
+                    {t === 'mieten' ? 'Mieten' : 'Kaufen'}
+                  </button>
+                ))}
               </div>
-              <select value={filter.umkreisKm} onChange={(e) => setze({ umkreisKm: parseInt(e.target.value) })} disabled={!filter.ort || filter.bezirke.length > 0}
-                title={filter.bezirke.length > 0 ? 'Bei gewählten Bezirken wird genau in deren Grenzen gesucht' : 'Umkreis'}
-                className="hidden sm:block h-9 border-l border-zinc-200 pl-3 pr-1 text-[13px] font-semibold bg-transparent outline-none disabled:text-zinc-300">
-                {UMKREISE_KM.map(km => <option key={km} value={km}>{km === 0 ? 'Nur Ort' : `+ ${km} km`}</option>)}
-              </select>
-              <button onClick={() => suchen()} aria-label="Suchen" className="shrink-0 h-9 px-4 sm:px-5 rounded-full bg-zinc-900 text-white text-sm font-semibold hover:bg-black transition">
-                Suchen
-              </button>
+              <div className="flex-1 min-w-0 flex items-center pl-2 [&_input]:border-0 [&_input]:focus:ring-0 [&_input]:h-12 [&_input]:text-base [&_input]:bg-transparent">
+                <Ortssuche ort={ort} onChange={setOrt} />
+              </div>
+              <button onClick={() => suchen({ transaktion, ort })} className="h-12 px-7 rounded-full bg-zinc-900 text-white font-semibold hover:bg-black transition">Suchen</button>
             </div>
-            <div className="hidden md:flex gap-2">{artWahl}</div>
+            <p className="text-sm text-zinc-500">
+              {anzahl !== null ? <><strong className="text-zinc-900">{anzahl.toLocaleString('de-DE')}</strong> Angebote · </> : null}
+              über 21.000 Linien und 380.000 Haltestellen in ganz Deutschland
+            </p>
           </div>
+          <div className="hidden md:block"><Linienbild /></div>
+        </div>
+      </section>
 
-          <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] -mx-4 px-4 lg:mx-0 lg:px-0">
-            <div className="flex md:hidden gap-2">{artWahl}</div>
-            {filter.ort?.osmRelation && (
-              <FilterKnopf titel="Bezirke" wert={filter.bezirke.length ? filter.bezirke.map(b => b.name).join(', ') : undefined}
-                aktiv={filter.bezirke.length > 0} offen={panel === 'bezirke'} onClick={() => oeffne('bezirke')} />
-            )}
-            <FilterKnopf titel={istMiete ? (filter.preisArt === 'warm' ? 'Warmmiete' : 'Kaltmiete') : 'Kaufpreis'} wert={bereichText(filter.preisMin, filter.preisMax, '€')}
-              aktiv={!!(filter.preisMin || filter.preisMax)} offen={panel === 'preis'} onClick={() => oeffne('preis')} />
-            <FilterKnopf titel="Zimmer" wert={bereichText(filter.zimmerMin, filter.zimmerMax, '')}
-              aktiv={!!(filter.zimmerMin || filter.zimmerMax)} offen={panel === 'zimmer'} onClick={() => oeffne('zimmer')} />
-            <FilterKnopf titel="Fläche" wert={bereichText(filter.flaecheMin, filter.flaecheMax, 'm²')}
-              aktiv={!!(filter.flaecheMin || filter.flaecheMax)} offen={panel === 'flaeche'} onClick={() => oeffne('flaeche')} />
-            <FilterKnopf titel="ÖPNV-Linien" wert={filter.linien.length ? `${filter.linien.map(l => l.nummer).join(', ')} · ${linienUmkreisM(filter.linienUmkreisM)} m` : undefined}
-              aktiv={filter.linien.length > 0} offen={panel === 'linien'} onClick={() => oeffne('linien')} />
-            <FilterKnopf titel="Weitere Filter" wert={weitere ? String(weitere) : undefined}
-              aktiv={weitere > 0} offen={panel === 'weitere'} onClick={() => oeffne('weitere')} />
-            <button onClick={zuruecksetzen} className="shrink-0 h-9 px-3 text-[13px] font-semibold text-zinc-500 hover:text-black underline-offset-4 hover:underline">Zurücksetzen</button>
+      {/* --- SO FUNKTIONIERT'S --- */}
+      <section className="max-w-7xl w-full mx-auto px-4 lg:px-8 py-14 md:py-20">
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-8">So funktioniert&apos;s</h2>
+        <div className="grid md:grid-cols-3 gap-4">
+          {[
+            ['1', 'Ort wählen', 'Stadt, Postleitzahl oder einzelne Bezirke, auf Wunsch mit Umkreis.'],
+            ['2', 'Linien wählen', 'Eine oder mehrere Linien, z. B. U8 und S41, und den maximalen Abstand zur Haltestelle.'],
+            ['3', 'Passend wohnen', 'Du siehst nur Angebote nahe deinen Linien, mit Entfernung zur nächsten Haltestelle.'],
+          ].map(([nr, t, x]) => (
+            <div key={nr} className="bg-white border border-zinc-200 rounded-2xl p-6 flex flex-col gap-3">
+              <span className="w-9 h-9 rounded-full bg-zinc-900 text-white text-sm font-bold flex items-center justify-center">{nr}</span>
+              <h3 className="font-semibold text-lg">{t}</h3>
+              <p className="text-sm text-zinc-600 leading-relaxed">{x}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* --- NEUESTE ANGEBOTE --- */}
+      <section className="max-w-7xl w-full mx-auto px-4 lg:px-8 pb-14 md:pb-20">
+        <div className="flex items-end justify-between gap-4 mb-6">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Neueste Angebote</h2>
+          <Link href="/suche/" className="text-sm font-semibold hover:underline underline-offset-4 shrink-0">Alle ansehen →</Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-8">
+          {neueste === null
+            ? Array.from({ length: 4 }, (_, i) => <div key={i} className="aspect-[4/3] rounded-2xl bg-zinc-200/70 animate-pulse" />)
+            : neueste.map(a => <AnzeigeKachel key={a.id} a={a} />)}
+        </div>
+      </section>
+
+      {/* --- STÄDTE --- */}
+      <section className="max-w-7xl w-full mx-auto px-4 lg:px-8 pb-14 md:pb-20">
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-6">Beliebte Städte</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {STAEDTE.map(({ bild, ...stadt }) => (
+            <button key={stadt.name} onClick={() => suchen({ ort: stadt })}
+              className={`group h-28 rounded-2xl bg-gradient-to-br ${bild} p-4 flex flex-col justify-end text-left hover:shadow-lg hover:-translate-y-0.5 transition`}>
+              <span className="font-bold text-lg leading-tight">{stadt.kurzname}</span>
+              <span className="text-xs text-zinc-700 group-hover:underline underline-offset-2">Angebote ansehen</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* --- BALD VERFÜGBAR --- */}
+      <section className="bg-white border-y border-zinc-200">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-14 md:py-20">
+          <div className="flex flex-col gap-2 mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Bald bei IMMOBIL</h2>
+            <p className="text-zinc-600">Daran arbeiten wir gerade. Alles bleibt bei dem, was IMMOBIL ausmacht: der Suche entlang deiner Linien.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            {BALD.map(b => (
+              <div key={b.titel} className="rounded-2xl border border-zinc-200 p-6 flex flex-col gap-3 bg-zinc-50/60">
+                <div className="flex items-center justify-between">
+                  <span className="w-11 h-11 rounded-xl bg-white border border-zinc-200 flex items-center justify-center"><Symbol d={b.symbol} /></span>
+                  <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-[11px] font-semibold">Bald verfügbar</span>
+                </div>
+                <h3 className="font-semibold text-lg">{b.titel}</h3>
+                <p className="text-sm text-zinc-600 leading-relaxed">{b.text}</p>
+              </div>
+            ))}
           </div>
         </div>
+      </section>
 
-          {/* Aufklappbereiche */}
-          {panel && (
-            <div className="absolute top-full left-4 right-4 md:right-auto lg:left-6 md:min-w-[440px] mt-2 p-5 border border-zinc-200 rounded-2xl shadow-2xl bg-white z-50 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
-              {panel === 'bezirke' && filter.ort && (
-                <Bezirksauswahl ort={filter.ort} ausgewaehlt={filter.bezirke} onChange={(b) => setze({ bezirke: b })} />
-              )}
-              {panel === 'preis' && (
-                <>
-                  {istMiete && erweitert && (
-                    <div className="flex gap-2">
-                      <Chip aktiv={filter.preisArt === 'kalt'} onClick={() => setze({ preisArt: 'kalt' })}>Kaltmiete</Chip>
-                      <Chip aktiv={filter.preisArt === 'warm'} onClick={() => setze({ preisArt: 'warm' })}>Warmmiete</Chip>
-                    </div>
-                  )}
-                  <VonBis min={filter.preisMin} max={filter.preisMax} onMin={(v) => setze({ preisMin: v })} onMax={(v) => setze({ preisMax: v })} einheit="€" />
-                </>
-              )}
-              {panel === 'zimmer' && (
-                <>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {['1', '2', '3', '4', '5'].map(z => (
-                      <Chip key={z} aktiv={filter.zimmerMin === z && !filter.zimmerMax} onClick={() => setze({ zimmerMin: z, zimmerMax: '' })}>ab {z}</Chip>
-                    ))}
-                  </div>
-                  <VonBis min={filter.zimmerMin} max={filter.zimmerMax} onMin={(v) => setze({ zimmerMin: v })} onMax={(v) => setze({ zimmerMax: v })} />
-                </>
-              )}
-              {panel === 'flaeche' && (
-                <VonBis min={filter.flaecheMin} max={filter.flaecheMax} onMin={(v) => setze({ flaecheMin: v })} onMax={(v) => setze({ flaecheMax: v })} einheit="m²" />
-              )}
-              {panel === 'linien' && (
-                <Linienauswahl bezug={filter.ort ?? (ausschnitt ? { lat: (ausschnitt.minLat + ausschnitt.maxLat) / 2, lon: (ausschnitt.minLon + ausschnitt.maxLon) / 2 } : null)} ausgewaehlt={filter.linien} onChange={(l) => setze({ linien: l })}
-                  umkreis={filter.linienUmkreisM} onUmkreis={(v) => setze({ linienUmkreisM: v })} />
-              )}
-              {panel === 'weitere' && (
-                erweitert ? (
-                  <div className="flex flex-col gap-5 md:w-[640px]">
-                    <Abschnitt titel="Objektart">
-                      <div className="flex gap-1.5 flex-wrap">
-                        {OBJEKTARTEN[filter.immobilientyp].map(o => (
-                          <Chip key={o.wert} aktiv={filter.objektarten.includes(o.wert)} onClick={() => setze({ objektarten: umschalten(filter.objektarten, o.wert) })}>{o.name}</Chip>
-                        ))}
-                      </div>
-                    </Abschnitt>
-                    <Abschnitt titel="Ausstattung">
-                      <div className="flex gap-1.5 flex-wrap">
-                        {AUSSTATTUNG.map(a => (
-                          <Chip key={a.wert} aktiv={filter.ausstattung.includes(a.wert)} onClick={() => setze({ ausstattung: umschalten(filter.ausstattung, a.wert) })}>{a.name}</Chip>
-                        ))}
-                      </div>
-                    </Abschnitt>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Abschnitt titel="Baujahr">
-                        <VonBis min={filter.baujahrMin} max={filter.baujahrMax} onMin={(v) => setze({ baujahrMin: v })} onMax={(v) => setze({ baujahrMax: v })} />
-                      </Abschnitt>
-                      {filter.immobilientyp === 'wohnung' && (
-                        <Abschnitt titel="Etage (0 = Erdgeschoss)">
-                          <VonBis min={filter.etageMin} max={filter.etageMax} onMin={(v) => setze({ etageMin: v })} onMax={(v) => setze({ etageMax: v })} />
-                        </Abschnitt>
-                      )}
-                      <Abschnitt titel="Bezugsfrei bis">
-                        <input type="date" value={filter.bezugsfreiBis} onChange={(e) => setze({ bezugsfreiBis: e.target.value })}
-                          className="w-full h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium focus:ring-1 focus:ring-black outline-none" />
-                      </Abschnitt>
-                      <Abschnitt titel="Energieeffizienz mindestens">
-                        <select value={filter.energieMindestens} onChange={(e) => setze({ energieMindestens: e.target.value })}
-                          className="w-full h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium">
-                          <option value="">Egal</option>
-                          {ENERGIEKLASSEN.map(k => <option key={k} value={k}>Klasse {k}{k !== 'A+' ? ' oder besser' : ''}</option>)}
-                        </select>
-                      </Abschnitt>
-                    </div>
-                    {istMiete && (
-                      <Abschnitt titel="Wohnberechtigungsschein (WBS)">
-                        <div className="flex gap-1.5">
-                          <Chip aktiv={filter.wbs === 'egal'} onClick={() => setze({ wbs: 'egal' })}>Egal</Chip>
-                          <Chip aktiv={filter.wbs === 'ohne'} onClick={() => setze({ wbs: 'ohne' })}>Ohne WBS</Chip>
-                          <Chip aktiv={filter.wbs === 'nur'} onClick={() => setze({ wbs: 'nur' })}>Nur mit WBS</Chip>
-                        </div>
-                      </Abschnitt>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-xs text-zinc-500 max-w-sm">Diese Filter (Objektart, Ausstattung, Baujahr, Etage, Verfügbarkeit, Energieeffizienz, WBS) werden aktiv, sobald die zusätzlichen Felder in der Datenbank angelegt sind.</p>
-                )
-              )}
-              <div className="flex justify-end">
-                <button onClick={() => suchen()} className="h-10 px-5 bg-zinc-900 text-white font-semibold text-sm rounded-full hover:bg-black">Ergebnisse anzeigen</button>
-              </div>
-            </div>
-          )}
-      </div>
-
-      {/* --- LISTE LINKS, KARTE RECHTS --- */}
-      <div className="flex w-full">
-        <section className={`${ansicht === 'karte' ? 'hidden' : 'block'} lg:block w-full lg:w-[55%] xl:w-[58%] 2xl:w-[60%] px-4 lg:px-6 pt-5 pb-24 lg:pb-10`}>
-          <div className="flex items-end justify-between gap-3 mb-5">
-            <div className="min-w-0">
-              <h1 className="text-xl md:text-2xl font-bold tracking-tight">
-                {laedt ? 'Suche läuft…' : fehler ? 'Suche fehlgeschlagen' : `${ergebnis.anzeigen.length.toLocaleString('de-DE')} ${typName} ${transaktionName}`}
-              </h1>
-              <p className="text-sm text-zinc-500 truncate">
-                {fehler ? 'Bitte versuche es noch einmal.' : `${ortText}${angewendet.linien.length ? `, nahe ${angewendet.linien.map(l => l.nummer).join(', ')}` : ''}`}
-              </p>
-            </div>
-            <select value={angewendet.sortierung} onChange={(e) => { setze({ sortierung: e.target.value }); suchen({ ...angewendet, sortierung: e.target.value }); }}
-              aria-label="Sortierung" className="shrink-0 h-9 border border-zinc-200 rounded-full px-3 text-[13px] font-semibold bg-white outline-none hover:border-zinc-400">
-              {sortierungen.map(s => <option key={s.wert} value={s.wert}>{s.name}</option>)}
-            </select>
+      {/* --- FÜR ANBIETER --- */}
+      <section className="max-w-7xl w-full mx-auto px-4 lg:px-8 py-14 md:py-20">
+        <div className="rounded-3xl bg-zinc-900 text-white p-8 md:p-12 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex flex-col gap-2 max-w-xl">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Du vermietest oder verkaufst?</h2>
+            <p className="text-zinc-300">Inseriere kostenlos und erreiche Menschen, die genau an deiner Linie wohnen wollen. Mit Fotos, Energieausweis und Anfragen direkt in dein Postfach.</p>
           </div>
-
-          {laedt ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-5 gap-y-8">
-              {Array.from({ length: 6 }, (_, i) => (
-                <div key={i} className="flex flex-col gap-3 animate-pulse">
-                  <div className="aspect-[4/3] rounded-2xl bg-zinc-200/70" />
-                  <div className="h-4 w-1/3 rounded bg-zinc-200/70" /><div className="h-3 w-2/3 rounded bg-zinc-200/70" />
-                </div>
-              ))}
-            </div>
-          ) : ergebnis.anzeigen.length === 0 && !fehler ? (
-            <div className="rounded-2xl border border-dashed border-zinc-300 p-10 text-center flex flex-col items-center gap-3">
-              <p className="font-semibold">Keine passenden Angebote</p>
-              <p className="text-sm text-zinc-500 max-w-sm">Vergrößere den Umkreis, entferne einzelne Filter oder wähle einen größeren Abstand zur Haltestelle.</p>
-              <button onClick={zuruecksetzen} className="h-9 px-4 rounded-full border border-zinc-300 text-sm font-semibold hover:border-black">Filter zurücksetzen</button>
-            </div>
-          ) : (
-            <Ergebnisliste anzeigen={ergebnis.anzeigen} naechste={ergebnis.naechste} aktivId={auswahlId} onHover={setHoverId}
-              raster="grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" />
-          )}
-        </section>
-
-        <section className={`${ansicht === 'liste' ? 'hidden' : 'block'} lg:block flex-1 lg:sticky z-0`}
-          style={{ top: leisteUnten, height: `calc(100dvh - ${leisteUnten}px)` }}>
-          <div className="relative h-full w-full lg:p-3 lg:pl-0">
-            <div className="relative h-full w-full overflow-hidden lg:rounded-2xl">
-              <Map anzeigen={ergebnis.anzeigen} haltestellen={ergebnis.haltestellen} naechste={ergebnis.naechste}
-                linienUmkreisM={linienUmkreisM(angewendet.linienUmkreisM)} ortKreis={ortKreis} bezirke={grenzen}
-                aktivId={hoverId ?? auswahlId} onAuswahl={pinWaehlen} onAusschnittChange={setAusschnitt} />
-              {ausgewaehlt && (
-                <div className="absolute z-[1000] left-3 right-3 bottom-3 sm:left-auto sm:right-3 sm:w-[380px] bg-white rounded-2xl shadow-2xl p-2.5 pr-9">
-                  <AnzeigeKachel a={ausgewaehlt} n={ergebnis.naechste[ausgewaehlt.id]} kompakt />
-                  <button onClick={() => setAuswahlId(null)} aria-label="Schließen" className="absolute right-2 top-2 w-7 h-7 rounded-full hover:bg-zinc-100 text-zinc-500 text-lg leading-none">×</button>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {/* Umschalter Liste/Karte auf schmalen Bildschirmen */}
-      <button onClick={() => { setAnsicht(ansicht === 'liste' ? 'karte' : 'liste'); window.scrollTo({ top: 0 }); }}
-        className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[950] h-12 px-5 rounded-full bg-zinc-900 text-white text-sm font-semibold shadow-2xl flex items-center gap-2">
-        {ansicht === 'liste' ? (
-          <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14" /></svg>Karte</>
-        ) : (
-          <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>Liste</>
-        )}
-      </button>
+          <Link href="/inserieren/" className="shrink-0 h-12 px-7 rounded-full bg-white text-black font-semibold flex items-center justify-center hover:bg-zinc-100 transition">Kostenlos inserieren</Link>
+        </div>
+      </section>
     </div>
   );
 }

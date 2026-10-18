@@ -26,7 +26,7 @@ export default function Merkliste() {
       {anzeigen === null && <p className="text-sm text-zinc-500">Wird geladen…</p>}
       {anzeigen?.length === 0 && (
         <div className="bg-white border border-dashed border-zinc-300 rounded-2xl p-10 text-center text-sm text-zinc-500">
-          Noch nichts gemerkt. Tippe in der <Link href="/" className="text-black font-semibold underline underline-offset-2">Suche</Link> auf das Herz bei einem Inserat.
+          Noch nichts gemerkt. Tippe in der <Link href="/suche/" className="text-black font-semibold underline underline-offset-2">Suche</Link> auf das Herz bei einem Inserat.
         </div>
       )}
       {anzeigen && <Ergebnisliste anzeigen={anzeigen} naechste={{}} />}

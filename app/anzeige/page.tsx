@@ -47,7 +47,7 @@ export default function AnzeigeSeite() {
       <div className="p-16 text-center flex flex-col gap-3 items-center">
         <h1 className="text-2xl font-bold">Inserat nicht gefunden</h1>
         <p className="text-sm text-zinc-500">Vielleicht wurde es gelöscht oder pausiert.</p>
-        <Link href="/" className="h-10 px-5 rounded-lg bg-black text-white text-sm font-bold flex items-center">Zur Suche</Link>
+        <Link href="/suche/" className="h-10 px-5 rounded-lg bg-black text-white text-sm font-bold flex items-center">Zur Suche</Link>
       </div>
     );
   }
@@ -60,7 +60,7 @@ export default function AnzeigeSeite() {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-6 md:py-10 flex flex-col gap-6">
-      <Link href="/" className="text-sm text-zinc-500 hover:text-black w-max">← Zurück zur Suche</Link>
+      <Link href="/suche/" className="text-sm text-zinc-500 hover:text-black w-max">← Zurück zur Suche</Link>
 
       {/* Fotos */}
       <div className={`relative rounded-2xl overflow-hidden bg-zinc-100 ${bilder.length ? 'aspect-[16/9] md:aspect-[21/9]' : 'h-40 md:h-56'}`}>

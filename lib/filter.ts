@@ -7,6 +7,16 @@ export interface Ort {
   lon: number;
   // Ausdehnung des Orts [minLon, minLat, maxLon, maxLat], wenn Photon sie liefert
   ausdehnung?: [number, number, number, number];
+  kurzname?: string;     // nur der Ortsname, z. B. "Berlin"
+  osmRelation?: number;  // OSM-Relation des Orts, für die Bezirksliste
+}
+
+// Bezirk oder Ortsteil einer Stadt (OSM-Relation), Grenze wird beim Auswählen geladen
+export interface Bezirk {
+  id: number;            // OSM-Relations-ID
+  name: string;
+  // GeoJSON-Geometrie (Polygon oder MultiPolygon) in [lon, lat]
+  grenze?: { type: 'Polygon'; coordinates: number[][][] } | { type: 'MultiPolygon'; coordinates: number[][][][] };
 }
 
 export interface Filter {
@@ -15,6 +25,7 @@ export interface Filter {
   objektarten: string[];
   ort: Ort | null;
   umkreisKm: number;             // 0 = nur der Ort selbst
+  bezirke: Bezirk[];             // gewählte Bezirke des Orts, leer = ganzer Ort
   preisMin: string; preisMax: string;
   preisArt: 'kalt' | 'warm';     // nur bei Miete
   zimmerMin: string; zimmerMax: string;
@@ -36,6 +47,7 @@ export const STANDARD_FILTER: Filter = {
   objektarten: [],
   ort: null,
   umkreisKm: 0,
+  bezirke: [],
   preisMin: '', preisMax: '',
   preisArt: 'kalt',
   zimmerMin: '', zimmerMax: '',

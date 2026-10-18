@@ -60,10 +60,10 @@ export default function Linienauswahl({ ausschnitt, ausgewaehlt, onChange, umkre
   }, [ausschnitt, zuGross]);
 
   const begriff = suchtext.trim().toLowerCase();
-  const treffer = linienImAusschnitt.filter(linie =>
+  // Vorschläge erst zeigen, wenn mindestens ein Zeichen eingegeben ist
+  const treffer = begriff === '' ? [] : linienImAusschnitt.filter(linie =>
     !ausgewaehlt.some(s => s.linie_id === linie.linie_id) &&
-    (begriff === '' ||
-      linie.nummer.toLowerCase().includes(begriff) ||
+    (linie.nummer.toLowerCase().includes(begriff) ||
       linie.betreiber.toLowerCase().includes(begriff) ||
       linie.endpunkte.toLowerCase().includes(begriff))
   );
@@ -76,13 +76,16 @@ export default function Linienauswahl({ ausschnitt, ausgewaehlt, onChange, umkre
         {status === 'zu_gross' && (
           <p className="px-4 py-3 text-xs text-zinc-500">Der Kartenausschnitt ist zu groß. Zoome näher an einen Ort heran.</p>
         )}
-        {status === 'laedt' && linienImAusschnitt.length === 0 && (
+        {status === 'laedt' && begriff !== '' && linienImAusschnitt.length === 0 && (
           <p className="px-4 py-3 text-xs text-zinc-500">Linien werden geladen…</p>
         )}
         {status === 'fehler' && (
           <p className="px-4 py-3 text-xs text-red-600">Die Linien konnten nicht geladen werden.</p>
         )}
-        {status === 'bereit' && treffer.length === 0 && (
+        {(status === 'bereit' || status === 'laedt') && begriff === '' && (
+          <p className="px-4 py-3 text-xs text-zinc-500">Tippe eine Linie, einen Betreiber oder eine Endstation, z.B. U2.</p>
+        )}
+        {status === 'bereit' && begriff !== '' && treffer.length === 0 && (
           <p className="px-4 py-3 text-xs text-zinc-500">Keine passenden Linien in diesem Ausschnitt.</p>
         )}
         {status !== 'zu_gross' && treffer.slice(0, MAX_LISTE).map((linie, i) => (

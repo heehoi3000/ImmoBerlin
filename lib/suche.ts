@@ -1,6 +1,7 @@
 // Fragt die Anzeigen passend zu den Filtern bei Supabase ab.
 import { supabase } from './supabase';
 import { Filter, ENERGIEKLASSEN, entfernungM } from './filter';
+import { bezirkeAusdehnung, inBezirken } from './bezirke';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Anzeige = Record<string, any> & { id: string; koordinate_lat: number; koordinate_lon: number };
@@ -60,7 +61,14 @@ export async function anzeigenSuchen(f: Filter, erweitert: boolean): Promise<Suc
 
   // Ort mit Umkreis: grob über ein Rechteck in der Datenbank, genau danach im Browser
   let kreis: { lat: number; lon: number; m: number } | null = null;
-  if (f.ort) {
+  // Mit Bezirken genau innerhalb ihrer Grenzen: Rechteck in der Datenbank, Polygon im Browser
+  const bezirke = f.ort ? f.bezirke.filter(b => b.grenze) : [];
+  const bezirkRechteck = bezirkeAusdehnung(bezirke);
+  if (bezirkRechteck) {
+    const [minLon, minLat, maxLon, maxLat] = bezirkRechteck;
+    query = query.gte('koordinate_lat', minLat).lte('koordinate_lat', maxLat)
+      .gte('koordinate_lon', minLon).lte('koordinate_lon', maxLon);
+  } else if (f.ort) {
     let [minLon, minLat, maxLon, maxLat] = f.ort.ausdehnung ?? [f.ort.lon, f.ort.lat, f.ort.lon, f.ort.lat];
     if (f.umkreisKm > 0 || !f.ort.ausdehnung) {
       const km = f.umkreisKm > 0 ? f.umkreisKm : 2;
@@ -108,6 +116,7 @@ export async function anzeigenSuchen(f: Filter, erweitert: boolean): Promise<Suc
     const k = kreis;
     anzeigen = anzeigen.filter(a => entfernungM(k.lat, k.lon, a.koordinate_lat, a.koordinate_lon) <= k.m);
   }
+  if (bezirkRechteck) anzeigen = anzeigen.filter(a => inBezirken(a.koordinate_lat, a.koordinate_lon, bezirke));
 
   const naechste: Record<string, NaechsteHaltestelle> = {};
   for (const n of (naechsteRes?.data as NaechsteHaltestelle[]) || []) naechste[n.anzeige_id] = n;

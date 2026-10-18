@@ -2,11 +2,13 @@
 import { useEffect, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { MapContainer, Marker, Popup, Circle, CircleMarker, Rectangle, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, Popup, Circle, CircleMarker, Rectangle, GeoJSON, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import '@maplibre/maplibre-gl-leaflet';
 import { setWorkerUrl } from 'maplibre-gl';
 import { Kartenausschnitt } from '../lib/oepnv';
+import { Bezirk } from '../lib/filter';
+import { bezirkeAusdehnung } from '../lib/bezirke';
 import { Anzeige, Haltestelle, NaechsteHaltestelle } from '../lib/suche';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -77,6 +79,18 @@ function OrtAnzeige({ ort }: { ort: OrtKreis | null }) {
   return null;
 }
 
+// Gewählte Bezirke: Grenzen zeichnen und die Karte darauf ausrichten
+function BezirkeAnzeige({ bezirke }: { bezirke: Bezirk[] }) {
+  const map = useMap();
+  const schluessel = bezirke.map(b => b.id).join(',');
+  useEffect(() => {
+    const r = bezirkeAusdehnung(bezirke);
+    if (r) map.fitBounds([[r[1], r[0]], [r[3], r[2]]], { padding: [20, 20] });
+  }, [map, schluessel]); // eslint-disable-line react-hooks/exhaustive-deps
+  const stil = { color: '#000', weight: 2, opacity: 0.6, dashArray: '6 6', fillOpacity: 0.04 };
+  return <>{bezirke.filter(b => b.grenze).map(b => <GeoJSON key={b.id} data={b.grenze!} style={stil} interactive={false} />)}</>;
+}
+
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
 interface MapProps {
@@ -85,6 +99,7 @@ interface MapProps {
   naechste: Record<string, NaechsteHaltestelle>;
   linienUmkreisM: number;
   ortKreis: OrtKreis | null;
+  bezirke: Bezirk[];
   // Anzeige, zu der die Karte springen soll (nr ändert sich bei jedem Klick)
   fokus: { id: string; nr: number } | null;
   onAusschnittChange?: (a: Kartenausschnitt) => void;
@@ -102,7 +117,7 @@ function Fokus({ fokus, marker }: { fokus: MapProps['fokus']; marker: React.RefO
   return null;
 }
 
-export default function Map({ anzeigen, haltestellen, naechste, linienUmkreisM, ortKreis, fokus, onAusschnittChange }: MapProps) {
+export default function Map({ anzeigen, haltestellen, naechste, linienUmkreisM, ortKreis, bezirke, fokus, onAusschnittChange }: MapProps) {
   const berlinPosition: [number, number] = [52.516, 13.42];
   const marker = useRef<Record<string, L.Marker>>({});
 
@@ -112,6 +127,7 @@ export default function Map({ anzeigen, haltestellen, naechste, linienUmkreisM, 
         <Hintergrundkarte />
         <AusschnittMelder onChange={onAusschnittChange} />
         <OrtAnzeige ort={ortKreis} />
+        <BezirkeAnzeige bezirke={bezirke} />
         <Fokus fokus={fokus} marker={marker} />
 
         {/* Umkreis um jede Haltestelle der gewählten Linien */}

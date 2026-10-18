@@ -11,7 +11,8 @@ interface PhotonFeature {
   geometry: { coordinates: [number, number] };
   properties: {
     name?: string; postcode?: string; city?: string; district?: string; state?: string;
-    countrycode?: string; extent?: [number, number, number, number];
+    countrycode?: string; extent?: [number, number, number, number]; type?: string;
+    osm_type?: string; osm_id?: number;
   };
 }
 
@@ -26,6 +27,8 @@ function ortAusFeature(f: PhotonFeature): Ort {
     lat, lon,
     // Photon liefert [West, Nord, Ost, Süd]
     ausdehnung: e ? [Math.min(e[0], e[2]), Math.min(e[1], e[3]), Math.max(e[0], e[2]), Math.max(e[1], e[3])] : undefined,
+    kurzname: p.name,
+    osmRelation: p.osm_type === 'R' ? p.osm_id : undefined,
   };
 }
 
@@ -37,14 +40,20 @@ export default function Ortssuche({ ort, onChange }: { ort: Ort | null; onChange
 
   useEffect(() => { setText(ort?.name ?? ''); }, [ort]); // eslint-disable-line react-hooks/set-state-in-effect
 
+  // Ohne Eingabe keine (veralteten) Vorschläge zeigen
+  const sichtbar = offen && text.trim().length > 0 && text.trim() !== ort?.name ? vorschlaege : [];
+
   useEffect(() => {
     const suchtext = text.trim();
-    if (!offen || suchtext.length < 2 || suchtext === ort?.name) return;
+    if (!offen || suchtext.length < 1 || suchtext === ort?.name) return;
     const nr = ++anfrage.current;
     const timer = setTimeout(async () => {
       try {
-        const url = `${PHOTON_URL}?q=${encodeURIComponent(suchtext)}&lang=de&limit=6&bbox=${DEUTSCHLAND_BBOX}&layer=city&layer=district&layer=locality&layer=postcode&layer=county&layer=state`;
+        // Erlaubte Ebenen laut Photon-Doku: house, street, locality, district, city, county, state, country, other.
+        // Ein ungültiger Wert lässt die ganze Anfrage scheitern. Postleitzahlen liegen unter "other".
+        const url = `${PHOTON_URL}?q=${encodeURIComponent(suchtext)}&lang=de&limit=6&bbox=${DEUTSCHLAND_BBOX}&layer=city&layer=district&layer=locality&layer=county&layer=state&layer=other`;
         const antwort = await fetch(url);
+        if (!antwort.ok) throw new Error(`Photon antwortet mit ${antwort.status}`);
         const daten = await antwort.json();
         if (nr !== anfrage.current) return;
         setVorschlaege(((daten.features as PhotonFeature[]) || []).map(ortAusFeature));
@@ -69,9 +78,9 @@ export default function Ortssuche({ ort, onChange }: { ort: Ort | null; onChange
       {ort && (
         <button title="Ort entfernen" onClick={() => { onChange(null); setText(''); setVorschlaege([]); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black text-lg leading-none">×</button>
       )}
-      {offen && vorschlaege.length > 0 && text.trim() !== ort?.name && (
+      {sichtbar.length > 0 && (
         <div className="absolute top-full mt-1 w-full bg-white border border-zinc-200 rounded-lg shadow-lg z-30 max-h-60 overflow-y-auto">
-          {vorschlaege.map((v, i) => (
+          {sichtbar.map((v, i) => (
             <button key={`${v.name}-${i}`} onMouseDown={(e) => e.preventDefault()} onClick={() => { onChange(v); setText(v.name); setOffen(false); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 text-sm text-zinc-800">
               {v.name}
             </button>

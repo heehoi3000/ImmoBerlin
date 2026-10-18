@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Banner from './Banner';
 import Ortssuche from './Ortssuche';
 import Linienauswahl from './Linienauswahl';
+import Bezirksauswahl from './Bezirksauswahl';
 import Ergebnisliste from './Ergebnisliste';
 import { Kartenausschnitt } from '../lib/oepnv';
 import {
@@ -18,7 +19,7 @@ const Map = dynamic(() => import("./Map"), {
   loading: () => <div className="p-6 text-zinc-500 font-bold tracking-widest uppercase flex h-full w-full items-center justify-center bg-white">Karte lädt...</div>
 });
 
-type Panel = 'preis' | 'zimmer' | 'flaeche' | 'linien' | 'weitere' | null;
+type Panel = 'bezirke' | 'preis' | 'zimmer' | 'flaeche' | 'linien' | 'weitere' | null;
 
 const LEER: Suchergebnis = { anzeigen: [], haltestellen: [], naechste: {} };
 
@@ -140,7 +141,7 @@ export default function Home() {
 
   const typName = angewendet.immobilientyp === 'wohnung' ? 'Wohnungen' : 'Häuser';
   const transaktionName = angewendet.transaktion === 'mieten' ? 'zur Miete' : 'zum Kauf';
-  const ortKreis = angewendet.ort
+  const ortKreis = angewendet.ort && angewendet.bezirke.length === 0
     ? { lat: angewendet.ort.lat, lon: angewendet.ort.lon, m: angewendet.umkreisKm * 1000, ausdehnung: angewendet.ort.ausdehnung }
     : null;
 
@@ -162,8 +163,9 @@ export default function Home() {
                 onChange={(t) => setze({ immobilientyp: t, objektarten: [], etageMin: '', etageMax: '' })} />
             </div>
             <div className="flex flex-1 gap-2 items-center bg-white border border-zinc-200 rounded-lg px-2 h-[48px] shadow-sm">
-              <Ortssuche ort={filter.ort} onChange={(o) => setze({ ort: o })} />
-              <select value={filter.umkreisKm} onChange={(e) => setze({ umkreisKm: parseInt(e.target.value) })} disabled={!filter.ort}
+              <Ortssuche ort={filter.ort} onChange={(o) => setze({ ort: o, bezirke: [] })} />
+              <select value={filter.umkreisKm} onChange={(e) => setze({ umkreisKm: parseInt(e.target.value) })} disabled={!filter.ort || filter.bezirke.length > 0}
+                title={filter.bezirke.length > 0 ? 'Bei gewählten Bezirken wird genau in deren Grenzen gesucht' : undefined}
                 className="h-[38px] border border-zinc-200 rounded-md px-2 text-xs font-bold bg-white disabled:text-zinc-300">
                 {UMKREISE_KM.map(km => <option key={km} value={km}>{km === 0 ? 'Nur Ort' : `+ ${km} km`}</option>)}
               </select>
@@ -180,6 +182,10 @@ export default function Home() {
 
           {/* Zeile 2: Detailfilter */}
           <div className="flex gap-2 flex-wrap items-center">
+            {filter.ort?.osmRelation && (
+              <FilterKnopf titel="Bezirke" wert={filter.bezirke.length ? filter.bezirke.map(b => b.name).join(', ') : undefined}
+                aktiv={filter.bezirke.length > 0} offen={panel === 'bezirke'} onClick={() => oeffne('bezirke')} />
+            )}
             <FilterKnopf titel={istMiete ? (filter.preisArt === 'warm' ? 'Warmmiete' : 'Kaltmiete') : 'Kaufpreis'} wert={bereichText(filter.preisMin, filter.preisMax, '€')}
               aktiv={!!(filter.preisMin || filter.preisMax)} offen={panel === 'preis'} onClick={() => oeffne('preis')} />
             <FilterKnopf titel="Zimmer" wert={bereichText(filter.zimmerMin, filter.zimmerMax, '')}
@@ -195,6 +201,9 @@ export default function Home() {
           {/* Aufklappbereiche */}
           {panel && (
             <div className="absolute top-full left-0 w-full md:w-auto md:min-w-[420px] max-w-full mt-2 p-4 border border-zinc-200 rounded-lg shadow-xl bg-white z-50 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+              {panel === 'bezirke' && filter.ort && (
+                <Bezirksauswahl ort={filter.ort} ausgewaehlt={filter.bezirke} onChange={(b) => setze({ bezirke: b })} />
+              )}
               {panel === 'preis' && (
                 <>
                   {istMiete && erweitert && (
@@ -286,7 +295,7 @@ export default function Home() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mt-1">
           <p className="text-sm text-zinc-700">
             {laedt ? 'Suche läuft…' : fehler ? 'Die Suche ist fehlgeschlagen. Bitte versuche es noch einmal.' : (
-              <><strong className="text-black">{ergebnis.anzeigen.length}</strong> {typName} {transaktionName}{angewendet.ort ? ` in ${angewendet.ort.name}${angewendet.umkreisKm ? ` + ${angewendet.umkreisKm} km` : ''}` : ''}{angewendet.linien.length ? ` nahe ${angewendet.linien.map(l => l.nummer).join(', ')}` : ''}</>
+              <><strong className="text-black">{ergebnis.anzeigen.length}</strong> {typName} {transaktionName}{angewendet.ort ? (angewendet.bezirke.length ? ` in ${angewendet.bezirke.map(b => b.name).join(', ')} (${angewendet.ort.kurzname ?? angewendet.ort.name})` : ` in ${angewendet.ort.name}${angewendet.umkreisKm ? ` + ${angewendet.umkreisKm} km` : ''}`) : ''}{angewendet.linien.length ? ` nahe ${angewendet.linien.map(l => l.nummer).join(', ')}` : ''}</>
             )}
           </p>
           <select value={angewendet.sortierung} onChange={(e) => { setze({ sortierung: e.target.value }); suchen({ ...angewendet, sortierung: e.target.value }); }}
@@ -298,7 +307,7 @@ export default function Home() {
         {/* --- MAP --- */}
         <section id="karte" className="w-full h-[550px] rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-zinc-200 relative bg-white z-0">
           <Map anzeigen={ergebnis.anzeigen} haltestellen={ergebnis.haltestellen} naechste={ergebnis.naechste}
-            linienUmkreisM={linienUmkreisM(angewendet.linienUmkreisM)} ortKreis={ortKreis} fokus={fokus}
+            linienUmkreisM={linienUmkreisM(angewendet.linienUmkreisM)} ortKreis={ortKreis} bezirke={angewendet.bezirke} fokus={fokus}
             onAusschnittChange={setAusschnitt} />
         </section>
 

@@ -6,6 +6,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapContainer, Marker, Popup, GeoJSON, Circle, CircleMarker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import '@maplibre/maplibre-gl-leaflet';
+import { setWorkerUrl } from 'maplibre-gl';
 import { supabase } from '../lib/supabase';
 import { Linie, Kartenausschnitt } from '../lib/oepnv';
 
@@ -27,6 +28,10 @@ const houseIcon = L.divIcon({
 const KARTE_STIL = 'https://tiles.openfreemap.org/styles/positron';
 const KARTE_HINWEIS = '<a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/">OpenMapTiles</a> Daten von <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 const FAHRPLAN_HINWEIS = 'Fahrplandaten: <a href="https://www.delfi.de">DELFI e.V.</a>, CC BY 4.0';
+
+// Der Worker liegt unter public/maplibre/ (siehe scripts/maplibre-worker-kopieren.mjs).
+// '/ImmoBerlin' ist der basePath aus next.config.ts.
+setWorkerUrl(new URL('/ImmoBerlin/maplibre/maplibre-gl-worker.mjs', window.location.href).href);
 
 function Hintergrundkarte() {
   const map = useMap();

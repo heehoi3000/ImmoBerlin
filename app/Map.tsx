@@ -20,10 +20,11 @@ const houseIcon = L.divIcon({
   iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -15]
 });
 
-// Hintergrundkarte von OpenStreetMap. CARTO liefert seit Oktober 2026 nur noch
-// mit API-Schlüssel Kacheln ("API KEY REQUIRED").
-const KARTE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-const KARTE_HINWEIS = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+// Hintergrundkarte: basemap.de vom Bundesamt für Kartographie und Geodäsie,
+// kostenlos und ohne API-Schlüssel, nur Deutschland. (CARTO verlangt seit
+// Oktober 2026 einen Schlüssel.) Achtung: Reihenfolge {y}/{x}.
+const KARTE_URL = 'https://sgx.geodatenzentrum.de/wmts_basemapde/tile/1.0.0/de_basemapde_web_raster_farbe/default/GLOBAL_WEBMERCATOR/{z}/{y}/{x}.png';
+const KARTE_HINWEIS = '&copy; <a href="https://www.bkg.bund.de">GeoBasis-DE / BKG</a> (' + new Date().getFullYear() + ') <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>';
 const FAHRPLAN_HINWEIS = ' | Fahrplandaten: <a href="https://www.delfi.de">DELFI e.V.</a>, CC BY 4.0';
 
 interface Haltestelle { stop_id: string; name: string; lat: number; lon: number; }

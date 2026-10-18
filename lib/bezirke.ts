@@ -45,7 +45,7 @@ export function bezirkeLaden(ort: Ort): Promise<BezirkEintrag[]> {
   return listenCache[id];
 }
 
-// Grenze eines Bezirks als GeoJSON, vereinfacht auf etwa 10 m
+// Grenze eines Bezirks oder Orts (OSM-Relation) als GeoJSON, vereinfacht auf etwa 10 m
 export async function bezirksgrenzeLaden(bezirk: Bezirk): Promise<Bezirk> {
   if (!grenzenCache[bezirk.id]) {
     const antwort = await fetch(`${NOMINATIM_URL}?osm_ids=R${bezirk.id}&format=geojson&polygon_geojson=1&polygon_threshold=0.0001`);

@@ -141,7 +141,8 @@ export default function Home() {
 
   const typName = angewendet.immobilientyp === 'wohnung' ? 'Wohnungen' : 'Häuser';
   const transaktionName = angewendet.transaktion === 'mieten' ? 'zur Miete' : 'zum Kauf';
-  const ortKreis = angewendet.ort && angewendet.bezirke.length === 0
+  const grenzen = angewendet.bezirke.length ? angewendet.bezirke : ergebnis.ortGrenze ? [ergebnis.ortGrenze] : [];
+  const ortKreis = angewendet.ort && grenzen.length === 0
     ? { lat: angewendet.ort.lat, lon: angewendet.ort.lon, m: angewendet.umkreisKm * 1000, ausdehnung: angewendet.ort.ausdehnung }
     : null;
 
@@ -307,7 +308,7 @@ export default function Home() {
         {/* --- MAP --- */}
         <section id="karte" className="w-full h-[550px] rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-zinc-200 relative bg-white z-0">
           <Map anzeigen={ergebnis.anzeigen} haltestellen={ergebnis.haltestellen} naechste={ergebnis.naechste}
-            linienUmkreisM={linienUmkreisM(angewendet.linienUmkreisM)} ortKreis={ortKreis} bezirke={angewendet.bezirke} fokus={fokus}
+            linienUmkreisM={linienUmkreisM(angewendet.linienUmkreisM)} ortKreis={ortKreis} bezirke={grenzen} fokus={fokus}
             onAusschnittChange={setAusschnitt} />
         </section>
 

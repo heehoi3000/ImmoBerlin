@@ -1,7 +1,8 @@
 // Fragt die Anzeigen passend zu den Filtern bei Supabase ab.
 import { supabase } from './supabase';
 import { Filter, ENERGIEKLASSEN, entfernungM } from './filter';
-import { bezirkeAusdehnung, inBezirken } from './bezirke';
+import { Bezirk } from './filter';
+import { bezirkeAusdehnung, bezirksgrenzeLaden, inBezirken } from './bezirke';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Anzeige = Record<string, any> & { id: string; koordinate_lat: number; koordinate_lon: number };
@@ -12,6 +13,7 @@ export interface Suchergebnis {
   anzeigen: Anzeige[];
   haltestellen: Haltestelle[];
   naechste: Record<string, NaechsteHaltestelle>;
+  ortGrenze?: Bezirk;   // bei "Nur Ort": die echte Ortsgrenze, falls sie geladen werden konnte
 }
 
 // Umkreis um die Haltestellen in Metern, auf 50 bis 5000 m begrenzt
@@ -62,7 +64,17 @@ export async function anzeigenSuchen(f: Filter, erweitert: boolean): Promise<Suc
   // Ort mit Umkreis: grob über ein Rechteck in der Datenbank, genau danach im Browser
   let kreis: { lat: number; lon: number; m: number } | null = null;
   // Mit Bezirken genau innerhalb ihrer Grenzen: Rechteck in der Datenbank, Polygon im Browser
-  const bezirke = f.ort ? f.bezirke.filter(b => b.grenze) : [];
+  let bezirke = f.ort ? f.bezirke.filter(b => b.grenze) : [];
+  // "Nur Ort" ohne Bezirke: genau innerhalb der Ortsgrenze suchen. Klappt das Laden nicht, bleibt es beim Rechteck.
+  let ortGrenze: Bezirk | undefined;
+  if (f.ort?.osmRelation && f.umkreisKm === 0 && bezirke.length === 0) {
+    try {
+      ortGrenze = await bezirksgrenzeLaden({ id: f.ort.osmRelation, name: f.ort.kurzname ?? f.ort.name });
+      bezirke = [ortGrenze];
+    } catch (err) {
+      console.error("Ortsgrenze konnte nicht geladen werden:", err);
+    }
+  }
   const bezirkRechteck = bezirkeAusdehnung(bezirke);
   if (bezirkRechteck) {
     const [minLon, minLat, maxLon, maxLat] = bezirkRechteck;
@@ -124,5 +136,5 @@ export async function anzeigenSuchen(f: Filter, erweitert: boolean): Promise<Suc
     anzeigen.sort((a, b) => (naechste[a.id]?.distanz_m ?? Infinity) - (naechste[b.id]?.distanz_m ?? Infinity));
   }
 
-  return { anzeigen, haltestellen: (haltRes?.data as Haltestelle[]) || [], naechste };
+  return { anzeigen, haltestellen: (haltRes?.data as Haltestelle[]) || [], naechste, ortGrenze };
 }

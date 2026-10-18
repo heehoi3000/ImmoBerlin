@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import { useNutzer } from '../lib/konto';
 import { useMerkliste } from '../lib/merkliste';
+import { useUngelesen } from '../lib/nachrichten';
 import { MeldenAnbieter, useMelden } from './Meldedialog';
 
 function Logo() {
@@ -33,6 +34,7 @@ const Symbol = {
 function Kopfzeile() {
   const nutzer = useNutzer();
   const { ids } = useMerkliste();
+  const ungelesen = useUngelesen(nutzer?.id);
   const melden = useMelden();
   const router = useRouter();
   const pfad = usePathname();
@@ -53,14 +55,16 @@ function Kopfzeile() {
     router.push('/');
   }
 
-  const navLink = (href: string, text: string) => {
+  const abzeichen = (n: number) => n > 0 && <span className="ml-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-700 text-white text-[10px] font-bold inline-flex items-center justify-center">{n}</span>;
+  const navLink = (href: string, text: string, zahl = 0) => {
     const aktiv = href === '/' ? pfad === '/' : pfad.startsWith(href);
-    return <Link href={href} className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${aktiv ? 'text-black bg-zinc-100' : 'text-zinc-500 hover:text-black hover:bg-zinc-50'}`}>{text}</Link>;
+    return <Link href={href} className={`flex items-center px-3 py-2 rounded-lg text-sm font-semibold transition ${aktiv ? 'text-black bg-zinc-100' : 'text-zinc-500 hover:text-black hover:bg-zinc-50'}`}>{text}{abzeichen(zahl)}</Link>;
   };
   const menueEintraege: { href?: string; text: string; aktion?: () => void }[] = [
     { href: '/', text: 'Wohnungen suchen' },
     { href: '/inserieren/', text: 'Inserat aufgeben' },
     { href: '/meine-inserate/', text: 'Meine Inserate' },
+    { href: '/nachrichten/', text: `Nachrichten${ungelesen ? ` (${ungelesen} neu)` : ''}` },
     { href: '/merkliste/', text: `Merkliste${ids.length ? ` (${ids.length})` : ''}` },
     { href: '/konto/', text: nutzer ? 'Mein Konto' : 'Anmelden oder registrieren' },
     { text: 'Fehler melden', aktion: () => { setMenueOffen(false); melden({ art: 'fehler' }); } },
@@ -75,6 +79,7 @@ function Kopfzeile() {
         <nav className="hidden md:flex items-center gap-1 ml-6">
           {navLink('/', 'Suchen')}
           {navLink('/meine-inserate/', 'Meine Inserate')}
+          {nutzer && navLink('/nachrichten/', 'Nachrichten', ungelesen)}
           <button onClick={() => melden({ art: 'fehler' })} className="px-3 py-2 rounded-lg text-sm font-semibold text-zinc-500 hover:text-black hover:bg-zinc-50 transition">Fehler melden</button>
         </nav>
 
@@ -87,13 +92,15 @@ function Kopfzeile() {
           {nutzer ? (
             <div ref={kontoRef} className="relative">
               <button onClick={() => setKontoOffen(!kontoOffen)} aria-label="Konto" aria-expanded={kontoOffen}
-                className="w-9 h-9 rounded-full bg-zinc-900 text-white text-sm font-bold flex items-center justify-center hover:ring-4 hover:ring-zinc-200 transition">
+                className="relative w-9 h-9 rounded-full bg-zinc-900 text-white text-sm font-bold flex items-center justify-center hover:ring-4 hover:ring-zinc-200 transition">
                 {(nutzer.email ?? '?')[0].toUpperCase()}
+                {ungelesen > 0 && <span className="md:hidden absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-red-700 ring-2 ring-white" />}
               </button>
               {kontoOffen && (
                 <div className="absolute right-0 mt-2 w-60 bg-white border border-zinc-200 rounded-xl shadow-xl py-2 text-sm">
                   <p className="px-4 py-2 text-xs text-zinc-500 truncate border-b border-zinc-100 mb-1">{nutzer.email}</p>
                   <Link href="/meine-inserate/" className="block px-4 py-2 hover:bg-zinc-50">Meine Inserate</Link>
+                  <Link href="/nachrichten/" className="flex items-center px-4 py-2 hover:bg-zinc-50">Nachrichten{abzeichen(ungelesen)}</Link>
                   <Link href="/konto/" className="block px-4 py-2 hover:bg-zinc-50">Konto</Link>
                   <button onClick={abmelden} className="w-full text-left px-4 py-2 hover:bg-zinc-50 text-red-700">Abmelden</button>
                 </div>

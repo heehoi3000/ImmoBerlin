@@ -9,6 +9,7 @@ import { AUSSTATTUNG, OBJEKTARTEN } from '../../lib/filter';
 import { useMerkliste } from '../../lib/merkliste';
 import { useNutzer } from '../../lib/konto';
 import { useMelden } from '../Meldedialog';
+import Kontaktformular from '../Kontaktformular';
 
 const Map = dynamic(() => import('../Map'), { ssr: false, loading: () => <div className="h-full w-full bg-zinc-100" /> });
 
@@ -157,6 +158,12 @@ export default function AnzeigeSeite() {
             {eigenes && <Link href={`/inserieren/?id=${a.id}`} className="h-11 rounded-lg bg-black text-white text-sm font-bold flex items-center justify-center">Inserat bearbeiten</Link>}
             <p className="text-[11px] text-zinc-400">Inseriert am {new Date(a.erstellt_am).toLocaleDateString('de-DE')}</p>
           </div>
+          {!eigenes && (
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5">
+              <Kontaktformular anzeigeId={a.id} titel={a.titel} kontaktierbar={!!a.inserent_id && a.status === 'aktiv'} />
+            </div>
+          )}
+          {eigenes && <Link href="/nachrichten/" className="text-xs text-zinc-500 hover:text-black underline underline-offset-2 self-start px-1">Anfragen zu deinen Inseraten ansehen</Link>}
           {!eigenes && (
             <button onClick={() => melden({ art: 'inserat', anzeigeId: a.id, anzeigeTitel: a.titel })} className="text-xs text-zinc-500 hover:text-red-700 underline underline-offset-2 self-start px-1">
               Inserat melden

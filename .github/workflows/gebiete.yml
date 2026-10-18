@@ -1,0 +1,45 @@
+name: Bezirksdaten erzeugen
+
+# Baut aus OpenStreetMap (Geofabrik-Auszug Deutschland) die Dateien für den Bezirksfilter
+# und legt sie auf den Branch "gebiete". Der Deploy holt sie von dort nach public/gebiete.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 1 * *'   # monatlich, Grenzen ändern sich selten
+  push:
+    branches: ["gebiete-erzeugen"]
+
+permissions:
+  contents: write
+
+jobs:
+  erzeugen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Werkzeuge installieren
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q osmium-tool
+          pip install shapely==2.0.6
+
+      - name: OpenStreetMap-Auszug laden und Grenzen herausfiltern
+        run: |
+          curl -sSfL -o deutschland.osm.pbf https://download.geofabrik.de/europe/germany-latest.osm.pbf
+          osmium tags-filter deutschland.osm.pbf r/boundary=administrative -o grenzen.osm.pbf
+          rm deutschland.osm.pbf
+          osmium export grenzen.osm.pbf -f geojsonseq --geometry-types=polygon --add-unique-id=type_id -o grenzen.geojsonseq
+
+      - name: Dateien bauen
+        run: python3 scripts/gebiete/gebiete_bauen.py grenzen.geojsonseq ausgabe
+
+      - name: Auf Branch "gebiete" ablegen
+        run: |
+          cd ausgabe
+          git init -q -b gebiete
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Bezirksdaten $(date -u +%F)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gebiete

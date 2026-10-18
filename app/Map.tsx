@@ -1,14 +1,13 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
-// NEU: GeoJSON importieren
-import { MapContainer, Marker, Popup, GeoJSON, Circle, CircleMarker, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, Popup, Circle, CircleMarker, Rectangle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import '@maplibre/maplibre-gl-leaflet';
 import { setWorkerUrl } from 'maplibre-gl';
-import { supabase } from '../lib/supabase';
-import { Linie, Kartenausschnitt } from '../lib/oepnv';
+import { Kartenausschnitt } from '../lib/oepnv';
+import { Anzeige, Haltestelle, NaechsteHaltestelle } from '../lib/suche';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -47,14 +46,6 @@ function Hintergrundkarte() {
   return null;
 }
 
-interface Haltestelle { stop_id: string; name: string; lat: number; lon: number; }
-interface NaechsteHaltestelle { anzeige_id: string; distanz_m: number; haltestelle: string; linie: string; }
-
-// Umkreis in Metern, auf 50 bis 5000 m begrenzt
-function umkreisMeter(eingabe?: string) {
-  return Math.min(Math.max(parseInt(eingabe || '') || 1500, 50), 5000);
-}
-
 // Meldet den sichtbaren Kartenausschnitt an die Seite, damit sie die Linien dort laden kann.
 function AusschnittMelder({ onChange }: { onChange?: (a: Kartenausschnitt) => void }) {
   const map = useMapEvents({
@@ -68,107 +59,64 @@ function AusschnittMelder({ onChange }: { onChange?: (a: Kartenausschnitt) => vo
   return null;
 }
 
+type OrtKreis = { lat: number; lon: number; m: number; ausdehnung?: [number, number, number, number] };
+
+// Gesuchter Ort: Umkreis (oder Ortsgrenze) zeichnen und die Karte dorthin bewegen
+function OrtAnzeige({ ort }: { ort: OrtKreis | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!ort) return;
+    if (ort.m > 0) map.fitBounds(L.latLng(ort.lat, ort.lon).toBounds(ort.m * 2), { padding: [20, 20] });
+    else if (ort.ausdehnung) map.fitBounds([[ort.ausdehnung[1], ort.ausdehnung[0]], [ort.ausdehnung[3], ort.ausdehnung[2]]], { padding: [20, 20] });
+    else map.setView([ort.lat, ort.lon], 13);
+  }, [map, ort?.lat, ort?.lon, ort?.m]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!ort) return null;
+  const stil = { color: '#000', weight: 2, opacity: 0.5, dashArray: '6 6', fillOpacity: 0.03 };
+  if (ort.m > 0) return <Circle center={[ort.lat, ort.lon]} radius={ort.m} pathOptions={stil} interactive={false} />;
+  if (ort.ausdehnung) return <Rectangle bounds={[[ort.ausdehnung[1], ort.ausdehnung[0]], [ort.ausdehnung[3], ort.ausdehnung[2]]]} pathOptions={stil} interactive={false} />;
+  return null;
+}
+
+const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+
 interface MapProps {
-  filters?: {
-    transactionType: string; propertyType: string;
-    priceMin: string; priceMax: string;
-    roomsMin: string; roomsMax: string;
-    spaceMin: string; spaceMax: string;
-    selectedRoutes: Linie[]; selectedDistricts: string[];
-    routeRadius: string;
-  };
+  anzeigen: Anzeige[];
+  haltestellen: Haltestelle[];
+  naechste: Record<string, NaechsteHaltestelle>;
+  linienUmkreisM: number;
+  ortKreis: OrtKreis | null;
+  // Anzeige, zu der die Karte springen soll (nr ändert sich bei jedem Klick)
+  fokus: { id: string; nr: number } | null;
   onAusschnittChange?: (a: Kartenausschnitt) => void;
 }
 
-export default function Map({ filters, onAusschnittChange }: MapProps) {
-  const berlinPosition: [number, number] = [52.516, 13.42]; 
-  const [anzeigen, setAnzeigen] = useState<any[]>([]);
-  // NEU: Speicher für unsere Bezirksgrenzen
-  const [bezirkGrenzen, setBezirkGrenzen] = useState<any[]>([]);
-  const [haltestellen, setHaltestellen] = useState<Haltestelle[]>([]);
-  const [naechste, setNaechste] = useState<Record<string, NaechsteHaltestelle>>({});
-
+// Springt zur angeklickten Anzeige aus der Ergebnisliste und öffnet ihr Popup
+function Fokus({ fokus, marker }: { fokus: MapProps['fokus']; marker: React.RefObject<Record<string, L.Marker>> }) {
+  const map = useMap();
   useEffect(() => {
-    async function fetchAnzeigenUndGrenzen() {
-      try {
-        const linienIds = (filters?.selectedRoutes || []).map(l => l.linie_id);
-        const radius = umkreisMeter(filters?.routeRadius);
+    const m = fokus && marker.current[fokus.id];
+    if (!m) return;
+    map.setView(m.getLatLng(), Math.max(map.getZoom(), 15));
+    m.openPopup();
+  }, [map, fokus, marker]);
+  return null;
+}
 
-        // Mit Linien: Supabase sucht die Anzeigen im Umkreis der Haltestellen (PostGIS),
-        // die übrigen Filter werden an dieselbe Abfrage angehängt.
-        let query = linienIds.length > 0
-          ? supabase.rpc('anzeigen_nahe_linien', { linien_ids: linienIds, radius_m: radius }).select('*') as unknown as ReturnType<ReturnType<typeof supabase.from>['select']>
-          : supabase.from('anzeigen').select('*');
-
-        if (filters) {
-          if (filters.transactionType) query = query.eq('transaktions_typ', filters.transactionType);
-          if (filters.propertyType) query = query.eq('immobilien_typ', filters.propertyType);
-          if (filters.priceMin) query = query.gte('preis', parseInt(filters.priceMin));
-          if (filters.priceMax) query = query.lte('preis', parseInt(filters.priceMax));
-          if (filters.roomsMin) query = query.gte('zimmer', parseFloat(filters.roomsMin));
-          if (filters.roomsMax) query = query.lte('zimmer', parseFloat(filters.roomsMax));
-          if (filters.spaceMin) query = query.gte('quadratmeter', parseInt(filters.spaceMin));
-          if (filters.spaceMax) query = query.lte('quadratmeter', parseInt(filters.spaceMax));
-          if (filters.selectedDistricts && filters.selectedDistricts.length > 0) {
-            query = query.in('bezirk', filters.selectedDistricts);
-          }
-        }
-
-        const { data: wohnungenData, error: wohnungenError } = await query;
-        if (wohnungenError) throw wohnungenError;
-        const finaleWohnungen = wohnungenData || [];
-
-        // --- ÖPNV: Haltestellen für die Umkreise und nächste Haltestelle je Anzeige ---
-        let haltestellenZumZeigen: Haltestelle[] = [];
-        const naechsteJeAnzeige: Record<string, NaechsteHaltestelle> = {};
-        if (linienIds.length > 0) {
-          const [haltRes, naechsteRes] = await Promise.all([
-            supabase.rpc('haltestellen_der_linien', { linien_ids: linienIds }),
-            supabase.rpc('anzeigen_naechste_haltestelle', { linien_ids: linienIds, radius_m: radius }),
-          ]);
-          if (haltRes.error) console.error("Fehler beim Laden der Haltestellen:", haltRes.error);
-          if (naechsteRes.error) console.error("Fehler beim Laden der Entfernungen:", naechsteRes.error);
-          haltestellenZumZeigen = (haltRes.data as Haltestelle[]) || [];
-          for (const n of (naechsteRes.data as NaechsteHaltestelle[]) || []) naechsteJeAnzeige[n.anzeige_id] = n;
-        }
-
-        // --- NEU: GRENZEN LADEN ---
-        let grenzenZumZeigen: any[] = [];
-        if (filters?.selectedDistricts && filters.selectedDistricts.length > 0) {
-          // Wir rufen den neuen SQL View auf!
-          // WICHTIG: Achte hier darauf, dass der Spaltenname ('bezirk_name') mit deinem View übereinstimmt!
-          const { data: grenzenData, error: grenzenError } = await supabase
-            .from('bezirk_grenzen_view')
-            .select('*')
-            .in('bezirk_name', filters.selectedDistricts);
-            
-          if (grenzenError) console.error("Fehler beim Laden der Grenzen:", grenzenError);
-          if (grenzenData) grenzenZumZeigen = grenzenData;
-        }
-
-        setAnzeigen(finaleWohnungen);
-        setBezirkGrenzen(grenzenZumZeigen);
-        setHaltestellen(haltestellenZumZeigen);
-        setNaechste(naechsteJeAnzeige);
-
-      } catch (err) {
-        console.error("Ladefehler:", err);
-      }
-    }
-    
-    fetchAnzeigenUndGrenzen();
-  }, [filters]);
+export default function Map({ anzeigen, haltestellen, naechste, linienUmkreisM, ortKreis, fokus, onAusschnittChange }: MapProps) {
+  const berlinPosition: [number, number] = [52.516, 13.42];
+  const marker = useRef<Record<string, L.Marker>>({});
 
   return (
     <div style={{ height: '100%', width: '100%', position: 'relative' }}>
       <MapContainer center={berlinPosition} zoom={11} preferCanvas style={{ height: "100%", width: "100%", position: "absolute", top: 0, left: 0, bottom: 0, right: 0 }}>
         <Hintergrundkarte />
-
         <AusschnittMelder onChange={onAusschnittChange} />
+        <OrtAnzeige ort={ortKreis} />
+        <Fokus fokus={fokus} marker={marker} />
 
         {/* Umkreis um jede Haltestelle der gewählten Linien */}
         {haltestellen.map((h) => (
-          <Circle key={`umkreis-${h.stop_id}`} center={[h.lat, h.lon]} radius={umkreisMeter(filters?.routeRadius)}
+          <Circle key={`umkreis-${h.stop_id}`} center={[h.lat, h.lon]} radius={linienUmkreisM}
             pathOptions={{ color: '#1E88E5', weight: 1, opacity: 0.4, fillColor: '#1E88E5', fillOpacity: 0.06 }} interactive={false} />
         ))}
         {haltestellen.map((h) => (
@@ -178,41 +126,25 @@ export default function Map({ filters, onAusschnittChange }: MapProps) {
           </CircleMarker>
         ))}
 
-        {/* NEU: DIE GRENZEN AUF DIE KARTE ZEICHNEN */}
-        {bezirkGrenzen.map((grenze, idx) => (
-          <GeoJSON 
-            // Der Key muss eindeutig sein, damit Leaflet das Polygon bei Updates neu zeichnet
-            key={`${grenze.bezirk_name}-${idx}`} 
-            data={grenze.geojson} 
-            style={{
-              color: '#000000',      // Randfarbe (Schwarz, passend zum Design)
-              weight: 2,             // Liniendicke
-              opacity: 0.6,          // Transparenz der Linie
-              fillColor: '#000000',  // Füllfarbe
-              fillOpacity: 0.08      // Sehr leichte Füllung (8%)
-            }} 
-          />
-        ))}
-
-        {anzeigen?.map((anzeige) => (
-           anzeige.koordinate_lat && anzeige.koordinate_lon && (
-            <Marker key={anzeige.id} position={[anzeige.koordinate_lat, anzeige.koordinate_lon]} icon={houseIcon}>
-              <Popup>
-                <h3 style={{ margin: '0 0 5px 0', fontSize: '15px', fontWeight: 'bold' }}>{anzeige.titel}</h3>
-                <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
-                  <span style={{ display: 'inline-block', backgroundColor: 'black', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
-                    {anzeige.transaktions_typ}
-                  </span><br/>
-                  <strong>Preis:</strong> {anzeige.preis} €<br/>
-                  <strong>Bezirk:</strong> {anzeige.bezirk}<br/>
-                  <strong>Fläche:</strong> {anzeige.quadratmeter} m²
-                  {naechste[anzeige.id] && (
-                    <><br/><strong>ÖPNV:</strong> {naechste[anzeige.id].distanz_m} m zur {naechste[anzeige.id].linie}, {naechste[anzeige.id].haltestelle}</>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
-          )
+        {anzeigen.map((anzeige) => (
+          <Marker key={anzeige.id} position={[anzeige.koordinate_lat, anzeige.koordinate_lon]} icon={houseIcon}
+            ref={(m) => { if (m) marker.current[anzeige.id] = m; else delete marker.current[anzeige.id]; }}>
+            <Popup>
+              <h3 style={{ margin: '0 0 5px 0', fontSize: '15px', fontWeight: 'bold' }}>{anzeige.titel}</h3>
+              <div style={{ fontSize: '13px', lineHeight: '1.5' }}>
+                <span style={{ display: 'inline-block', backgroundColor: 'black', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
+                  {anzeige.transaktions_typ}
+                </span><br/>
+                <strong>{anzeige.transaktions_typ === 'mieten' ? 'Kaltmiete' : 'Kaufpreis'}:</strong> {euro.format(Number(anzeige.preis))}<br/>
+                {anzeige.warmmiete && <><strong>Warmmiete:</strong> {euro.format(Number(anzeige.warmmiete))}<br/></>}
+                <strong>Fläche:</strong> {anzeige.quadratmeter} m² · <strong>Zimmer:</strong> {anzeige.zimmer}<br/>
+                {anzeige.adresse}
+                {naechste[anzeige.id] && (
+                  <><br/><strong>ÖPNV:</strong> {naechste[anzeige.id].distanz_m} m zur {naechste[anzeige.id].linie}, {naechste[anzeige.id].haltestelle}</>
+                )}
+              </div>
+            </Popup>
+          </Marker>
         ))}
       </MapContainer>
     </div>

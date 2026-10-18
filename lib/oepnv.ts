@@ -48,3 +48,8 @@ export function haltestelleKurz(name: string): string {
     .replace(/[,\s]+$/, '')
     .trim() || name;
 }
+
+// Start- und Endhaltestelle einer Linie, beide gekürzt: "S+U Wittenau – S+U Hermannstr."
+export function endpunkteKurz(endpunkte: string): string {
+  return endpunkte.split(/\s+[–-]\s+/).map(haltestelleKurz).join(' – ');
+}

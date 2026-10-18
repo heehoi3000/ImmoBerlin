@@ -3,7 +3,7 @@
 // Linien nahe dem gewählten Ort bzw. der Kartenmitte stehen oben.
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Linie, LINIENTYPEN, punktAusEwkb } from '../lib/oepnv';
+import { Linie, punktAusEwkb, endpunkteKurz, LINIENTYPEN } from '../lib/oepnv';
 import { entfernungM } from '../lib/filter';
 
 const MAX_LISTE = 60;
@@ -89,10 +89,9 @@ export default function Linienauswahl({ bezug, ausgewaehlt, onChange, umkreis, o
           {laedt && treffer.length === 0 && <p className="px-4 py-3 text-xs text-zinc-500">Linien werden gesucht…</p>}
           {!laedt && !fehler && treffer.length === 0 && <p className="px-4 py-3 text-xs text-zinc-500">Keine passende Linie gefunden.</p>}
           {treffer.slice(0, MAX_LISTE).map(linie => (
-            <button key={linie.linie_id} onClick={() => { onChange([...ausgewaehlt, linie]); setSuchtext(''); }} className="w-full text-left px-4 py-1.5 hover:bg-zinc-100 transition flex items-baseline gap-2">
-              <span className="text-sm font-bold text-zinc-900 shrink-0">{linie.nummer}</span>
-              <span className="text-[10px] text-zinc-400 shrink-0">{LINIENTYPEN[linie.typ] || linie.typ}</span>
-              <span className="text-[11px] text-zinc-500 truncate flex-1">{linie.betreiber}{linie.endpunkte ? ` · ${linie.endpunkte}` : ''}</span>
+            <button key={linie.linie_id} onClick={() => { onChange([...ausgewaehlt, linie]); setSuchtext(''); }} title={`${LINIENTYPEN[linie.typ] || linie.typ} · ${linie.betreiber}`} className="w-full text-left px-4 py-1.5 hover:bg-zinc-100 transition flex items-baseline gap-2">
+              <span className="text-sm font-bold text-zinc-900 shrink-0 min-w-[2.5rem]">{linie.nummer}</span>
+              <span className="text-xs text-zinc-600 truncate flex-1">{linie.endpunkte ? endpunkteKurz(linie.endpunkte) : linie.betreiber}</span>
               {linie.km !== null && linie.km >= 20 && <span className="text-[10px] text-zinc-400 shrink-0">{Math.round(linie.km)} km</span>}
             </button>
           ))}
@@ -108,7 +107,7 @@ export default function Linienauswahl({ bezug, ausgewaehlt, onChange, umkreis, o
             {ausgewaehlt.map(linie => (
               <button key={linie.linie_id} title={`${linie.betreiber}${linie.endpunkte ? ` · ${linie.endpunkte}` : ''}`} onClick={() => onChange(ausgewaehlt.filter(r => r.linie_id !== linie.linie_id))} className="px-2.5 py-1 rounded-md bg-black text-white text-xs font-bold flex items-center gap-1.5 max-w-full">
                 <span>{linie.nummer}</span>
-                <span className="font-normal text-white/70 truncate max-w-[140px]">{linie.betreiber}</span>
+                <span className="font-normal text-white/70 truncate max-w-[200px]">{linie.endpunkte ? endpunkteKurz(linie.endpunkte) : linie.betreiber}</span>
                 <span>×</span>
               </button>
             ))}

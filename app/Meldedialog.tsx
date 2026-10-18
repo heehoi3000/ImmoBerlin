@@ -3,6 +3,7 @@
 // Die Meldung landet in der Tabelle "meldungen"; lesen kann sie nur das Team im Supabase-Dashboard.
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import Link from 'next/link';
 import { useNutzer } from '../lib/konto';
 
 type Art = 'fehler' | 'inserat' | 'sonstiges';
@@ -96,7 +97,7 @@ function Dialog({ anlass, onSchliessen }: { anlass: Anlass; onSchliessen: () => 
                   className="w-full h-10 border border-zinc-200 rounded-lg px-3 text-sm focus:ring-2 focus:ring-black/10 focus:border-black outline-none" />
               </label>
             )}
-            <p className="text-[11px] text-zinc-400">Mit der Meldung speichern wir die aktuelle Seitenadresse und deinen Browsertyp, damit wir Fehler nachvollziehen können.</p>
+            <p className="text-[11px] text-zinc-400">Mit der Meldung speichern wir die aktuelle Seitenadresse und deinen Browsertyp, damit wir Fehler nachvollziehen können. Mehr dazu in der <Link href="/datenschutz/" onClick={onSchliessen} className="underline underline-offset-2">Datenschutzerklärung</Link>.</p>
             {zustand === 'fehler' && <p className="text-sm text-red-600">Die Meldung konnte nicht gesendet werden. Bitte versuche es noch einmal.</p>}
             <div className="flex justify-end gap-2">
               <button type="button" onClick={onSchliessen} className="h-10 px-4 rounded-lg text-sm font-semibold text-zinc-600 hover:bg-zinc-100">Abbrechen</button>

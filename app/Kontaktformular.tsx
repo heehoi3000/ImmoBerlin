@@ -66,7 +66,7 @@ export default function Kontaktformular({ anzeigeId, titel, kontaktierbar }: { a
       <button type="submit" disabled={zustand === 'sendet'} className="h-11 rounded-lg bg-black text-white text-sm font-bold hover:bg-zinc-800 disabled:opacity-50">
         {zustand === 'sendet' ? 'Wird gesendet…' : 'Anfrage senden'}
       </button>
-      <p className="text-[11px] text-zinc-400">Wir geben deinen Namen, deine E-Mail, die Telefonnummer und die Nachricht nur an diesen Anbieter weiter, damit er dir antworten kann.</p>
+      <p className="text-[11px] text-zinc-400">Wir geben deinen Namen, deine E-Mail, die Telefonnummer und die Nachricht nur an diesen Anbieter weiter, damit er dir antworten kann. Mehr dazu in der <Link href="/datenschutz/" className="underline underline-offset-2">Datenschutzerklärung</Link>.</p>
     </form>
   );
 }

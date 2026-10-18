@@ -90,7 +90,7 @@ export default function Konto() {
           ))}
         </div>
       )}
-      {modus === 'registrieren' && <p className="text-sm text-zinc-600">Mit einem Konto kannst du kostenlos Wohnungen und Häuser inserieren und deine Inserate verwalten.</p>}
+      {modus === 'registrieren' && <p className="text-sm text-zinc-600">Mit einem Konto kannst du kostenlos Wohnungen und Häuser inserieren und deine Inserate verwalten. Wie wir deine Daten verarbeiten, steht in der <Link href="/datenschutz/" className="underline underline-offset-2">Datenschutzerklärung</Link>.</p>}
       <form onSubmit={absenden} className="flex flex-col gap-3">
         {modus !== 'neues_passwort' && (
           <label className="flex flex-col gap-1.5">

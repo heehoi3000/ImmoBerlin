@@ -148,7 +148,7 @@ function Fusszeile() {
           <Logo />
           <p className="text-xs text-zinc-500 mt-2">Wohnungen und Häuser finden, die nah an deiner Bahn, deinem Bus oder deiner Tram liegen. Kostenlos und deutschlandweit.</p>
         </div>
-        <div className="flex gap-12">
+        <div className="flex flex-wrap gap-x-12 gap-y-6">
           <div className="flex flex-col gap-2">
             <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">Angebot</span>
             <Link href="/" className="text-zinc-600 hover:text-black">Suchen</Link>
@@ -159,6 +159,11 @@ function Fusszeile() {
             <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">Hilfe</span>
             <button onClick={() => melden({ art: 'fehler' })} className="text-left text-zinc-600 hover:text-black">Fehler melden</button>
             <button onClick={() => melden({ art: 'sonstiges' })} className="text-left text-zinc-600 hover:text-black">Feedback geben</button>
+          </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">Rechtliches</span>
+            <Link href="/impressum/" className="text-zinc-600 hover:text-black">Impressum</Link>
+            <Link href="/datenschutz/" className="text-zinc-600 hover:text-black">Datenschutz</Link>
           </div>
         </div>
       </div>

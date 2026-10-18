@@ -8,7 +8,7 @@ import L from 'leaflet';
 import '@maplibre/maplibre-gl-leaflet';
 import 'leaflet.markercluster';
 import { setWorkerUrl } from 'maplibre-gl';
-import { Kartenausschnitt, Linie } from '../lib/oepnv';
+import { Kartenausschnitt, Linie, haltestelleKurz } from '../lib/oepnv';
 import { Bezirk } from '../lib/filter';
 import { bezirkeAusdehnung } from '../lib/bezirke';
 import { Anzeige, Haltestelle, NaechsteHaltestelle } from '../lib/suche';
@@ -121,7 +121,7 @@ function Linienkorridore({ haltestellen, linien, umkreisM }: { haltestellen: Hal
       {zoom >= 13 && linien.map((l, i) => haltestellen.filter(h => h.linie_id === l.linie_id).map(h => (
         <CircleMarker key={`halt-${l.linie_id}-${h.stop_id}`} center={[h.lat, h.lon]} radius={zoom >= 15 ? 5 : 3.5}
           pathOptions={{ color: linienFarbe(i), weight: 2.5, fillColor: '#fff', fillOpacity: 1 }}>
-          <Popup><strong>{l.nummer}</strong> · {h.name}</Popup>
+          <Popup><strong>{l.nummer}</strong> · {haltestelleKurz(h.name)}</Popup>
         </CircleMarker>
       )))}
     </>

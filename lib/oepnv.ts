@@ -37,3 +37,14 @@ export function punktAusEwkb(hex: string | null | undefined): { lat: number; lon
   const start = typ & 0x20000000 ? 9 : 5;
   return { lon: v.getFloat64(start, le), lat: v.getFloat64(start + 8, le) };
 }
+
+// Haltestellennamen für die Anzeige kürzen: Bahnsteig-, Gleis- und Mastangaben entfernen,
+// z. B. "U Pankstr. Bstggl.2" → "U Pankstr.", "Lübbenau, Bahnhof, Mast 3" → "Lübbenau, Bahnhof"
+export function haltestelleKurz(name: string): string {
+  return name
+    .replace(/\s*\[[^\]]*\]/g, '')
+    .replace(/\s*\((?:Steig|Bstg\.?|Gleis)\s*[A-Z0-9]+\)/gi, '')
+    .replace(/[,\s]+(?:Bstggl\.?|Bstg\.?|Bstgl\.?|Gleis|Gl\.|Steig|Mast)\s*\d+[a-z]?\b.*$/i, '')
+    .replace(/[,\s]+$/, '')
+    .trim() || name;
+}

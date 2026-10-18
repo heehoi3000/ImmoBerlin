@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Anzeige, NaechsteHaltestelle } from '../lib/suche';
 import { useMerkliste } from '../lib/merkliste';
 import { OBJEKTARTEN } from '../lib/filter';
+import { haltestelleKurz } from '../lib/oepnv';
 
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const objektartName: Record<string, string> = Object.fromEntries(
@@ -47,7 +48,6 @@ export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt }: {
         {!kompakt && (
           <div className="absolute left-3 top-3 flex gap-1.5">
             {neu(a.erstellt_am) && <span className="px-2 py-1 rounded-full bg-white text-[11px] font-bold shadow-sm">Neu</span>}
-            {n && <span className="px-2 py-1 rounded-full bg-black/80 text-white text-[11px] font-bold backdrop-blur-sm">{n.linie} · {n.distanz_m} m</span>}
           </div>
         )}
       </Link>
@@ -62,7 +62,7 @@ export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt }: {
         </div>
         <p className="text-sm text-zinc-800">{fakten.join(' · ')}</p>
         <p className="text-sm text-zinc-500 truncate">{ort}</p>
-        {kompakt && n && <p className="text-xs font-semibold text-blue-700 mt-0.5">{n.linie} · {n.distanz_m} m zur Haltestelle</p>}
+        {n && <p className="text-xs font-semibold text-blue-700 mt-0.5 truncate">{n.linie} · {n.distanz_m} m bis {haltestelleKurz(n.haltestelle)}</p>}
         {!kompakt && <p className="text-xs text-zinc-400 truncate mt-0.5">{a.titel}</p>}
       </Link>
     </div>

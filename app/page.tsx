@@ -156,7 +156,7 @@ export default function Home() {
     : null;
 
   return (
-    <div className="flex flex-col min-h-screen w-full bg-white overflow-x-hidden">
+    <div className="flex flex-col w-full overflow-x-hidden">
       <Banner />
 
       <div className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-8 py-6 flex flex-col gap-4">

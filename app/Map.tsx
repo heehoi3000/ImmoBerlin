@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef } from 'react';
+import Link from 'next/link';
 import 'leaflet/dist/leaflet.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapContainer, Marker, Popup, Circle, CircleMarker, Rectangle, GeoJSON, useMap, useMapEvents } from 'react-leaflet';
@@ -11,7 +12,7 @@ import { Bezirk } from '../lib/filter';
 import { bezirkeAusdehnung } from '../lib/bezirke';
 import { Anzeige, Haltestelle, NaechsteHaltestelle } from '../lib/suche';
 
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -155,6 +156,7 @@ export default function Map({ anzeigen, haltestellen, naechste, linienUmkreisM, 
                 {anzeige.warmmiete && <><strong>Warmmiete:</strong> {euro.format(Number(anzeige.warmmiete))}<br/></>}
                 <strong>Fläche:</strong> {anzeige.quadratmeter} m² · <strong>Zimmer:</strong> {anzeige.zimmer}<br/>
                 {anzeige.adresse}
+                <br/><Link href={`/anzeige/?id=${anzeige.id}`} style={{ display: 'inline-block', marginTop: '6px', fontWeight: 'bold' }}>Zum Inserat →</Link>
                 {naechste[anzeige.id] && (
                   <><br/><strong>ÖPNV:</strong> {naechste[anzeige.id].distanz_m} m zur {naechste[anzeige.id].linie}, {naechste[anzeige.id].haltestelle}</>
                 )}

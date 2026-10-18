@@ -1,22 +1,20 @@
 // Banner oben auf der Startseite mit dem symbolischen Streckennetz.
 export default function Banner() {
   return (
-    <div className="relative w-full h-64 md:h-80 bg-zinc-50 flex items-center justify-center overflow-hidden border-b border-zinc-200">
-    
-      {/* TEXT IN DER MITTE */}
-      <div className="relative z-10 text-center max-w-3xl px-4 flex justify-center -mt-8 md:-mt-12">
-        <div className="bg-white/90 backdrop-blur-md px-6 py-4 md:px-10 md:py-6 rounded-2xl border border-zinc-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex flex-col items-center gap-1.5 md:gap-2 text-center">
-          <p className="text-2xl md:text-4xl font-medium tracking-normal text-black uppercase">
-            Dein Zuhause
-          </p>
-          <p className="text-lg md:text-2xl font-normal tracking-normal text-black/70 uppercase">
-            Nur einen Bahnhof entfernt
-          </p>
+    <div className="relative w-full h-56 md:h-72 bg-gradient-to-b from-white to-zinc-50 flex items-center overflow-hidden border-b border-zinc-200/70">
+
+      {/* TEXT */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8">
+        <div className="max-w-xl bg-white/80 backdrop-blur-md rounded-2xl px-6 py-5 md:px-8 md:py-7 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.06)]">
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-black leading-[1.05]">
+            Dein Zuhause.<br /><span className="text-zinc-400 font-medium">Nur einen Bahnhof entfernt.</span>
+          </h1>
+          <p className="mt-3 text-sm md:text-base text-zinc-600">Wohnungen und Häuser in ganz Deutschland, gefiltert nach deiner Bahn, deinem Bus oder deiner Tram.</p>
         </div>
       </div>
-    
+
       {/* SYMBOLISCHES STRECKENNETZ */}
-      <div className="absolute inset-0 z-0 opacity-50 pointer-events-none">
+      <div className="absolute inset-0 z-0 opacity-40 pointer-events-none">
         <svg className="w-full h-full" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice">
         
           {/* 1. Rote Strecke - Verläuft nach dem Umsteigebahnhof (750, 350) nun waagerecht auf Höhe 350 weiter */}

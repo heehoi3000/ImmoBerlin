@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import "./globals.css";
+import Rahmen from "./Rahmen";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -8,7 +9,7 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: "Immobil - Wohnungssuche am ÖPNV",
-  description: "Finde dein Zuhause in Berlin basierend auf ÖPNV-Anbindung.",
+  description: "Finde Wohnungen und Häuser in ganz Deutschland nach ÖPNV-Anbindung.",
 };
 
 export default function RootLayout({
@@ -18,72 +19,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de">
-      <body className={`${outfit.className} antialiased min-h-screen flex flex-col bg-zinc-50`}>
-        
-        {/* --- KOPFZEILE START --- */}
-        <header className="sticky top-0 flex items-center justify-between px-6 py-4 bg-white border-b border-zinc-200 z-50 shadow-sm">
-          
-          {/* Linker Teil: Menü & Logo */}
-          <div className="flex items-center gap-5">
-            
-            {/* Menü-Button */}
-            <button className="flex flex-col items-center justify-end pb-1.5 text-zinc-500 hover:text-black hover:bg-zinc-100 rounded-lg transition cursor-pointer h-12 w-12">
-              <svg className="mb-1" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-              <span className="text-[9px] leading-none font-bold uppercase tracking-widest text-zinc-900">Menü</span>
-            </button>
-            
-            {/* --- NEUES LOGO: IMMOBIL --- */}
-            {/* w-max sorgt dafür, dass der Container exakt so breit ist wie das h1 */}
-            <div className="flex flex-col justify-end pb-1.5 h-12 leading-none w-max">
-              <h1 className="text-[26px] uppercase mb-1 flex items-baseline tracking-tighter">
-                {/* 1. "IM" - aufrecht und fett (Fundament) */}
-                <span className="font-extrabold text-black">IM</span>
-                
-                {/* 2. "MO" - kursiv ABER fett (Die Brücke zwischen beiden Worten) */}
-                <span className="font-extrabold text-black italic">MO</span>
-                
-                {/* 3. "BIL" - kursiv, dünn und grau (Mobilität & Leichtigkeit) */}
-                <span className="font-light italic text-zinc-400 tracking-normal ml-[1px]">BIL</span>
-              </h1>
-              
-              {/* Untertitel: Bündig ausgerichtet durch justify-between und einzelne Buchstaben */}
-              <div className="flex w-full justify-between text-[9px] leading-none font-bold text-zinc-400 uppercase">
-                {"Wohnungssuche".split("").map((char, index) => (
-                  <span key={index}>{char}</span>
-                ))}
-              </div>
-            </div>
-            
-          </div>
-
-          {/* Rechter Teil: Aktionen */}
-          <div className="flex items-center gap-3">
-            <button className="hover:bg-zinc-100 p-2.5 rounded-full transition mr-4 flex items-center justify-center cursor-pointer">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="#990000">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              </svg>
-            </button>
-            
-            <button className="px-5 py-2.5 font-semibold text-zinc-600 hover:text-black hover:bg-zinc-100 rounded-lg transition cursor-pointer">
-              Login
-            </button>
-            
-            <button className="px-5 py-2.5 font-bold text-zinc-800 bg-white border-2 border-zinc-200 rounded-lg shadow-sm hover:border-black hover:bg-black hover:text-white transition-all duration-300 cursor-pointer">
-              Wohnung Inserieren
-            </button>
-          </div>
-          
-        </header>
-        {/* --- KOPFZEILE ENDE --- */}
-
-        <main className="flex-grow flex flex-col relative z-10">
-          {children}
-        </main>
-        
+      <body className={`${outfit.className} antialiased min-h-screen flex flex-col bg-zinc-50 text-zinc-900`}>
+        <Rahmen>{children}</Rahmen>
       </body>
     </html>
   );

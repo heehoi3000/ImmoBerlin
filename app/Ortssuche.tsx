@@ -38,7 +38,7 @@ export default function Ortssuche({ ort, onChange }: { ort: Ort | null; onChange
   const [offen, setOffen] = useState(false);
   const anfrage = useRef(0);
 
-  useEffect(() => { setText(ort?.name ?? ''); }, [ort]); // eslint-disable-line react-hooks/set-state-in-effect
+  useEffect(() => { setText(ort?.name ?? ''); }, [ort]);
 
   // Ohne Eingabe keine (veralteten) Vorschläge zeigen
   const sichtbar = offen && text.trim().length > 0 && text.trim() !== ort?.name ? vorschlaege : [];

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 // NEU: GeoJSON importieren
 import { MapContainer, TileLayer, Marker, Popup, GeoJSON, Circle, CircleMarker, useMapEvents } from 'react-leaflet';
@@ -20,18 +20,10 @@ const houseIcon = L.divIcon({
   iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -15]
 });
 
-// Hintergrundkarten: CARTO als Standard, OpenStreetMap als Ersatz,
-// falls CARTO im Browser des Nutzers keine Kacheln liefert.
-const KARTENQUELLEN = [
-  {
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; OpenStreetMap &copy; CARTO',
-  },
-  {
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  },
-];
+// Hintergrundkarte von OpenStreetMap. CARTO liefert seit Oktober 2026 nur noch
+// mit API-Schlüssel Kacheln ("API KEY REQUIRED").
+const KARTE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const KARTE_HINWEIS = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 const FAHRPLAN_HINWEIS = ' | Fahrplandaten: <a href="https://www.delfi.de">DELFI e.V.</a>, CC BY 4.0';
 
 interface Haltestelle { stop_id: string; name: string; lat: number; lon: number; }
@@ -74,8 +66,6 @@ export default function Map({ filters, onAusschnittChange }: MapProps) {
   const [bezirkGrenzen, setBezirkGrenzen] = useState<any[]>([]);
   const [haltestellen, setHaltestellen] = useState<Haltestelle[]>([]);
   const [naechste, setNaechste] = useState<Record<string, NaechsteHaltestelle>>({});
-  const [kartenQuelle, setKartenQuelle] = useState(0);
-  const kachelStatus = useRef({ geladen: 0, fehler: 0 });
 
   useEffect(() => {
     async function fetchAnzeigenUndGrenzen() {
@@ -152,20 +142,8 @@ export default function Map({ filters, onAusschnittChange }: MapProps) {
     <div style={{ height: '100%', width: '100%', minHeight: '100vh', position: 'relative' }}>
       <MapContainer center={berlinPosition} zoom={11} preferCanvas style={{ height: "100%", width: "100%", position: "absolute", top: 0, left: 0, bottom: 0, right: 0 }}>
         <TileLayer
-          key={kartenQuelle}
-          attribution={KARTENQUELLEN[kartenQuelle].attribution + FAHRPLAN_HINWEIS}
-          url={KARTENQUELLEN[kartenQuelle].url}
-          eventHandlers={{
-            tileload: () => { kachelStatus.current.geladen++; },
-            tileerror: () => {
-              // Lädt keine einzige Kachel, auf die nächste Quelle umschalten
-              kachelStatus.current.fehler++;
-              if (kachelStatus.current.geladen === 0 && kachelStatus.current.fehler >= 3 && kartenQuelle < KARTENQUELLEN.length - 1) {
-                kachelStatus.current = { geladen: 0, fehler: 0 };
-                setKartenQuelle(kartenQuelle + 1);
-              }
-            },
-          }}
+          attribution={KARTE_HINWEIS + FAHRPLAN_HINWEIS}
+          url={KARTE_URL}
         />
 
         <AusschnittMelder onChange={onAusschnittChange} />

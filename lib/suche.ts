@@ -6,7 +6,7 @@ import { bezirkeAusdehnung, bezirksgrenzeLaden, inBezirken } from './bezirke';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Anzeige = Record<string, any> & { id: string; koordinate_lat: number; koordinate_lon: number };
-export interface Haltestelle { stop_id: string; name: string; lat: number; lon: number; }
+export interface Haltestelle { stop_id: string; name: string; lat: number; lon: number; linie_id?: number; }
 export interface NaechsteHaltestelle { anzeige_id: string; distanz_m: number; haltestelle: string; linie: string; }
 
 export interface Suchergebnis {
@@ -114,13 +114,16 @@ export async function anzeigenSuchen(f: Filter, erweitert: boolean): Promise<Suc
   const [spalte, aufsteigend] = sortierung[f.sortierung] ?? sortierung.neueste;
   query = query.order(spalte, { ascending: aufsteigend, nullsFirst: false });
 
-  const [anzeigenRes, haltRes, naechsteRes] = await Promise.all([
+  // Haltestellen je Linie einzeln laden, damit die Karte jede Linie in ihrer Farbe zeichnet
+  const [anzeigenRes, haltResListe, naechsteRes] = await Promise.all([
     query,
-    linienIds.length > 0 ? supabase.rpc('haltestellen_der_linien', { linien_ids: linienIds }) : null,
+    Promise.all(linienIds.map(id => supabase.rpc('haltestellen_der_linien', { linien_ids: [id] })
+      .then(res => ({ ...res, data: ((res.data as Haltestelle[]) || []).map(h => ({ ...h, linie_id: id })) })))),
     linienIds.length > 0 ? supabase.rpc('anzeigen_naechste_haltestelle', { linien_ids: linienIds, radius_m: radius }) : null,
   ]);
   if (anzeigenRes.error) throw anzeigenRes.error;
-  if (haltRes?.error) console.error("Fehler beim Laden der Haltestellen:", haltRes.error);
+  const haltFehler = haltResListe.find(h => h.error);
+  if (haltFehler) console.error("Fehler beim Laden der Haltestellen:", haltFehler.error);
   if (naechsteRes?.error) console.error("Fehler beim Laden der Entfernungen:", naechsteRes.error);
 
   let anzeigen = ((anzeigenRes.data as Anzeige[]) || []).filter(a => a.koordinate_lat && a.koordinate_lon);
@@ -136,5 +139,5 @@ export async function anzeigenSuchen(f: Filter, erweitert: boolean): Promise<Suc
     anzeigen.sort((a, b) => (naechste[a.id]?.distanz_m ?? Infinity) - (naechste[b.id]?.distanz_m ?? Infinity));
   }
 
-  return { anzeigen, haltestellen: (haltRes?.data as Haltestelle[]) || [], naechste, ortGrenze };
+  return { anzeigen, haltestellen: haltResListe.flatMap(h => h.data), naechste, ortGrenze };
 }

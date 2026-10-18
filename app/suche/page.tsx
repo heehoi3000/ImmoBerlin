@@ -378,7 +378,7 @@ export default function Suche() {
           <div className="relative h-full w-full lg:p-3 lg:pl-0">
             <div className="relative h-full w-full overflow-hidden lg:rounded-2xl">
               <Map anzeigen={ergebnis.anzeigen} haltestellen={ergebnis.haltestellen} naechste={ergebnis.naechste}
-                linienUmkreisM={linienUmkreisM(angewendet.linienUmkreisM)} ortKreis={ortKreis} bezirke={grenzen}
+                linienUmkreisM={linienUmkreisM(angewendet.linienUmkreisM)} linien={angewendet.linien} ortKreis={ortKreis} bezirke={grenzen}
                 aktivId={hoverId ?? auswahlId} onAuswahl={pinWaehlen} onAusschnittChange={setAusschnitt} />
               {ausgewaehlt && (
                 <div className="absolute z-[1000] left-3 right-3 bottom-3 sm:left-auto sm:right-3 sm:w-[380px] bg-white rounded-2xl shadow-2xl p-2.5 pr-9">

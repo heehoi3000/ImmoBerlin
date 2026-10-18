@@ -1,14 +1,14 @@
 "use client";
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
-import { MapContainer, Popup, Circle, CircleMarker, Rectangle, GeoJSON, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Popup, Circle, CircleMarker, Rectangle, GeoJSON, Polygon, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import '@maplibre/maplibre-gl-leaflet';
 import 'leaflet.markercluster';
 import { setWorkerUrl } from 'maplibre-gl';
-import { Kartenausschnitt } from '../lib/oepnv';
+import { Kartenausschnitt, Linie } from '../lib/oepnv';
 import { Bezirk } from '../lib/filter';
 import { bezirkeAusdehnung } from '../lib/bezirke';
 import { Anzeige, Haltestelle, NaechsteHaltestelle } from '../lib/suche';
@@ -86,6 +86,46 @@ function BezirkeAnzeige({ bezirke }: { bezirke: Bezirk[] }) {
   }, [map, schluessel]); // eslint-disable-line react-hooks/exhaustive-deps
   const stil = { color: '#000', weight: 2, opacity: 0.6, dashArray: '6 6', fillOpacity: 0.04 };
   return <>{bezirke.filter(b => b.grenze).map(b => <GeoJSON key={b.id} data={b.grenze!} style={stil} interactive={false} />)}</>;
+}
+
+// Eine Farbe je gewählter Linie, gut unterscheidbar
+const LINIENFARBEN = ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#db2777', '#0891b2', '#ca8a04'];
+export const linienFarbe = (i: number) => LINIENFARBEN[i % LINIENFARBEN.length];
+
+// Kreis als Ring aus Punkten, alle im selben Drehsinn, damit sich Überlappungen beim Füllen vereinigen
+function kreisRing(lat: number, lon: number, m: number): [number, number][] {
+  const dLat = m / 111320, dLon = m / (111320 * Math.cos(lat * Math.PI / 180));
+  return Array.from({ length: 36 }, (_, i) => {
+    const w = (i / 36) * 2 * Math.PI;
+    return [lat + dLat * Math.sin(w), lon + dLon * Math.cos(w)];
+  });
+}
+
+// Einzugsbereich jeder Linie als eine zusammenhängende Fläche statt vieler einzelner Kreise.
+// Haltestellen erscheinen erst ab Zoomstufe 13 als kleine Punkte.
+function Linienkorridore({ haltestellen, linien, umkreisM }: { haltestellen: Haltestelle[]; linien: Linie[]; umkreisM: number }) {
+  const [zoom, setZoom] = useState(11);
+  const map = useMapEvents({ zoomend: () => setZoom(map.getZoom()) });
+  useEffect(() => { setZoom(map.getZoom()); }, [map]); // eslint-disable-line react-hooks/set-state-in-effect
+  return (
+    <>
+      {linien.map((l, i) => {
+        const halte = haltestellen.filter(h => h.linie_id === l.linie_id);
+        if (halte.length === 0) return null;
+        const farbe = linienFarbe(i);
+        return (
+          <Polygon key={`korridor-${l.linie_id}-${umkreisM}`} positions={halte.map(h => [kreisRing(h.lat, h.lon, umkreisM)])} interactive={false}
+            pathOptions={{ stroke: false, fillColor: farbe, fillOpacity: 0.16, fillRule: 'nonzero' }} />
+        );
+      })}
+      {zoom >= 13 && linien.map((l, i) => haltestellen.filter(h => h.linie_id === l.linie_id).map(h => (
+        <CircleMarker key={`halt-${l.linie_id}-${h.stop_id}`} center={[h.lat, h.lon]} radius={zoom >= 15 ? 5 : 3.5}
+          pathOptions={{ color: linienFarbe(i), weight: 2.5, fillColor: '#fff', fillOpacity: 1 }}>
+          <Popup><strong>{l.nummer}</strong> · {h.name}</Popup>
+        </CircleMarker>
+      )))}
+    </>
+  );
 }
 
 // Preis kurz für den Pin: 1.160 €, 485 Tsd. €, 1,2 Mio. €
@@ -176,10 +216,11 @@ interface MapProps {
   fokus?: { id: string; nr: number } | null;
   aktivId?: string | null;
   onAuswahl?: (id: string | null) => void;
+  linien?: Linie[];
   onAusschnittChange?: (a: Kartenausschnitt) => void;
 }
 
-export default function Map({ anzeigen, haltestellen, linienUmkreisM, ortKreis, bezirke, fokus = null, aktivId = null, onAuswahl, onAusschnittChange }: MapProps) {
+export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreisM, ortKreis, bezirke, fokus = null, aktivId = null, onAuswahl, onAusschnittChange }: MapProps) {
   const berlinPosition: [number, number] = [52.516, 13.42];
 
   return (
@@ -194,20 +235,20 @@ export default function Map({ anzeigen, haltestellen, linienUmkreisM, ortKreis, 
         <Fokus fokus={fokus} anzeigen={anzeigen} />
         <KlickLeer onKlick={() => onAuswahl?.(null)} />
 
-        {/* Umkreis um jede Haltestelle der gewählten Linien */}
-        {haltestellen.map((h) => (
-          <Circle key={`umkreis-${h.stop_id}`} center={[h.lat, h.lon]} radius={linienUmkreisM}
-            pathOptions={{ color: '#2563eb', weight: 1, opacity: 0.35, fillColor: '#2563eb', fillOpacity: 0.06 }} interactive={false} />
-        ))}
-        {haltestellen.map((h) => (
-          <CircleMarker key={`halt-${h.stop_id}`} center={[h.lat, h.lon]} radius={4}
-            pathOptions={{ color: '#1d4ed8', weight: 2, fillColor: '#fff', fillOpacity: 1 }}>
-            <Popup>{h.name}</Popup>
-          </CircleMarker>
-        ))}
+        <Linienkorridore haltestellen={haltestellen} linien={linien} umkreisM={linienUmkreisM} />
 
         <PreisPins anzeigen={anzeigen} aktivId={aktivId} onAuswahl={(id) => onAuswahl?.(id)} />
       </MapContainer>
+      {linien.length > 0 && (
+        <div className="absolute left-3 top-3 z-[1000] flex flex-wrap gap-1.5 max-w-[70%] pointer-events-none">
+          {linien.map((l, i) => (
+            <span key={l.linie_id} className="flex items-center gap-1.5 bg-white/95 rounded-full pl-1 pr-2.5 py-1 shadow-md text-xs font-semibold">
+              <span className="px-1.5 py-0.5 rounded-full text-white text-[11px] font-bold" style={{ background: linienFarbe(i) }}>{l.nummer}</span>
+              {linienUmkreisM} m
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

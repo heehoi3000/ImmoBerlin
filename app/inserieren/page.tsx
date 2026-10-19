@@ -180,7 +180,11 @@ export default function Inserieren() {
       ? await supabase.from('anzeigen').update(zeile).eq('id', id).select('id').single()
       : await supabase.from('anzeigen').insert({ ...zeile, status: 'aktiv' }).select('id').single();
     setLaedt(false);
-    if (error) { console.error(error); setFehler('Das Inserat konnte nicht gespeichert werden. Bitte prüfe deine Angaben und versuche es noch einmal.'); return; }
+    if (error) {
+      console.error(error);
+      setFehler(error.message.includes('Zu viele') ? 'Du hast heute schon 10 Inserate aufgegeben. Weitere sind ab morgen möglich.' : 'Das Inserat konnte nicht gespeichert werden. Bitte prüfe deine Angaben und versuche es noch einmal.');
+      return;
+    }
     setGespeichert(data.id);
     window.scrollTo({ top: 0 });
   }

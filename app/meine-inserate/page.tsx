@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 import { useNutzer } from '../../lib/konto';
 import { Anzeige } from '../../lib/suche';
+import { SPERR_KATEGORIEN, moderationsFehler } from '../../lib/moderation';
 
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 
@@ -85,7 +86,7 @@ export default function MeineInserate() {
                 <h2 className="font-bold truncate">{a.titel}</h2>
                 <p className="text-xs text-zinc-500 truncate">{[a.adresse, a.ort].filter(Boolean).join(', ')}</p>
                 <p className="text-sm font-semibold">{euro.format(Number(a.preis))} · {a.quadratmeter} m² · {a.zimmer} Zi.</p>
-                {a.status === 'gesperrt' && <p className="text-xs text-red-700">Dieses Inserat wurde nach einer Meldung gesperrt. Bei Fragen nutze „Fehler melden“.</p>}
+                {a.status === 'gesperrt' && <Sperrhinweis a={a} onEinspruch={(text) => setInserate(liste => liste!.map(x => x.id === a.id ? { ...x, einspruch: text, einspruch_am: new Date().toISOString() } : x))} />}
               </div>
               <div className="flex sm:flex-col gap-2 sm:w-36 shrink-0 text-sm font-semibold">
                 <Link href={`/anzeige/?id=${a.id}`} className="flex-1 h-9 rounded-lg border border-zinc-200 flex items-center justify-center hover:border-black">Ansehen</Link>
@@ -98,6 +99,52 @@ export default function MeineInserate() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// Begründung der Sperre (Art. 17 DSA) und Einspruch dagegen
+function Sperrhinweis({ a, onEinspruch }: { a: Anzeige; onEinspruch: (text: string) => void }) {
+  const [offen, setOffen] = useState(false);
+  const [text, setText] = useState('');
+  const [laedt, setLaedt] = useState(false);
+  const [fehler, setFehler] = useState('');
+  const tag = (s: string) => new Date(s).toLocaleDateString('de-DE');
+
+  async function senden(e: React.FormEvent) {
+    e.preventDefault();
+    setLaedt(true); setFehler('');
+    const { error } = await supabase.rpc('einspruch_einlegen', { p_id: a.id, p_text: text });
+    setLaedt(false);
+    if (error) { setFehler(moderationsFehler(error.message)); return; }
+    onEinspruch(text.trim());
+  }
+
+  return (
+    <div className="mt-2 bg-red-50 border border-red-100 rounded-lg p-3 text-xs text-red-900 flex flex-col gap-1.5">
+      <p><strong>Gesperrt{a.gesperrt_am ? ` am ${tag(a.gesperrt_am)}` : ''}:</strong> {SPERR_KATEGORIEN[a.sperr_kategorie] ?? 'Verstoß gegen unsere Regeln'}</p>
+      {a.sperrgrund && <p className="whitespace-pre-line">{a.sperrgrund}</p>}
+      <p className="text-red-800/80">Das Inserat ist nicht mehr öffentlich sichtbar. Wir haben die Entscheidung nach einer Prüfung durch unser Team getroffen.</p>
+      {a.einspruch ? (
+        <div className="border-t border-red-100 pt-1.5 mt-1">
+          <p><strong>Dein Einspruch vom {tag(a.einspruch_am)}:</strong> {a.einspruch}</p>
+          {a.einspruch_antwort
+            ? <p className="mt-1"><strong>Abgelehnt am {tag(a.einspruch_entschieden_am)}:</strong> {a.einspruch_antwort}</p>
+            : <p className="mt-1">Wir prüfen deinen Einspruch und schalten das Inserat wieder frei, wenn er berechtigt ist.</p>}
+        </div>
+      ) : offen ? (
+        <form onSubmit={senden} className="flex flex-col gap-2 mt-1">
+          <textarea required minLength={10} maxLength={2000} rows={3} value={text} onChange={(e) => setText(e.target.value)}
+            placeholder="Warum ist die Sperre aus deiner Sicht falsch?" className="bg-white border border-red-200 rounded-lg px-3 py-2 text-sm text-zinc-900 resize-y outline-none focus:border-red-700" />
+          {fehler && <p className="text-red-700">{fehler}</p>}
+          <div className="flex gap-2">
+            <button type="submit" disabled={laedt} className="h-8 px-3 rounded-lg bg-red-700 text-white font-bold disabled:opacity-50">{laedt ? 'Wird gesendet…' : 'Einspruch senden'}</button>
+            <button type="button" onClick={() => setOffen(false)} className="h-8 px-3 rounded-lg font-semibold hover:bg-red-100">Abbrechen</button>
+          </div>
+        </form>
+      ) : (
+        <button onClick={() => setOffen(true)} className="self-start mt-1 font-bold underline underline-offset-2">Einspruch einlegen</button>
+      )}
     </div>
   );
 }

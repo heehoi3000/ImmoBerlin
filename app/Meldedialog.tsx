@@ -33,10 +33,12 @@ function Dialog({ anlass, onSchliessen }: { anlass: Anlass; onSchliessen: () => 
   const [art, setArt] = useState<Art>(anlass.art);
   const [nachricht, setNachricht] = useState('');
   const [email, setEmail] = useState('');
-  const [zustand, setZustand] = useState<'offen' | 'sendet' | 'gesendet' | 'fehler'>('offen');
+  const [zustand, setZustand] = useState<'offen' | 'sendet' | 'gesendet' | 'fehler' | 'zu_viele'>('offen');
+  const [falle, setFalle] = useState(''); // unsichtbares Feld gegen Spam-Bots
 
   async function senden(e: React.FormEvent) {
     e.preventDefault();
+    if (falle) { setZustand('gesendet'); return; }
     setZustand('sendet');
     const { error } = await supabase.from('meldungen').insert({
       art,
@@ -48,7 +50,7 @@ function Dialog({ anlass, onSchliessen }: { anlass: Anlass; onSchliessen: () => 
       nutzer_id: nutzer?.id ?? null,
     });
     if (error) console.error("Meldung fehlgeschlagen:", error);
-    setZustand(error ? 'fehler' : 'gesendet');
+    setZustand(!error ? 'gesendet' : error.message.includes('Zu viele') ? 'zu_viele' : 'fehler');
   }
 
   // Escape schließt den Dialog
@@ -98,6 +100,8 @@ function Dialog({ anlass, onSchliessen }: { anlass: Anlass; onSchliessen: () => 
               </label>
             )}
             <p className="text-[11px] text-zinc-400">Mit der Meldung speichern wir die aktuelle Seitenadresse und deinen Browsertyp, damit wir Fehler nachvollziehen können. Mehr dazu in der <Link href="/datenschutz/" onClick={onSchliessen} className="underline underline-offset-2">Datenschutzerklärung</Link>.</p>
+            <input tabIndex={-1} autoComplete="off" aria-hidden="true" value={falle} onChange={(e) => setFalle(e.target.value)} className="absolute -left-[9999px] w-px h-px opacity-0" name="website" />
+            {zustand === 'zu_viele' && <p className="text-sm text-red-600">Du hast in der letzten Stunde schon mehrere Meldungen gesendet. Bitte versuche es später noch einmal.</p>}
             {zustand === 'fehler' && <p className="text-sm text-red-600">Die Meldung konnte nicht gesendet werden. Bitte versuche es noch einmal.</p>}
             <div className="flex justify-end gap-2">
               <button type="button" onClick={onSchliessen} className="h-10 px-4 rounded-lg text-sm font-semibold text-zinc-600 hover:bg-zinc-100">Abbrechen</button>

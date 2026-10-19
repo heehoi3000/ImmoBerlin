@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { useNutzer } from '../lib/konto';
 import { useMerkliste } from '../lib/merkliste';
 import { useUngelesen } from '../lib/nachrichten';
+import { useModerator } from '../lib/moderation';
 import { MeldenAnbieter, useMelden } from './Meldedialog';
 
 function Logo() {
@@ -35,6 +36,7 @@ function Kopfzeile() {
   const nutzer = useNutzer();
   const { ids } = useMerkliste();
   const ungelesen = useUngelesen(nutzer?.id);
+  const moderator = useModerator(nutzer?.id);
   const melden = useMelden();
   const router = useRouter();
   const pfad = usePathname();
@@ -67,6 +69,7 @@ function Kopfzeile() {
     { href: '/nachrichten/', text: `Nachrichten${ungelesen ? ` (${ungelesen} neu)` : ''}` },
     { href: '/merkliste/', text: `Merkliste${ids.length ? ` (${ids.length})` : ''}` },
     { href: '/konto/', text: nutzer ? 'Mein Konto' : 'Anmelden oder registrieren' },
+    ...(moderator ? [{ href: '/moderation/', text: 'Moderation' }] : []),
     { text: 'Fehler melden', aktion: () => { setMenueOffen(false); melden({ art: 'fehler' }); } },
   ];
 
@@ -102,6 +105,7 @@ function Kopfzeile() {
                   <Link href="/meine-inserate/" className="block px-4 py-2 hover:bg-zinc-50">Meine Inserate</Link>
                   <Link href="/nachrichten/" className="flex items-center px-4 py-2 hover:bg-zinc-50">Nachrichten{abzeichen(ungelesen)}</Link>
                   <Link href="/konto/" className="block px-4 py-2 hover:bg-zinc-50">Konto</Link>
+                  {moderator && <Link href="/moderation/" className="block px-4 py-2 hover:bg-zinc-50">Moderation</Link>}
                   <button onClick={abmelden} className="w-full text-left px-4 py-2 hover:bg-zinc-50 text-red-700">Abmelden</button>
                 </div>
               )}

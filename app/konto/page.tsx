@@ -1,10 +1,12 @@
 "use client";
 // Anmelden, Registrieren, Passwort zurücksetzen und Kontoübersicht.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { authFehlerText, seitenUrl, useNutzer } from '../../lib/konto';
+import Turnstile, { TurnstileGriff } from '../Turnstile';
+import { TURNSTILE_SITE_KEY } from '../../lib/turnstile';
 
 type Modus = 'anmelden' | 'registrieren' | 'vergessen' | 'neues_passwort';
 
@@ -19,6 +21,8 @@ export default function Konto() {
   const [laedt, setLaedt] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
   const [hinweis, setHinweis] = useState<string | null>(null);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const turnstile = useRef<TurnstileGriff>(null);
 
   // Link aus der "Passwort vergessen"-Mail öffnet diese Seite im Modus "neues Passwort"
   useEffect(() => {
@@ -32,18 +36,19 @@ export default function Konto() {
   async function absenden(e: React.FormEvent) {
     e.preventDefault();
     setLaedt(true); setFehler(null); setHinweis(null);
+    const captchaToken = captcha ?? undefined;
     try {
       if (modus === 'anmelden') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password: passwort });
+        const { error } = await supabase.auth.signInWithPassword({ email, password: passwort, options: { captchaToken } });
         if (error) throw error;
         router.push(weiterZiel() ?? '/meine-inserate/');
       } else if (modus === 'registrieren') {
-        const { data, error } = await supabase.auth.signUp({ email, password: passwort, options: { emailRedirectTo: seitenUrl('/konto/') } });
+        const { data, error } = await supabase.auth.signUp({ email, password: passwort, options: { emailRedirectTo: seitenUrl('/konto/'), captchaToken } });
         if (error) throw error;
         if (data.session) router.push(weiterZiel() ?? '/inserieren/');
         else setHinweis(`Fast geschafft: Wir haben dir eine Mail an ${email} geschickt. Klicke auf den Link darin, um dein Konto zu bestätigen.`);
       } else if (modus === 'vergessen') {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: seitenUrl('/konto/') });
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: seitenUrl('/konto/'), captchaToken });
         if (error) throw error;
         setHinweis(`Wenn es ein Konto für ${email} gibt, ist jetzt eine Mail mit einem Link zum Zurücksetzen unterwegs.`);
       } else {
@@ -56,6 +61,8 @@ export default function Konto() {
       setFehler(authFehlerText((err as Error).message ?? ''));
     } finally {
       setLaedt(false);
+      // ein Token gilt nur für einen Versuch
+      turnstile.current?.zuruecksetzen();
     }
   }
 
@@ -74,6 +81,7 @@ export default function Konto() {
           <button onClick={() => setModus('neues_passwort')} className="text-zinc-600 underline underline-offset-2 hover:text-black">Passwort ändern</button>
           <button onClick={async () => { await supabase.auth.signOut(); router.push('/'); }} className="text-red-700 underline underline-offset-2">Abmelden</button>
         </div>
+        <KontoLoeschen onGeloescht={() => { setModus('anmelden'); setHinweis('Dein Konto und alle deine Inserate wurden gelöscht.'); }} />
       </Huelle>
     );
   }
@@ -107,15 +115,52 @@ export default function Konto() {
             {modus !== 'anmelden' && <span className="text-[11px] text-zinc-400">Mindestens 8 Zeichen</span>}
           </label>
         )}
+        {modus !== 'neues_passwort' && <Turnstile ref={turnstile} onToken={setCaptcha} />}
         {fehler && <p className="text-sm text-red-600">{fehler}</p>}
         {hinweis && <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">{hinweis}</p>}
-        <button type="submit" disabled={laedt} className="h-11 rounded-lg bg-black text-white text-sm font-bold hover:bg-zinc-800 disabled:opacity-50 mt-1">
+        <button type="submit" disabled={laedt || (!!TURNSTILE_SITE_KEY && modus !== 'neues_passwort' && !captcha)} className="h-11 rounded-lg bg-black text-white text-sm font-bold hover:bg-zinc-800 disabled:opacity-50 mt-1">
           {laedt ? 'Einen Moment…' : { anmelden: 'Anmelden', registrieren: 'Konto erstellen', vergessen: 'Link senden', neues_passwort: 'Passwort speichern' }[modus]}
         </button>
       </form>
       {modus === 'anmelden' && <button onClick={() => { setModus('vergessen'); setFehler(null); }} className="text-sm text-zinc-500 underline underline-offset-2 hover:text-black self-start">Passwort vergessen?</button>}
       {modus === 'vergessen' && <button onClick={() => setModus('anmelden')} className="text-sm text-zinc-500 underline underline-offset-2 hover:text-black self-start">Zurück zur Anmeldung</button>}
     </Huelle>
+  );
+}
+
+// Konto mit allen Inseraten, Fotos und empfangenen Anfragen löschen (Edge Function konto-loeschen)
+function KontoLoeschen({ onGeloescht }: { onGeloescht: () => void }) {
+  const [offen, setOffen] = useState(false);
+  const [bestaetigung, setBestaetigung] = useState('');
+  const [laedt, setLaedt] = useState(false);
+  const [fehler, setFehler] = useState('');
+
+  async function loeschen() {
+    setLaedt(true); setFehler('');
+    const { error } = await supabase.functions.invoke('konto-loeschen', { method: 'POST' });
+    if (error) { console.error(error); setFehler('Das Konto konnte nicht gelöscht werden. Bitte versuche es noch einmal.'); setLaedt(false); return; }
+    onGeloescht();
+    // nur lokal abmelden, das Konto gibt es auf dem Server nicht mehr
+    await supabase.auth.signOut({ scope: 'local' });
+  }
+
+  if (!offen) {
+    return <button onClick={() => setOffen(true)} className="self-start mt-6 pt-4 border-t border-zinc-100 w-full text-left text-sm text-zinc-500 hover:text-red-700">Konto löschen</button>;
+  }
+  return (
+    <div className="mt-6 border border-red-200 bg-red-50 rounded-xl p-4 flex flex-col gap-3 text-sm text-red-900">
+      <strong>Konto endgültig löschen?</strong>
+      <p>Wir löschen dein Konto, alle deine Inserate mit Fotos und die Anfragen, die du bekommen hast. Das lässt sich nicht rückgängig machen.</p>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-xs font-bold">Zur Bestätigung LÖSCHEN eintippen</span>
+        <input value={bestaetigung} onChange={(e) => setBestaetigung(e.target.value)} className="h-10 bg-white border border-red-200 rounded-lg px-3 text-zinc-900 outline-none focus:border-red-700" />
+      </label>
+      {fehler && <p className="text-red-700">{fehler}</p>}
+      <div className="flex gap-2">
+        <button onClick={loeschen} disabled={laedt || bestaetigung.trim().toUpperCase() !== 'LÖSCHEN'} className="h-10 px-4 rounded-lg bg-red-700 text-white font-bold disabled:opacity-40">{laedt ? 'Wird gelöscht…' : 'Endgültig löschen'}</button>
+        <button onClick={() => { setOffen(false); setBestaetigung(''); }} className="h-10 px-4 rounded-lg font-semibold hover:bg-red-100">Abbrechen</button>
+      </div>
+    </div>
   );
 }
 

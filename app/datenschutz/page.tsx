@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { BETREIBER } from '../../lib/betreiber';
 import { Rechtstext } from '../Rechtstext';
+import { TURNSTILE_SITE_KEY } from '../../lib/turnstile';
 
 export const metadata = { title: 'Datenschutz – IMMOBIL' };
 
@@ -48,13 +49,18 @@ export default function Datenschutz() {
         <p>
           Für ein Konto speichern wir deine E-Mail-Adresse, dein Passwort (nur verschlüsselt als Hash) sowie Zeitpunkte von Registrierung und letzter Anmeldung.
           Wir senden dir E-Mails zur Bestätigung der Adresse und zum Zurücksetzen des Passworts.
-          Rechtsgrundlage ist die Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO). Die Daten bleiben gespeichert, bis du dein Konto löschen lässt.
+          Rechtsgrundlage ist die Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO). Die Daten bleiben gespeichert, bis du dein Konto unter „Mein Konto“ löschst. Dann löschen wir auch alle deine Inserate mit Fotos und die Anfragen, die du bekommen hast. Deine Meldungen bleiben ohne Bezug zu deinem Konto erhalten.
         </p>
         <h3>Inserate</h3>
         <p>
           Was du in ein Inserat schreibst, einschließlich Adresse, Fotos und bei gewerblichen Anbietern des Firmennamens, ist für alle Besucher sichtbar.
           Deine E-Mail-Adresse zeigen wir im Inserat nicht an. Ein Inserat bleibt gespeichert, bis du es löschst. Beim Löschen entfernen wir auch die Fotos.
           Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO. Lade bitte keine Fotos hoch, auf denen Personen erkennbar sind.
+        </p>
+        <p>
+          Sperren wir ein Inserat nach einer Prüfung, speichern wir den Grund, die Begründung und den Zeitpunkt und zeigen sie dir unter „Meine Inserate“ an (Art. 17 DSA).
+          Legst du Einspruch ein, speichern wir auch deine Begründung und unsere Antwort. Diese Angaben löschen wir zusammen mit dem Inserat.
+          Rechtsgrundlage ist Art. 6 Abs. 1 lit. c DSGVO in Verbindung mit Art. 16 und 17 DSA.
         </p>
       </section>
 
@@ -80,7 +86,24 @@ export default function Datenschutz() {
       </section>
 
       <section>
-        <h2>7. Karte und Ortssuche</h2>
+        <h2>7. Schutz vor Missbrauch</h2>
+        <p>
+          Damit niemand massenhaft Anfragen, Meldungen oder Inserate verschickt, begrenzen wir, wie oft das von einem Anschluss aus möglich ist.
+          Dafür speichern wir keinen Klartext deiner IP-Adresse, sondern nur einen Prüfwert, der mit einem geheimen Schlüssel und dem Tagesdatum gebildet wird und sich nicht auf die Adresse zurückrechnen lässt.
+          Diese Prüfwerte löschen wir nach einem Tag. Rechtsgrundlage ist unser berechtigtes Interesse am Schutz vor Spam und Missbrauch (Art. 6 Abs. 1 lit. f DSGVO).
+        </p>
+        {TURNSTILE_SITE_KEY && (
+          <p>
+            Bei Registrierung, Anmeldung und „Passwort vergessen“ nutzen wir Cloudflare Turnstile (Cloudflare, Inc., 101 Townsend St., San Francisco, CA 94107, USA), um automatisierte Zugriffe durch Bots zu erkennen.
+            Dazu lädt dein Browser ein Skript von challenges.cloudflare.com, und Cloudflare verarbeitet deine IP-Adresse sowie technische Merkmale deines Browsers. Cookies zu Werbe- oder Analysezwecken setzt Turnstile nicht.
+            Rechtsgrundlage ist unser berechtigtes Interesse am Schutz deines Kontos und unserer Website (Art. 6 Abs. 1 lit. f DSGVO, § 25 Abs. 2 Nr. 2 TDDDG).
+            Cloudflare ist unter dem EU-US Data Privacy Framework zertifiziert.
+          </p>
+        )}
+      </section>
+
+      <section>
+        <h2>8. Karte und Ortssuche</h2>
         <p>
           Damit du die Karte siehst und Orte, Adressen und Bezirke suchen kannst, lädt dein Browser Daten direkt von diesen Diensten. Dabei erhalten sie deine IP-Adresse und den Suchbegriff:
         </p>
@@ -93,7 +116,7 @@ export default function Datenschutz() {
       </section>
 
       <section>
-        <h2>8. Speicherung in deinem Browser</h2>
+        <h2>9. Speicherung in deinem Browser</h2>
         <p>Wir legen keine Cookies an. Im lokalen Speicher deines Browsers liegen nur Daten, die für die von dir genutzten Funktionen nötig sind:</p>
         <ul>
           <li>deine Merkliste (die Kennungen gemerkter Inserate)</li>
@@ -104,7 +127,7 @@ export default function Datenschutz() {
       </section>
 
       <section>
-        <h2>9. Deine Rechte</h2>
+        <h2>10. Deine Rechte</h2>
         <p>Du hast das Recht auf</p>
         <ul>
           <li>Auskunft über deine gespeicherten Daten (Art. 15 DSGVO)</li>
@@ -118,7 +141,7 @@ export default function Datenschutz() {
       </section>
 
       <section>
-        <h2>10. Pflicht zur Angabe</h2>
+        <h2>11. Pflicht zur Angabe</h2>
         <p>Für Suche, Karte und Merkliste musst du keine Daten angeben. Ohne E-Mail-Adresse und Passwort kannst du kein Konto anlegen und ohne Konto keine Inserate aufgeben. Eine automatisierte Entscheidungsfindung oder ein Profiling findet nicht statt.</p>
       </section>
     </Rechtstext>

@@ -1,0 +1,23 @@
+name: Datenbank aufräumen
+
+# Löscht täglich die gehashten IP-Zähler des Spamschutzes (supabase/moderation_konto_spam.sql),
+# die nach einem Tag nicht mehr gebraucht werden.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 2 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  aufraeumen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Spamschutz-Zähler löschen
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then echo "Secret SUPABASE_DB_URL fehlt"; exit 1; fi
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "delete from privat.drossel where zeit < now() - interval '1 day'"

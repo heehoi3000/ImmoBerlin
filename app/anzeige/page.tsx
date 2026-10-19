@@ -11,6 +11,8 @@ import { useNutzer } from '../../lib/konto';
 import { useMelden } from '../Meldedialog';
 import Kontaktformular from '../Kontaktformular';
 import { KeinFoto } from '../Ergebnisliste';
+import { useModerator } from '../../lib/moderation';
+import Sperrdialog from '../Sperrdialog';
 
 const Map = dynamic(() => import('../Map'), { ssr: false, loading: () => <div className="h-full w-full bg-zinc-100" /> });
 
@@ -34,6 +36,8 @@ export default function AnzeigeSeite() {
   const { gemerkt, umschalten } = useMerkliste();
   const nutzer = useNutzer();
   const melden = useMelden();
+  const moderator = useModerator(nutzer?.id);
+  const [sperren, setSperren] = useState(false);
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('id');
@@ -61,6 +65,16 @@ export default function AnzeigeSeite() {
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-6 md:py-10 flex flex-col gap-6">
       <Link href="/suche/" className="text-sm text-zinc-500 hover:text-black w-max">← Zurück zur Suche</Link>
+      {moderator && (
+        <div className="flex flex-wrap items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-sm">
+          <span className="font-bold">Moderation:</span>
+          <span>{a.status === 'gesperrt' ? 'Dieses Inserat ist gesperrt.' : a.status === 'pausiert' ? 'Dieses Inserat ist pausiert.' : 'Dieses Inserat ist online.'}</span>
+          {a.status !== 'gesperrt'
+            ? <button onClick={() => setSperren(true)} className="ml-auto font-bold text-red-700 underline underline-offset-2">Sperren</button>
+            : <Link href="/moderation/" className="ml-auto font-bold underline underline-offset-2">Zur Moderation</Link>}
+        </div>
+      )}
+      {sperren && <Sperrdialog anzeigeId={a.id} titel={a.titel} onAbbrechen={() => setSperren(false)} onFertig={() => { setSperren(false); setA({ ...a, status: 'gesperrt' }); }} />}
 
       {/* Fotos */}
       <div className={`relative rounded-2xl overflow-hidden bg-zinc-100 ${bilder.length ? 'aspect-[16/9] md:aspect-[21/9]' : 'h-40 md:h-56'}`}>

@@ -56,6 +56,13 @@ jobs:
             exit 1
           fi
 
+      - name: Linienliste zum Nachsehen ablegen
+        uses: actions/upload-artifact@v4
+        with:
+          name: linien
+          path: oepnv_csv/linien.csv
+          retention-days: 14
+
       - name: In Supabase laden
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}

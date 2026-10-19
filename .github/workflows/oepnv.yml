@@ -56,12 +56,10 @@ jobs:
             exit 1
           fi
 
-      - name: Linienliste zum Nachsehen ablegen
-        uses: actions/upload-artifact@v4
-        with:
-          name: linien
-          path: oepnv_csv/linien.csv
-          retention-days: 14
+      - name: Qualität der Linien
+        run: |
+          python3 scripts/oepnv/linien_pruefen.py oepnv_csv/linien.csv | tee bericht.txt
+          { echo '```'; cat bericht.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: In Supabase laden
         env:

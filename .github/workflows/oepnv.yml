@@ -7,9 +7,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 3 * * 2'   # dienstags, DELFI erscheint in der Regel montags
-  push:
-    branches: ["claude/project-thread-x307u6"]   # nur zum Testen, vor dem Zusammenführen entfernen
-    paths: [".github/workflows/oepnv.yml", "scripts/oepnv/**", "supabase/oepnv_laden.sql"]
 
 permissions:
   contents: read

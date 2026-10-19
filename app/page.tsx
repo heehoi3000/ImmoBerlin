@@ -21,7 +21,7 @@ const STAEDTE: (Ort & { bild: string })[] = [
 const BALD = [
   { titel: 'Studierende und Wohnheime', text: 'Hochschule wählen, die Linien dorthin sind vorausgewählt. Wohnheime zeigen freie Plätze, WG-Zimmer und Zwischenmiete inklusive.', symbol: 'M12 3 2 8l10 5 10-5-10-5zM6 10.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.5' },
   { titel: 'Wohnungstausch', text: '2 Zimmer an der U8 gegen 3 Zimmer an der S41: Wir finden passende Tauschpartner entlang deiner Linien.', symbol: 'M7 7h13l-4-4M17 17H4l4 4' },
-  { titel: 'Takt, Nachtverkehr, Barrierefreiheit', text: 'Filtere nach Linien, die nachts fahren, dichtem Takt oder barrierefreien Haltestellen.', symbol: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z' },
+  { titel: 'Standort- und Anbindungsanalyse', text: 'Für Neubauprojekte, Bauträger und Privatpersonen: Welche Linien, Haltestellen und Einrichtungen liegen im Umkreis, als fertiger Bericht für jeden Standort.', symbol: 'M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z' },
 ];
 
 // Hintergrund des Einstiegs: zarte Linienverläufe mit Haltestellen über die ganze Breite

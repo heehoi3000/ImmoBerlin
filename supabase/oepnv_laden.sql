@@ -40,3 +40,12 @@ vacuum analyze oepnv_haltestellen;
 vacuum analyze oepnv_linien;
 vacuum analyze oepnv_linie_route;
 vacuum analyze oepnv_linie_haltestelle;
+
+-- Indizes neu aufbauen: Löschen und Neuladen bläht sie auf etwa das Doppelte auf
+-- (am 19.10.2026 482 MB statt 357 MB, knapp an der 500-MB-Grenze des Gratistarifs).
+reindex index concurrently oepnv_linie_haltestelle_pkey;
+reindex index concurrently oepnv_linie_haltestelle_stop_idx;
+reindex index concurrently oepnv_haltestellen_pkey;
+reindex index concurrently oepnv_haltestellen_geom_idx;
+reindex index concurrently oepnv_linien_pkey;
+reindex index concurrently oepnv_linien_mitte_idx;

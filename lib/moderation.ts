@@ -8,7 +8,7 @@ export const SPERR_KATEGORIEN: Record<string, string> = {
   falsche_angaben: 'Falsche oder irreführende Angaben',
   diskriminierung: 'Diskriminierende Inhalte (AGG)',
   rechtswidrig: 'Rechtswidriger Inhalt',
-  regelverstoss: 'Verstoß gegen unsere Nutzungsregeln',
+  regelverstoss: 'Verstoß gegen unsere Nutzungsbedingungen',
   sonstiges: 'Sonstiger Grund',
 };
 

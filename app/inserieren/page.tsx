@@ -372,6 +372,7 @@ export default function Inserieren() {
 
       <div className="sticky bottom-0 -mx-4 px-4 py-3 bg-zinc-50/90 backdrop-blur border-t border-zinc-200 flex items-center justify-end gap-3">
         <Link href="/meine-inserate/" className="h-11 px-4 rounded-lg text-sm font-semibold text-zinc-600 hover:bg-zinc-100 flex items-center">Abbrechen</Link>
+        <p className="text-[11px] text-zinc-400">Mit dem Veröffentlichen bestätigst du, dass dein Inserat unseren <Link href="/nutzungsbedingungen/" target="_blank" className="underline underline-offset-2">Nutzungsbedingungen</Link> entspricht.</p>
         <button type="submit" disabled={laedt || hochladen > 0} className="h-11 px-6 rounded-lg bg-black text-white text-sm font-bold hover:bg-zinc-800 disabled:opacity-50">
           {laedt ? 'Wird gespeichert…' : id ? 'Änderungen speichern' : 'Inserat veröffentlichen'}
         </button>

@@ -1,4 +1,4 @@
-// Gemeinsamer Rahmen für Impressum und Datenschutzerklärung.
+// Gemeinsamer Rahmen für Impressum, Datenschutzerklärung und Nutzungsbedingungen.
 import { ReactNode } from 'react';
 import { hatPlatzhalter } from '../lib/betreiber';
 

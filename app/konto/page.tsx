@@ -22,6 +22,7 @@ export default function Konto() {
   const [fehler, setFehler] = useState<string | null>(null);
   const [hinweis, setHinweis] = useState<string | null>(null);
   const [captcha, setCaptcha] = useState<string | null>(null);
+  const [zustimmung, setZustimmung] = useState(false);
   const turnstile = useRef<TurnstileGriff>(null);
 
   // Link aus der "Passwort vergessen"-Mail öffnet diese Seite im Modus "neues Passwort"
@@ -113,6 +114,12 @@ export default function Konto() {
             <input type="password" required minLength={modus === 'anmelden' ? undefined : 8} autoComplete={modus === 'anmelden' ? 'current-password' : 'new-password'}
               value={passwort} onChange={(e) => setPasswort(e.target.value)} className={feld} />
             {modus !== 'anmelden' && <span className="text-[11px] text-zinc-400">Mindestens 8 Zeichen</span>}
+          </label>
+        )}
+        {modus === 'registrieren' && (
+          <label className="flex items-start gap-2 text-sm text-zinc-600">
+            <input type="checkbox" required checked={zustimmung} onChange={(e) => setZustimmung(e.target.checked)} className="mt-1 accent-black" />
+            <span>Ich akzeptiere die <Link href="/nutzungsbedingungen/" target="_blank" className="underline underline-offset-2">Nutzungsbedingungen</Link>.</span>
           </label>
         )}
         {modus !== 'neues_passwort' && <Turnstile ref={turnstile} onToken={setCaptcha} />}

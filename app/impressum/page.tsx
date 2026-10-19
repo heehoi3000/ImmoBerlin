@@ -32,7 +32,7 @@ export default function Impressum() {
         <h2>Inserate</h2>
         <p>
           IMMOBIL ist eine Plattform, auf der Nutzer selbst Inserate veröffentlichen. Für Inhalt und Richtigkeit eines Inserats ist der jeweilige Anbieter verantwortlich.
-          Wir prüfen Inserate nicht vorab, nehmen sie aber nach einer begründeten Meldung offline, wenn sie rechtswidrig sind oder gegen unsere Regeln verstoßen.
+          Wir prüfen Inserate nicht vorab, nehmen sie aber nach einer begründeten Meldung offline, wenn sie rechtswidrig sind oder gegen unsere <Link href="/nutzungsbedingungen/">Nutzungsbedingungen</Link> verstoßen.
         </p>
       </section>
       <section>

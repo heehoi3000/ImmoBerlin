@@ -167,6 +167,7 @@ function Fusszeile() {
           <div className="flex flex-col gap-2">
             <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">Rechtliches</span>
             <Link href="/impressum/" className="text-zinc-600 hover:text-black">Impressum</Link>
+            <Link href="/nutzungsbedingungen/" className="text-zinc-600 hover:text-black">Nutzungsbedingungen</Link>
             <Link href="/datenschutz/" className="text-zinc-600 hover:text-black">Datenschutz</Link>
           </div>
         </div>

@@ -124,7 +124,7 @@ function Sperrhinweis({ a, onEinspruch }: { a: Anzeige; onEinspruch: (text: stri
     <div className="mt-2 bg-red-50 border border-red-100 rounded-lg p-3 text-xs text-red-900 flex flex-col gap-1.5">
       <p><strong>Gesperrt{a.gesperrt_am ? ` am ${tag(a.gesperrt_am)}` : ''}:</strong> {SPERR_KATEGORIEN[a.sperr_kategorie] ?? 'Verstoß gegen unsere Regeln'}</p>
       {a.sperrgrund && <p className="whitespace-pre-line">{a.sperrgrund}</p>}
-      <p className="text-red-800/80">Das Inserat ist nicht mehr öffentlich sichtbar. Wir haben die Entscheidung nach einer Prüfung durch unser Team getroffen.</p>
+      <p className="text-red-800/80">Das Inserat ist nicht mehr öffentlich sichtbar. Wir haben die Entscheidung nach einer Prüfung durch unser Team getroffen, siehe <Link href="/nutzungsbedingungen/" className="underline underline-offset-2">Nutzungsbedingungen</Link> Abschnitt 6.</p>
       {a.einspruch ? (
         <div className="border-t border-red-100 pt-1.5 mt-1">
           <p><strong>Dein Einspruch vom {tag(a.einspruch_am)}:</strong> {a.einspruch}</p>

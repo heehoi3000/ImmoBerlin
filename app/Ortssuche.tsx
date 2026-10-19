@@ -38,7 +38,12 @@ export default function Ortssuche({ ort, onChange }: { ort: Ort | null; onChange
   const [offen, setOffen] = useState(false);
   const anfrage = useRef(0);
 
-  useEffect(() => { setText(ort?.name ?? ''); }, [ort]);
+  // Feld übernimmt einen von außen gewählten Ort
+  const [letzterOrt, setLetzterOrt] = useState(ort);
+  if (ort !== letzterOrt) {
+    setLetzterOrt(ort);
+    setText(ort?.name ?? '');
+  }
 
   // Ohne Eingabe keine (veralteten) Vorschläge zeigen
   const sichtbar = offen && text.trim().length > 0 && text.trim() !== ort?.name ? vorschlaege : [];

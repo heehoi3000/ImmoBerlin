@@ -19,14 +19,15 @@ export default function Konto() {
   const [laedt, setLaedt] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
   const [hinweis, setHinweis] = useState<string | null>(null);
-  const [weiter, setWeiter] = useState<string | null>(null);
 
   // Link aus der "Passwort vergessen"-Mail öffnet diese Seite im Modus "neues Passwort"
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((ereignis) => { if (ereignis === 'PASSWORD_RECOVERY') setModus('neues_passwort'); });
-    setWeiter(new URLSearchParams(window.location.search).get('weiter'));
     return () => data.subscription.unsubscribe();
   }, []);
+
+  // Ziel nach dem Anmelden, z. B. ?weiter=/inserieren/
+  const weiterZiel = () => new URLSearchParams(window.location.search).get('weiter');
 
   async function absenden(e: React.FormEvent) {
     e.preventDefault();
@@ -35,11 +36,11 @@ export default function Konto() {
       if (modus === 'anmelden') {
         const { error } = await supabase.auth.signInWithPassword({ email, password: passwort });
         if (error) throw error;
-        router.push(weiter ?? '/meine-inserate/');
+        router.push(weiterZiel() ?? '/meine-inserate/');
       } else if (modus === 'registrieren') {
         const { data, error } = await supabase.auth.signUp({ email, password: passwort, options: { emailRedirectTo: seitenUrl('/konto/') } });
         if (error) throw error;
-        if (data.session) router.push(weiter ?? '/inserieren/');
+        if (data.session) router.push(weiterZiel() ?? '/inserieren/');
         else setHinweis(`Fast geschafft: Wir haben dir eine Mail an ${email} geschickt. Klicke auf den Link darin, um dein Konto zu bestätigen.`);
       } else if (modus === 'vergessen') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: seitenUrl('/konto/') });

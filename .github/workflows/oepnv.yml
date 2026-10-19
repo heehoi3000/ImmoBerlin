@@ -1,0 +1,69 @@
+name: ÖPNV-Daten aktualisieren
+
+# Lädt jede Woche den deutschlandweiten Fahrplan (DELFI-GTFS), baut daraus Linien und Haltestellen
+# und ersetzt die ÖPNV-Tabellen in Supabase in einer Transaktion (scripts/oepnv, supabase/oepnv_laden.sql).
+# Ohne das Secret SUPABASE_DB_URL läuft nur der Export als Probe, die Datenbank bleibt unverändert.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 2'   # dienstags, DELFI erscheint in der Regel montags
+  push:
+    branches: ["claude/project-thread-x307u6"]   # nur zum Testen, vor dem Zusammenführen entfernen
+    paths: [".github/workflows/oepnv.yml", "scripts/oepnv/**", "supabase/oepnv_laden.sql"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oepnv
+  cancel-in-progress: false
+
+jobs:
+  laden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      # DELFI direkt, gtfs.de (ebenfalls aus DELFI) als Rückfall
+      QUELLEN: "https://mobi.nrw/gtfs-deutschland-gesamt.zip https://download.gtfs.de/germany/free/latest.zip"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fahrplan herunterladen
+        run: |
+          for url in $QUELLEN; do
+            echo "Versuche $url"
+            if curl -sSfL --retry 3 --max-time 1800 -o feed.zip "$url" \
+               && unzip -l feed.zip | grep -q 'stop_times.txt'; then
+              echo "Quelle: $url ($(du -h feed.zip | cut -f1))" | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            rm -f feed.zip
+          done
+          echo "Keine Quelle lieferte einen gültigen GTFS-Feed" >&2
+          exit 1
+
+      - name: Linien und Haltestellen exportieren
+        run: python3 scripts/oepnv/gtfs_linien_export.py feed.zip oepnv_csv
+
+      - name: Ergebnis prüfen
+        # Schutz vor einem kaputten Feed: lieber alte Daten behalten als die Tabellen fast leer zu laden
+        run: |
+          h=$(($(wc -l < oepnv_csv/haltestellen.csv) - 1))
+          l=$(($(wc -l < oepnv_csv/linien.csv) - 1))
+          echo "Haltestellen: $h, Linien: $l" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$h" -lt 300000 ] || [ "$l" -lt 15000 ]; then
+            echo "Zu wenige Daten, Abbruch ohne Änderung an der Datenbank" >&2
+            exit 1
+          fi
+
+      - name: In Supabase laden
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "Secret SUPABASE_DB_URL fehlt, Datenbank bleibt unverändert (nur Probelauf)" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          cd oepnv_csv
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f ../supabase/oepnv_laden.sql
+          echo "Datenbank aktualisiert" | tee -a "$GITHUB_STEP_SUMMARY"

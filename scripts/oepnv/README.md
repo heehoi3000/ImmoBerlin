@@ -12,17 +12,28 @@ Die Prototyp-Tabellen `routes`, `route_stops` und `stops` bleiben unverändert.
 
 ## Wöchentlich: Daten aktualisieren
 
-1. Feed herunterladen, z. B. von [gtfs.de](https://gtfs.de/de/feeds/de_nv/) oder
-   den kompletten DELFI-Feed von [Mobilitätsdaten NRW](https://www.mobilitaetsdaten.nrw/api/ckan/en/dataset/deutschlandweite-sollfahrplandaten-gtfs).
+Läuft automatisch dienstags früh über den GitHub-Workflow `.github/workflows/oepnv.yml`
+(auch von Hand startbar unter Actions > ÖPNV-Daten aktualisieren). Er braucht das Secret
+`SUPABASE_DB_URL`: Supabase > Connect > Session pooler (IPv4, Port 5432), mit eingesetztem
+Datenbank-Passwort. Ohne Secret läuft nur ein Probelauf ohne Änderung an der Datenbank.
+
+Von Hand geht es so:
+
+1. Feed herunterladen: DELFI direkt (`https://mobi.nrw/gtfs-deutschland-gesamt.zip`) oder
+   [gtfs.de](https://download.gtfs.de/germany/free/latest.zip).
 2. CSV-Dateien erzeugen (nur Python-Standardbibliothek nötig):
    ```bash
    python3 scripts/oepnv/gtfs_linien_export.py feed.zip oepnv_csv/
    ```
-3. In die Datenbank laden (ersetzt die alten ÖPNV-Daten in einer Transaktion):
+3. In die Datenbank laden (ersetzt die alten ÖPNV-Daten in einer Transaktion, die Website
+   sieht bis zum Ende die alten Daten):
    ```bash
    cd oepnv_csv
    psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f ../supabase/oepnv_laden.sql
    ```
+
+Die Linien-IDs werden bei jedem Import neu vergeben. Wer später Linien dauerhaft speichert
+(z. B. gespeicherte Suchen), muss das berücksichtigen.
 
 ## Funktionen für die Website
 

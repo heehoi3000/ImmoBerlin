@@ -14,11 +14,15 @@ Nummer und denselben Typ haben UND sich mindestens eine Haltestelle teilen.
 So werden doppelte Routen aus DELFI zu einer Linie, aber die S1 in Dresden und
 die S1 im Ruhrgebiet (beide DB Regio) bleiben getrennt.
 
+Zu einer Linie gehören nur Haltestellen, die an mindestens der Hälfte ihrer Betriebstage
+bedient werden. Umleitungen und Ersatzverkehr bei Bauarbeiten fallen so heraus.
+
 Nur Python-Standardbibliothek. Aufruf:
   python3 gtfs_linien_export.py feed.zip ausgabe_ordner/
 """
 
 import csv
+import datetime
 import io
 import re
 import sys
@@ -27,6 +31,9 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 csv.field_size_limit(10_000_000)
+
+# Anteil der Betriebstage einer Linie, an denen eine Haltestelle mindestens bedient sein muss
+MIN_ANTEIL_TAGE = 0.5
 
 
 def gtfs_rows(zf, name):
@@ -78,6 +85,38 @@ class UnionFind:
             self.parent[rb] = ra
 
 
+def datum(text):
+    return datetime.date(int(text[:4]), int(text[4:6]), int(text[6:8]))
+
+
+def betriebstage(zf):
+    """Je service_id die Verkehrstage als Bitmaske (Bit n = n-ter Tag ab dem frühesten Datum)."""
+    namen = set(zf.namelist())
+    kalender = list(gtfs_rows(zf, "calendar.txt")) if "calendar.txt" in namen else []
+    ausnahmen = list(gtfs_rows(zf, "calendar_dates.txt")) if "calendar_dates.txt" in namen else []
+    alle = [datum(r["start_date"]) for r in kalender] + [datum(r["date"]) for r in ausnahmen]
+    if not alle:
+        return {}
+    start = min(alle)
+    wochentage = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+    tage = defaultdict(int)
+    for r in kalender:
+        von, bis = datum(r["start_date"]), datum(r["end_date"])
+        aktiv = [r.get(w) == "1" for w in wochentage]
+        maske = 0
+        for n in range((von - start).days, (bis - start).days + 1):
+            if aktiv[(start + datetime.timedelta(days=n)).weekday()]:
+                maske |= 1 << n
+        tage[r["service_id"]] |= maske
+    for r in ausnahmen:
+        bit = 1 << (datum(r["date"]) - start).days
+        if r.get("exception_type") == "1":
+            tage[r["service_id"]] |= bit
+        else:
+            tage[r["service_id"]] &= ~bit
+    return dict(tage)
+
+
 def main(feed_pfad, ziel_pfad):
     ziel = Path(ziel_pfad)
     ziel.mkdir(parents=True, exist_ok=True)
@@ -103,19 +142,28 @@ def main(feed_pfad, ziel_pfad):
         if i["typ"] == "bus" and (i["betreiber"], i["nummer"].upper()) in schiene:
             i["typ"] = "ersatzverkehr"
 
-    trip_route = {r["trip_id"]: r["route_id"] for r in gtfs_rows(zf, "trips.txt")}
-    print(f"{len(routen)} Routen, {len(trip_route)} Fahrten", file=sys.stderr)
+    tage_je_service = betriebstage(zf)
+    # Ohne Kalender zählt jede Fahrt wie ein einziger gemeinsamer Tag, dann bleiben alle Haltestellen
+    ohne_kalender = 0 if tage_je_service else 1
+    trip_route, trip_tage = {}, {}
+    for r in gtfs_rows(zf, "trips.txt"):
+        trip_route[r["trip_id"]] = r["route_id"]
+        trip_tage[r["trip_id"]] = tage_je_service.get(r.get("service_id"), ohne_kalender)
+    print(f"{len(routen)} Routen, {len(trip_route)} Fahrten, {len(tage_je_service)} Verkehrstage-Kalender",
+          file=sys.stderr)
 
-    # stop_times ist die mit Abstand größte Datei: einmal streamen und dabei
-    # (route, stop)-Paare sowie Start- und Endhaltestelle jeder Fahrt merken.
-    route_stops = defaultdict(set)
+    # stop_times ist die mit Abstand größte Datei: einmal streamen und dabei je (route, stop)
+    # die Verkehrstage sowie Start- und Endhaltestelle jeder Fahrt merken.
+    route_stops = defaultdict(dict)  # route_id -> {stop_id: Bitmaske der Verkehrstage}
     trip_enden = {}  # trip_id -> [min_seq, start_stop, max_seq, end_stop]
     for n, r in enumerate(gtfs_rows(zf, "stop_times.txt"), 1):
-        route_id = trip_route.get(r["trip_id"])
+        trip_id = r["trip_id"]
+        route_id = trip_route.get(trip_id)
         if route_id is None:
             continue
         stop_id = r["stop_id"]
-        route_stops[route_id].add(stop_id)
+        stops_der_route = route_stops[route_id]
+        stops_der_route[stop_id] = stops_der_route.get(stop_id, 0) | trip_tage[trip_id]
         seq = int(r["stop_sequence"])
         e = trip_enden.get(r["trip_id"])
         if e is None:
@@ -169,9 +217,20 @@ def main(feed_pfad, ziel_pfad):
         w_lr.writerow(["linie_id", "route_id"])
         w_lh.writerow(["linie_id", "stop_id"])
 
+        weggelassen = 0
         for linie_id, route_ids in enumerate(sorted(gruppen.values(), key=lambda g: sorted(g)), 1):
             info = routen[route_ids[0]]
-            stops = set().union(*(route_stops[r] for r in route_ids)) & haltestellen.keys()
+            stop_tage = defaultdict(int)
+            for r in route_ids:
+                for stop_id, maske in route_stops[r].items():
+                    if stop_id in haltestellen:
+                        stop_tage[stop_id] |= maske
+            linie_tage = 0
+            for maske in stop_tage.values():
+                linie_tage |= maske
+            mindestens = linie_tage.bit_count() * MIN_ANTEIL_TAGE
+            stops = {s for s, maske in stop_tage.items() if maske.bit_count() >= mindestens}
+            weggelassen += len(stop_tage) - len(stops)
             if not stops:
                 continue
             bediente |= stops
@@ -202,7 +261,8 @@ def main(feed_pfad, ziel_pfad):
             w.writerow([stop_id, name, f"{lat:.6f}", f"{lon:.6f}"])
 
     print(f"{len(gruppen)} Linien aus {len(route_stops)} Routen, "
-          f"{len(bediente)} bediente Haltestellen -> {ziel}", file=sys.stderr)
+          f"{len(bediente)} bediente Haltestellen, {weggelassen} selten bediente Zuordnungen weggelassen "
+          f"-> {ziel}", file=sys.stderr)
 
 
 if __name__ == "__main__":

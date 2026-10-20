@@ -5,6 +5,11 @@ name: ÖPNV-Daten aktualisieren
 # Ohne das Secret SUPABASE_DB_URL läuft nur der Export als Probe, die Datenbank bleibt unverändert.
 on:
   workflow_dispatch:
+    inputs:
+      probe:
+        description: 'Nur Probelauf, Datenbank bleibt unverändert'
+        type: boolean
+        default: false
   schedule:
     - cron: '0 3 * * 2'   # dienstags, DELFI erscheint in der Regel montags
 
@@ -61,7 +66,12 @@ jobs:
       - name: In Supabase laden
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PROBE: ${{ inputs.probe }}
         run: |
+          if [ "$PROBE" = "true" ]; then
+            echo "Probelauf, Datenbank bleibt unverändert" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           if [ -z "$SUPABASE_DB_URL" ]; then
             echo "Secret SUPABASE_DB_URL fehlt, Datenbank bleibt unverändert (nur Probelauf)" | tee -a "$GITHUB_STEP_SUMMARY"
             exit 0

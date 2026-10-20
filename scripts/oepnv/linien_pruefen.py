@@ -10,6 +10,7 @@ Typ mit Mittelpunkten näher als 20 km. Das deutet auf eine Linie hin, die in me
 import csv
 import math
 import sys
+from pathlib import Path
 from collections import Counter, defaultdict
 
 
@@ -41,6 +42,20 @@ def main(pfad):
         treffer = [l for l in linien if l["nummer"] == nummer
                    and 52.3 < float(l["lat"]) < 52.7 and 13.1 < float(l["lon"]) < 13.8]
         print(f"  {nummer}: " + (" | ".join(f"{l['typ']}, {l['betreiber'][:20]}, {l['endpunkte'][:40]}" for l in treffer) or "nicht gefunden"))
+
+    # Haltestellen der Berliner Ringbahn: S41 und S42 müssen dieselben Bahnhöfe haben
+    ordner = Path(pfad).parent
+    if (ordner / "linie_haltestelle.csv").exists():
+        namen = {r["stop_id"]: r["name"] for r in csv.DictReader(open(ordner / "haltestellen.csv", encoding="utf-8"))}
+        ring = {l["linie_id"]: l["nummer"] for l in linien if l["nummer"] in ("S41", "S42") and l["typ"] == "sbahn"
+                and 52.3 < float(l["lat"]) < 52.7 and 13.1 < float(l["lon"]) < 13.8}
+        halte = defaultdict(set)
+        for r in csv.DictReader(open(ordner / "linie_haltestelle.csv", encoding="utf-8")):
+            if r["linie_id"] in ring:
+                halte[ring[r["linie_id"]]].add(namen.get(r["stop_id"], r["stop_id"]))
+        for nummer in ("S41", "S42"):
+            print(f"{nummer}: {len(halte[nummer])} Bahnhöfe: " + "; ".join(sorted(halte[nummer])))
+        print("Unterschied S41/S42: " + ("; ".join(sorted(halte["S41"] ^ halte["S42"])) or "keiner"))
 
 
 if __name__ == "__main__":

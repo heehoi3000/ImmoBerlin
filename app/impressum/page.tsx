@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { BETREIBER } from '../../lib/betreiber';
 import { Rechtstext } from '../Rechtstext';
 
-export const metadata = { title: 'Impressum – IMMOBIL' };
+export const metadata = { title: 'Impressum', alternates: { canonical: './' } };
 
 export default function Impressum() {
   const b = BETREIBER;

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { BETREIBER } from '../../lib/betreiber';
 import { Rechtstext } from '../Rechtstext';
 
-export const metadata = { title: 'Barrierefreiheit – IMMOBIL' };
+export const metadata = { title: 'Barrierefreiheit', alternates: { canonical: './' } };
 
 const STAND = '20. Oktober 2026';
 

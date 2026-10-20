@@ -7,7 +7,7 @@ const WURZEL = join(process.cwd(), 'out');
 const BASIS = process.env.NEXT_PUBLIC_BASIS_PFAD ?? '/ImmoBerlin';
 const PORT = Number(process.env.PORT ?? 4173);
 const TYPEN = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain' };
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain', '.xml': 'application/xml' };
 
 createServer(async (req, res) => {
   const pfad = decodeURIComponent(new URL(req.url, 'http://x').pathname);

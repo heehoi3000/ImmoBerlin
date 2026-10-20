@@ -6,6 +6,7 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     const auf = await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=a1');
     await expect(page.getByRole('heading', { name: 'Altbau an der U8' })).toBeVisible();
+    await expect(page).toHaveTitle('Altbau an der U8 – IMMOBIL');
 
     await page.getByLabel('Name').fill('Erika Muster');
     await page.getByLabel('E-Mail').fill('erika@example.org');

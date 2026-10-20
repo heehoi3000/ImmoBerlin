@@ -4,7 +4,7 @@ import { BETREIBER } from '../../lib/betreiber';
 import { Rechtstext } from '../Rechtstext';
 import { TURNSTILE_SITE_KEY } from '../../lib/turnstile';
 
-export const metadata = { title: 'Datenschutz – IMMOBIL' };
+export const metadata = { title: 'Datenschutz', alternates: { canonical: './' } };
 
 export default function Datenschutz() {
   const b = BETREIBER;

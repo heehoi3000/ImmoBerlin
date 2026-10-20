@@ -46,6 +46,12 @@ export default function AnzeigeSeite() {
     supabase.from('anzeigen').select('*').eq('id', id).maybeSingle().then(({ data }) => setA((data as Anzeige) ?? null));
   }, [nutzer]);
 
+  // Titel im Browser-Tab und für Suchmaschinen, die die Seite ausführen (geteilte Links zeigen die allgemeine Vorschau)
+  useEffect(() => {
+    if (a) document.title = `${a.titel} – IMMOBIL`;
+    else if (a === null) document.title = 'Inserat nicht gefunden – IMMOBIL';
+  }, [a]);
+
   if (a === undefined) return <div className="p-10 text-center text-sm text-zinc-500">Wird geladen…</div>;
   if (a === null) {
     return (
@@ -58,7 +64,7 @@ export default function AnzeigeSeite() {
   }
 
   const miete = a.transaktions_typ === 'mieten';
-  const bilder: string[] = (a.bilder ?? []).map(fotoUrl);
+  const bilder: string[] = (a.bilder ?? []).map((b: string) => fotoUrl(b));
   const ausstattung = AUSSTATTUNG.filter(x => a[x.wert]);
   const eigenes = nutzer && a.inserent_id === nutzer.id;
   const etage = a.etage === null || a.etage === undefined ? null : a.etage === 0 ? 'Erdgeschoss' : a.etage < 0 ? 'Souterrain' : `${a.etage}. OG`;

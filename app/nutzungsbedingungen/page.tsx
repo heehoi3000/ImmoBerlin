@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { BETREIBER } from '../../lib/betreiber';
 import { Rechtstext } from '../Rechtstext';
 
-export const metadata = { title: 'Nutzungsbedingungen – IMMOBIL' };
+export const metadata = { title: 'Nutzungsbedingungen', alternates: { canonical: './' } };
 
 const STAND = '19. Oktober 2026';
 

@@ -29,6 +29,8 @@ jobs:
         run: |
           if [ -f gebiete-daten/stand.json ]; then
             mkdir -p public/gebiete && cp -r gebiete-daten/l gebiete-daten/g gebiete-daten/stand.json public/gebiete/
+            # Ortssuche (o/) gibt es erst seit Oktober 2026; fehlt sie, fragt die Seite Photon
+            if [ -d gebiete-daten/o ]; then cp -r gebiete-daten/o public/gebiete/; fi
           fi
           rm -rf gebiete-daten
 

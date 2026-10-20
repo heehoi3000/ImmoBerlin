@@ -4,7 +4,7 @@
 import { Bezirk, Ort } from './filter';
 
 // '/ImmoBerlin' ist der basePath aus next.config.ts
-const GEBIETE_URL = '/ImmoBerlin/gebiete';
+export const GEBIETE_URL = '/ImmoBerlin/gebiete';
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/lookup';
@@ -30,7 +30,7 @@ function merken(schluessel: string, wert: unknown) {
 
 // Gibt es die vorab erzeugten Dateien? Einmal je Seitenaufruf geprüft.
 let dateienDa: Promise<boolean> | null = null;
-function gebietsdateienVorhanden() {
+export function gebietsdateienVorhanden() {
   dateienDa ??= fetch(`${GEBIETE_URL}/stand.json`).then(a => a.ok).catch(() => false);
   return dateienDa;
 }

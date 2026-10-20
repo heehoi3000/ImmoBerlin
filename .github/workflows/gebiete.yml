@@ -1,9 +1,13 @@
 name: Bezirksdaten erzeugen
 
-# Baut aus OpenStreetMap (Geofabrik-Auszug Deutschland) die Dateien für den Bezirksfilter
+# Baut aus OpenStreetMap (Geofabrik-Auszug Deutschland) die Dateien für Ortssuche und Bezirksfilter
 # und legt sie auf den Branch "gebiete". Der Deploy holt sie von dort nach public/gebiete.
 on:
   workflow_dispatch:
+    inputs:
+      ziel:
+        description: 'Ziel-Branch (zum Ausprobieren z. B. gebiete-test)'
+        default: 'gebiete'
   schedule:
     - cron: '0 3 1 * *'   # monatlich, Grenzen ändern sich selten
   push:
@@ -27,7 +31,7 @@ jobs:
       - name: OpenStreetMap-Auszug laden und Grenzen herausfiltern
         run: |
           curl -sSfL -o deutschland.osm.pbf https://download.geofabrik.de/europe/germany-latest.osm.pbf
-          osmium tags-filter deutschland.osm.pbf r/boundary=administrative -o grenzen.osm.pbf
+          osmium tags-filter deutschland.osm.pbf r/boundary=administrative,postal_code -o grenzen.osm.pbf
           rm deutschland.osm.pbf
           osmium export grenzen.osm.pbf -f geojsonseq --geometry-types=polygon --add-unique-id=type_id -o grenzen.geojsonseq
 
@@ -35,11 +39,13 @@ jobs:
         run: python3 scripts/gebiete/gebiete_bauen.py grenzen.geojsonseq ausgabe
 
       - name: Auf Branch "gebiete" ablegen
+        env:
+          ZIEL: ${{ inputs.ziel || 'gebiete' }}
         run: |
           cd ausgabe
-          git init -q -b gebiete
+          git init -q -b "$ZIEL"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -q -m "Bezirksdaten $(date -u +%F)"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gebiete
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "$ZIEL"

@@ -1,7 +1,9 @@
 "use client";
-// Eingabefeld für Ort oder PLZ mit Vorschlägen von Photon (OpenStreetMap-Geocoder, kostenlos, ohne Schlüssel).
+// Eingabefeld für Ort oder PLZ. Vorschläge kommen aus den vorab erzeugten Gebietsdateien (lib/orte.ts);
+// nur wenn diese fehlen, fragt die Seite Photon (OpenStreetMap-Geocoder, kostenlos, ohne Schlüssel).
 import { useEffect, useRef, useState } from 'react';
 import { Ort } from '../lib/filter';
+import { orteSuchen } from '../lib/orte';
 
 const PHOTON_URL = 'https://photon.komoot.io/api/';
 // Vorschläge auf Deutschland beschränken
@@ -54,6 +56,11 @@ export default function Ortssuche({ ort, onChange }: { ort: Ort | null; onChange
     const nr = ++anfrage.current;
     const timer = setTimeout(async () => {
       try {
+        const eigene = await orteSuchen(suchtext);
+        if (eigene) {
+          if (nr === anfrage.current) setVorschlaege(eigene);
+          return;
+        }
         // Erlaubte Ebenen laut Photon-Doku: house, street, locality, district, city, county, state, country, other.
         // Ein ungültiger Wert lässt die ganze Anfrage scheitern. Postleitzahlen liegen unter "other".
         const url = `${PHOTON_URL}?q=${encodeURIComponent(suchtext)}&lang=de&limit=6&bbox=${DEUTSCHLAND_BBOX}&layer=city&layer=district&layer=locality&layer=county&layer=state&layer=other`;

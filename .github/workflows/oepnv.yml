@@ -63,6 +63,13 @@ jobs:
           python3 scripts/oepnv/linien_pruefen.py oepnv_csv/linien.csv | tee bericht.txt
           { echo '```'; cat bericht.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: psql bereitstellen
+        # auf GitHub schon da; in Forgejo-Runnern (Debian/Ubuntu-Container) wird es nachinstalliert
+        run: |
+          command -v psql >/dev/null && exit 0
+          als_root() { if command -v sudo >/dev/null; then sudo "$@"; else "$@"; fi; }
+          als_root apt-get update -q && als_root apt-get install -y -q postgresql-client
+
       - name: In Supabase laden
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}

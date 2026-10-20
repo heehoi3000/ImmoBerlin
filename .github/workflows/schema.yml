@@ -39,13 +39,24 @@ jobs:
             echo "-- Nicht von Hand ändern; neue Änderungen kommen als weitere Datei 0002_..., 0003_... dazu."
             echo "-- Voraussetzung: Supabase (Cloud oder selbst gehostet) mit den Schemas auth, storage, extensions."
             echo
+            echo "-- Das Supabase-Image gibt neuen Tabellen, Folgen und Funktionen in public alle Rechte für anon und"
+            echo "-- authenticated. Diese Standardrechte werden vorher zurückgenommen, damit nur die unten ausdrücklich"
+            echo "-- vergebenen Rechte gelten (siehe supabase/verlauf/rechte_absichern.sql)."
+            echo "alter default privileges for role postgres in schema public revoke all on tables from anon, authenticated;"
+            echo "alter default privileges for role postgres in schema public revoke all on sequences from anon, authenticated;"
+            echo "alter default privileges for role postgres in schema public revoke all on functions from anon, authenticated;"
+            echo
             # Schemas public (mit PostGIS) und privat; ohne Eigentümer, Rechte (grant) bleiben enthalten.
-            # \restrict-Zeilen enthalten bei jedem Lauf einen neuen Zufallsschlüssel und werden entfernt.
-            pg 'pg_dump "$DB" --schema-only --no-owner -n public -n privat -e postgis' | grep -v -E '^\\(un)?restrict '
+            # \restrict-Zeilen enthalten bei jedem Lauf einen neuen Zufallsschlüssel und werden entfernt;
+            # public gibt es in jeder Supabase-Datenbank schon, daher CREATE SCHEMA IF NOT EXISTS. Die Standardrechte
+            # der Rolle supabase_admin bringt Supabase selbst mit (und nur supabase_admin dürfte sie setzen).
+            pg 'pg_dump "$DB" --schema-only --no-owner -n public -n privat -e postgis' | grep -v -E '^\\(un)?restrict ' \
+              | sed -E 's/^CREATE SCHEMA ([a-z_]+);/CREATE SCHEMA IF NOT EXISTS \1;/' \
+              | sed -E '/^ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin /d'
             echo
             echo "-- Speicher für Inseratsfotos und seine Regeln (Schema storage gehört Supabase)"
             pg 'psql "$DB" -XAt -v ON_ERROR_STOP=1' <<'SQL'
-          select format('insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values (%L, %L, %s, %s, %L) on conflict (id) do nothing;',
+          select format('insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values (%L, %L, %L, %s, %L) on conflict (id) do nothing;',
                         id, name, public, coalesce(file_size_limit::text, 'null'), allowed_mime_types)
             from storage.buckets order by id;
           select format('create policy %I on storage.objects as %s for %s to %s%s%s;',

@@ -21,7 +21,7 @@ export function linienUmkreisM(eingabe?: string) {
   return Math.min(Math.max(parseInt(eingabe || '') || 600, 50), 5000);
 }
 
-// Prüft einmal, ob die Spalten aus supabase/anzeigen_filter.sql schon existieren.
+// Prüft einmal, ob die Spalten aus supabase/verlauf/anzeigen_filter.sql schon existieren.
 // Ohne sie blendet die Seite die Filter für Ausstattung, Baujahr usw. aus.
 export async function erweiterteFelderVorhanden(): Promise<boolean> {
   const { error } = await supabase.from('anzeigen').select('warmmiete, objektart, erstellt_am').limit(1);

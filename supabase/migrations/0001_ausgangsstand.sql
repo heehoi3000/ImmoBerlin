@@ -2,6 +2,13 @@
 -- Nicht von Hand ändern; neue Änderungen kommen als weitere Datei 0002_..., 0003_... dazu.
 -- Voraussetzung: Supabase (Cloud oder selbst gehostet) mit den Schemas auth, storage, extensions.
 
+-- Das Supabase-Image gibt neuen Tabellen, Folgen und Funktionen in public alle Rechte für anon und
+-- authenticated. Diese Standardrechte werden vorher zurückgenommen, damit nur die unten ausdrücklich
+-- vergebenen Rechte gelten (siehe supabase/verlauf/rechte_absichern.sql).
+alter default privileges for role postgres in schema public revoke all on tables from anon, authenticated;
+alter default privileges for role postgres in schema public revoke all on sequences from anon, authenticated;
+alter default privileges for role postgres in schema public revoke all on functions from anon, authenticated;
+
 --
 -- PostgreSQL database dump
 --
@@ -26,14 +33,14 @@ SET row_security = off;
 -- Name: privat; Type: SCHEMA; Schema: -; Owner: -
 --
 
-CREATE SCHEMA privat;
+CREATE SCHEMA IF NOT EXISTS privat;
 
 
 --
 -- Name: public; Type: SCHEMA; Schema: -; Owner: -
 --
 
-CREATE SCHEMA public;
+CREATE SCHEMA IF NOT EXISTS public;
 
 
 --
@@ -8679,10 +8686,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENC
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
 
 
 --
@@ -8699,10 +8702,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIO
 -- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON FUNCTIONS TO service_role;
 
 
 --
@@ -8719,10 +8718,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES 
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO authenticated;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO service_role;
 
 
 --
@@ -8732,7 +8727,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON T
 
 
 -- Speicher für Inseratsfotos und seine Regeln (Schema storage gehört Supabase)
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values ('inserat-bilder', 'inserat-bilder', t, 5242880, '{image/jpeg,image/png,image/webp}') on conflict (id) do nothing;
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values ('inserat-bilder', 'inserat-bilder', 'true', 5242880, '{image/jpeg,image/png,image/webp}') on conflict (id) do nothing;
 create policy "Eigene Bilder auflisten" on storage.objects as permissive for select to authenticated using (((bucket_id = 'inserat-bilder'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)));
 create policy "Eigene Bilder hochladen" on storage.objects as permissive for insert to authenticated with check (((bucket_id = 'inserat-bilder'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)));
 create policy "Eigene Bilder löschen" on storage.objects as permissive for delete to authenticated using (((bucket_id = 'inserat-bilder'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)));

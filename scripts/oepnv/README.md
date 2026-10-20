@@ -5,10 +5,9 @@ damit man Anzeigen nach „höchstens X Meter von einer Haltestelle der Linie Y�
 
 ## Einmalig: Datenbank vorbereiten
 
-Inhalt von `supabase/oepnv_linienfilter.sql` im Supabase SQL-Editor ausführen.
-Das schaltet PostGIS ein, legt die Tabellen `oepnv_*` an, ergänzt `anzeigen` um eine
-berechnete Spalte `geom` und legt die Funktionen für den Filter an.
-Die Prototyp-Tabellen `routes`, `route_stops` und `stops` bleiben unverändert.
+Ist in `supabase/migrations/0001_ausgangsstand.sql` enthalten (siehe `supabase/README.md`): PostGIS,
+die Tabellen `oepnv_*`, die berechnete Spalte `anzeigen.geom` und die Filterfunktionen.
+Wie das ursprünglich eingerichtet wurde, steht in `supabase/verlauf/oepnv_linienfilter.sql`.
 
 ## Wöchentlich: Daten aktualisieren
 

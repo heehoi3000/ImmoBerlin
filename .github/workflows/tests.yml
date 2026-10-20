@@ -46,6 +46,31 @@ jobs:
       - run: pip install shapely==2.0.6
       - run: python3 -m unittest discover -s tests/python -v
 
+  datenbank:
+    name: Datenbank-Aufbau
+    # Spielt supabase/migrations in ein leeres Supabase-Postgres ein (dieselbe Version wie die Cloud-Datenbank)
+    # und prüft, ob alle Tabellen, Regeln und Rechte da sind. Braucht Docker auf dem Runner.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Supabase-Postgres starten
+        run: |
+          docker run -d --name db -e POSTGRES_PASSWORD=test supabase/postgres:17.6.1.178
+          for i in $(seq 60); do docker exec db pg_isready -U postgres -h localhost >/dev/null 2>&1 && break; sleep 2; done
+          sleep 3
+      - name: Migrationen einspielen und prüfen
+        run: |
+          sql() { docker exec -i db psql -U "$1" -h localhost -d postgres -v ON_ERROR_STOP=1 -q; }
+          sql supabase_admin < tests/schema/dienste_attrappe.sql
+          for f in supabase/migrations/*.sql; do
+            echo "== $f"
+            # Warnungen zu PostGIS-Funktionen (gehören supabase_admin) ausblenden, Fehler brechen ab
+            if sql postgres < "$f" > ausgabe.txt 2>&1; then status=0; else status=1; fi
+            grep -v '^WARNING:  no privileges' ausgabe.txt || true
+            [ "$status" = 0 ] || exit 1
+          done
+          sql postgres < tests/schema/pruefen.sql
+
   browser:
     name: Browser-Tests
     runs-on: ubuntu-latest
@@ -66,7 +91,7 @@ jobs:
         run: npm run test:e2e
       - name: Bericht bei Fehlern
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4   # unter Forgejo: actions/upload-artifact@v3
         with:
           name: playwright-bericht
           path: playwright-report/

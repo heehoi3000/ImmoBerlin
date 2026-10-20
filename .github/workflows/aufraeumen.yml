@@ -1,6 +1,6 @@
 name: Datenbank aufräumen
 
-# Löscht täglich die gehashten IP-Zähler des Spamschutzes (supabase/moderation_konto_spam.sql),
+# Löscht täglich die gehashten IP-Zähler des Spamschutzes (supabase/verlauf/moderation_konto_spam.sql),
 # die nach einem Tag nicht mehr gebraucht werden.
 on:
   workflow_dispatch:
@@ -15,6 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: psql bereitstellen
+        # auf GitHub schon da; in Forgejo-Runnern (Debian/Ubuntu-Container) wird es nachinstalliert
+        run: |
+          command -v psql >/dev/null && exit 0
+          als_root() { if command -v sudo >/dev/null; then sudo "$@"; else "$@"; fi; }
+          als_root apt-get update -q && als_root apt-get install -y -q postgresql-client
+
       - name: Spamschutz-Zähler löschen
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}

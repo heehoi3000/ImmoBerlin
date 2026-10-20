@@ -1,5 +1,8 @@
 name: Deploy to GitHub Pages
 
+# Nur für GitHub Pages. Auf dem eigenen Server ersetzt ein Schritt die Pages-Aktionen, der out/ per rsync
+# auf den Server kopiert; dort mit NEXT_PUBLIC_BASIS_PFAD= bauen, damit die Seite unter / liegt.
+
 # Das Skript startet automatisch, wenn du auf den "main" Branch pushst
 on:
   push:

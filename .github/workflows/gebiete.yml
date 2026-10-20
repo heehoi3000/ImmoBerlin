@@ -25,8 +25,10 @@ jobs:
 
       - name: Werkzeuge installieren
         run: |
-          sudo apt-get update -q && sudo apt-get install -y -q osmium-tool
-          pip install shapely==2.0.6
+          # sudo fehlt in Forgejo-Runnern, die als root im Container laufen
+          als_root() { if command -v sudo >/dev/null; then sudo "$@"; else "$@"; fi; }
+          als_root apt-get update -q && als_root apt-get install -y -q osmium-tool python3-pip
+          pip install shapely==2.0.6 || pip install --break-system-packages shapely==2.0.6
 
       - name: OpenStreetMap-Auszug laden und Grenzen herausfiltern
         run: |
@@ -48,4 +50,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -q -m "Bezirksdaten $(date -u +%F)"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" "$ZIEL"
+          # server_url statt fest github.com, damit es auch mit Forgejo läuft
+          server="${{ github.server_url }}"
+          git push -f "${server/:\/\//://x-access-token:${{ github.token }}@}/${{ github.repository }}.git" "$ZIEL"

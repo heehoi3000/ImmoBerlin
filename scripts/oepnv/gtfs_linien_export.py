@@ -15,7 +15,8 @@ So werden doppelte Routen aus DELFI zu einer Linie, aber die S1 in Dresden und
 die S1 im Ruhrgebiet (beide DB Regio) bleiben getrennt.
 
 Zu einer Linie gehören nur Haltestellen, die an mindestens der Hälfte ihrer Betriebstage
-bedient werden. Umleitungen und Ersatzverkehr bei Bauarbeiten fallen so heraus.
+und von mindestens einem Zehntel der Fahrten der meistbedienten Haltestelle angefahren werden.
+Umleitungen und Ersatzverkehr bei Bauarbeiten sowie Fahrten ins Depot fallen so heraus.
 
 Nur Python-Standardbibliothek. Aufruf:
   python3 gtfs_linien_export.py feed.zip ausgabe_ordner/
@@ -34,6 +35,10 @@ csv.field_size_limit(10_000_000)
 
 # Anteil der Betriebstage einer Linie, an denen eine Haltestelle mindestens bedient sein muss
 MIN_ANTEIL_TAGE = 0.5
+# Anteil der Fahrten (Fahrt mal Verkehrstag) der meistbedienten Haltestelle der Linie
+MIN_ANTEIL_FAHRTEN = 0.1
+# Zum Nachvollziehen: Linien dieser Nummern der S-Bahn Berlin mit allen Anteilen ausgeben
+PRUEF_LINIEN = {"S41", "S42"}
 
 
 def gtfs_rows(zf, name):
@@ -145,16 +150,18 @@ def main(feed_pfad, ziel_pfad):
     tage_je_service = betriebstage(zf)
     # Ohne Kalender zählt jede Fahrt wie ein einziger gemeinsamer Tag, dann bleiben alle Haltestellen
     ohne_kalender = 0 if tage_je_service else 1
-    trip_route, trip_tage = {}, {}
+    trip_route, trip_tage, trip_tage_anzahl = {}, {}, {}
     for r in gtfs_rows(zf, "trips.txt"):
         trip_route[r["trip_id"]] = r["route_id"]
         trip_tage[r["trip_id"]] = tage_je_service.get(r.get("service_id"), ohne_kalender)
+        trip_tage_anzahl[r["trip_id"]] = trip_tage[r["trip_id"]].bit_count()
     print(f"{len(routen)} Routen, {len(trip_route)} Fahrten, {len(tage_je_service)} Verkehrstage-Kalender",
           file=sys.stderr)
 
     # stop_times ist die mit Abstand größte Datei: einmal streamen und dabei je (route, stop)
     # die Verkehrstage sowie Start- und Endhaltestelle jeder Fahrt merken.
     route_stops = defaultdict(dict)  # route_id -> {stop_id: Bitmaske der Verkehrstage}
+    route_fahrten = defaultdict(Counter)  # route_id -> {stop_id: Fahrten mal Verkehrstage}
     trip_enden = {}  # trip_id -> [min_seq, start_stop, max_seq, end_stop]
     for n, r in enumerate(gtfs_rows(zf, "stop_times.txt"), 1):
         trip_id = r["trip_id"]
@@ -164,6 +171,7 @@ def main(feed_pfad, ziel_pfad):
         stop_id = r["stop_id"]
         stops_der_route = route_stops[route_id]
         stops_der_route[stop_id] = stops_der_route.get(stop_id, 0) | trip_tage[trip_id]
+        route_fahrten[route_id][stop_id] += trip_tage_anzahl[trip_id]
         seq = int(r["stop_sequence"])
         e = trip_enden.get(r["trip_id"])
         if e is None:
@@ -220,16 +228,25 @@ def main(feed_pfad, ziel_pfad):
         weggelassen = 0
         for linie_id, route_ids in enumerate(sorted(gruppen.values(), key=lambda g: sorted(g)), 1):
             info = routen[route_ids[0]]
-            stop_tage = defaultdict(int)
+            stop_tage, stop_fahrten = defaultdict(int), Counter()
             for r in route_ids:
                 for stop_id, maske in route_stops[r].items():
                     if stop_id in haltestellen:
                         stop_tage[stop_id] |= maske
+                        stop_fahrten[stop_id] += route_fahrten[r][stop_id]
             linie_tage = 0
             for maske in stop_tage.values():
                 linie_tage |= maske
-            mindestens = linie_tage.bit_count() * MIN_ANTEIL_TAGE
-            stops = {s for s, maske in stop_tage.items() if maske.bit_count() >= mindestens}
+            min_tage = linie_tage.bit_count() * MIN_ANTEIL_TAGE
+            min_fahrten = max(stop_fahrten.values(), default=0) * MIN_ANTEIL_FAHRTEN
+            stops = {s for s, maske in stop_tage.items()
+                     if maske.bit_count() >= min_tage and stop_fahrten[s] >= min_fahrten}
+            if info["nummer"] in PRUEF_LINIEN and "S-Bahn Berlin" in info["betreiber"]:
+                tage, hoechst = max(linie_tage.bit_count(), 1), max(max(stop_fahrten.values(), default=1), 1)
+                for s_id in sorted(stop_tage, key=lambda x: -stop_fahrten[x]):
+                    print(f"  {info['nummer']} {haltestellen[s_id][0][:40]:40} Tage {stop_tage[s_id].bit_count() / tage:4.0%}"
+                          f"  Fahrten {stop_fahrten[s_id] / hoechst:4.0%}  {'ja' if s_id in stops else 'nein'}",
+                          file=sys.stderr)
             weggelassen += len(stop_tage) - len(stops)
             if not stops:
                 continue

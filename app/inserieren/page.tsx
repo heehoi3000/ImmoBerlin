@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { useNutzer } from '../../lib/konto';
 import { Adresse, adressenSuchen } from '../../lib/adresse';
 import { AUSSTATTUNG, ENERGIEKLASSEN, OBJEKTARTEN } from '../../lib/filter';
+import { MAX_EINGANG_MB, bildVorbereiten } from '../../lib/bilder';
 
 const MAX_BILDER = 15;
 const BUCKET = 'inserat-bilder';
@@ -128,13 +129,15 @@ export default function Inserieren() {
     const auswahl = Array.from(dateien).slice(0, MAX_BILDER - f.bilder.length);
     setFehler(null);
     for (const datei of auswahl) {
-      if (datei.size > 5 * 1024 * 1024) { setFehler(`${datei.name} ist größer als 5 MB.`); continue; }
+      if (datei.size > MAX_EINGANG_MB * 1024 * 1024) { setFehler(`${datei.name} ist größer als ${MAX_EINGANG_MB} MB.`); continue; }
       setHochladen(n => n + 1);
-      const endung = (datei.name.split('.').pop() || 'jpg').toLowerCase();
-      const pfad = `${nutzer.id}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${endung}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(pfad, datei, { contentType: datei.type });
+      let bild;
+      try { bild = await bildVorbereiten(datei); }
+      catch (err) { console.error(err); setHochladen(n => n - 1); setFehler(`${datei.name} konnte nicht gelesen werden. Erlaubt sind JPG, PNG und WebP.`); continue; }
+      const pfad = `${nutzer.id}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${bild.endung}`;
+      const { error } = await supabase.storage.from(BUCKET).upload(pfad, bild.blob, { contentType: bild.blob.type });
       setHochladen(n => n - 1);
-      if (error) { console.error(error); setFehler(`${datei.name} konnte nicht hochgeladen werden. Erlaubt sind JPG, PNG und WebP.`); continue; }
+      if (error) { console.error(error); setFehler(`${datei.name} konnte nicht hochgeladen werden. Bitte versuche es noch einmal.`); continue; }
       const url = supabase.storage.from(BUCKET).getPublicUrl(pfad).data.publicUrl;
       setF(alt => ({ ...alt, bilder: [...alt.bilder, url] }));
     }
@@ -337,7 +340,7 @@ export default function Inserieren() {
         )}
       </Karte>
 
-      <Karte titel="Fotos" beschreibung={`Bis zu ${MAX_BILDER} Bilder, je höchstens 5 MB (JPG, PNG, WebP). Das erste Bild ist das Titelbild.`}>
+      <Karte titel="Fotos" beschreibung={`Bis zu ${MAX_BILDER} Bilder, je höchstens ${MAX_EINGANG_MB} MB (JPG, PNG, WebP). Wir verkleinern sie und entfernen versteckte Angaben wie den Aufnahmeort. Das erste Bild ist das Titelbild.`}>
         <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
           {f.bilder.map((url, i) => (
             <div key={url} className="relative aspect-[4/3] rounded-lg overflow-hidden bg-zinc-100 group">

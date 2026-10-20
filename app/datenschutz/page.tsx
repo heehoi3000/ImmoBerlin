@@ -55,7 +55,7 @@ export default function Datenschutz() {
         <p>
           Was du in ein Inserat schreibst, einschließlich Adresse, Fotos und bei gewerblichen Anbietern des Firmennamens, ist für alle Besucher sichtbar.
           Deine E-Mail-Adresse zeigen wir im Inserat nicht an. Ein Inserat bleibt gespeichert, bis du es löschst. Beim Löschen entfernen wir auch die Fotos.
-          Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO. Lade bitte keine Fotos hoch, auf denen Personen erkennbar sind.
+          Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO. Fotos verkleinern wir schon in deinem Browser und speichern sie neu, dabei entfernen wir versteckte Angaben wie Aufnahmeort, Datum und Kameramodell. Lade bitte keine Fotos hoch, auf denen Personen erkennbar sind.
         </p>
         <p>
           Sperren wir ein Inserat nach einer Prüfung, speichern wir den Grund, die Begründung und den Zeitpunkt und zeigen sie dir unter „Meine Inserate“ an (Art. 17 DSA).

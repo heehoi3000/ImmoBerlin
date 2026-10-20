@@ -8727,7 +8727,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES 
 
 
 -- Speicher für Inseratsfotos und seine Regeln (Schema storage gehört Supabase)
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values ('inserat-bilder', 'inserat-bilder', 'true', 5242880, '{image/jpeg,image/png,image/webp}') on conflict (id) do nothing;
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values ('inserat-bilder', 'inserat-bilder', 't', 5242880, '{image/jpeg,image/png,image/webp}') on conflict (id) do nothing;
 create policy "Eigene Bilder auflisten" on storage.objects as permissive for select to authenticated using (((bucket_id = 'inserat-bilder'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)));
 create policy "Eigene Bilder hochladen" on storage.objects as permissive for insert to authenticated with check (((bucket_id = 'inserat-bilder'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)));
 create policy "Eigene Bilder löschen" on storage.objects as permissive for delete to authenticated using (((bucket_id = 'inserat-bilder'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)));

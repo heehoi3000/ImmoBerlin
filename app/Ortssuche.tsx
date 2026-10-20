@@ -34,7 +34,7 @@ function ortAusFeature(f: PhotonFeature): Ort {
   };
 }
 
-export default function Ortssuche({ ort, onChange }: { ort: Ort | null; onChange: (o: Ort | null) => void }) {
+export default function Ortssuche({ ort, onChange, platzhalter = 'Ort oder PLZ, z.B. Berlin, Potsdam, 10115' }: { ort: Ort | null; onChange: (o: Ort | null) => void; platzhalter?: string }) {
   const [text, setText] = useState(ort?.name ?? '');
   const [vorschlaege, setVorschlaege] = useState<Ort[]>([]);
   const [offen, setOffen] = useState(false);
@@ -85,7 +85,7 @@ export default function Ortssuche({ ort, onChange }: { ort: Ort | null; onChange
       <input
         type="text"
         value={text}
-        placeholder="Ort oder PLZ, z.B. Berlin, Potsdam, 10115"
+        placeholder={platzhalter}
         aria-label="Ort oder Postleitzahl"
         role="combobox"
         aria-autocomplete="list"

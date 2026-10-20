@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Ortssuche from './Ortssuche';
+import LinienFeld from './LinienFeld';
 import { AnzeigeKachel } from './Ergebnisliste';
 import { supabase } from '../lib/supabase';
-import { Filter, Ort } from '../lib/filter';
+import { Filter, Ort, STANDARD_FILTER } from '../lib/filter';
+import { Linie } from '../lib/oepnv';
 import { Anzeige } from '../lib/suche';
 
 const STAEDTE: (Ort & { bild: string })[] = [
@@ -47,6 +49,8 @@ export default function Startseite() {
   const router = useRouter();
   const [transaktion, setTransaktion] = useState<Filter['transaktion']>('mieten');
   const [ort, setOrt] = useState<Ort | null>(null);
+  const [linien, setLinien] = useState<Linie[]>([]);
+  const [umkreis, setUmkreis] = useState(STANDARD_FILTER.linienUmkreisM);
   const [neueste, setNeueste] = useState<Anzeige[] | null>(null);
   const [anzahl, setAnzahl] = useState<number | null>(null);
 
@@ -67,7 +71,7 @@ export default function Startseite() {
       {/* --- EINSTIEG --- */}
       <section className="relative overflow-hidden bg-gradient-to-b from-white to-zinc-50 border-b border-zinc-200">
         <Linienhintergrund />
-        <div className="relative max-w-4xl mx-auto px-4 pt-16 pb-14 md:pt-28 md:pb-24 flex flex-col items-center text-center gap-6">
+        <div className="relative max-w-5xl mx-auto px-4 pt-16 pb-14 md:pt-28 md:pb-24 flex flex-col items-center text-center gap-6">
           <span className="px-3 py-1 rounded-full bg-white/80 border border-zinc-200 text-zinc-600 text-xs font-semibold backdrop-blur">Kostenlos · deutschlandweit · für Bahn, Tram und Bus</span>
           <h1 className="text-[2.6rem] leading-[1.05] md:text-7xl font-bold tracking-tight">
             Wohnen an<br className="sm:hidden" /> deiner Linie.
@@ -76,19 +80,23 @@ export default function Startseite() {
             Wähle Bahn, Tram oder Bus und wie nah die Haltestelle sein soll. Du siehst nur Wohnungen und Häuser, die dazu passen.
           </p>
 
-          <div className="w-full max-w-3xl mt-2 bg-white border border-zinc-200 rounded-[28px] shadow-[0_12px_40px_rgba(0,0,0,0.10)] p-2 flex flex-col sm:flex-row sm:items-center gap-2 text-left">
-            <div className="flex shrink-0 bg-zinc-100 rounded-full p-1 h-12 self-stretch sm:self-auto">
+          <div className="w-full max-w-5xl mt-2 bg-white border border-zinc-200 rounded-[28px] shadow-[0_12px_40px_rgba(0,0,0,0.10)] p-2 flex flex-col lg:flex-row lg:items-center gap-2 text-left">
+            <div className="flex shrink-0 bg-zinc-100 rounded-full p-1 h-12 self-stretch lg:self-auto">
               {(['mieten', 'kaufen'] as const).map(t => (
-                <button key={t} onClick={() => setTransaktion(t)} aria-pressed={transaktion === t} className={`flex-1 sm:flex-none px-5 rounded-full text-sm font-semibold transition ${transaktion === t ? 'bg-white shadow-sm' : 'text-zinc-600 hover:text-black'}`}>
+                <button key={t} onClick={() => setTransaktion(t)} aria-pressed={transaktion === t} className={`flex-1 lg:flex-none px-5 rounded-full text-sm font-semibold transition ${transaktion === t ? 'bg-white shadow-sm' : 'text-zinc-600 hover:text-black'}`}>
                   {t === 'mieten' ? 'Mieten' : 'Kaufen'}
                 </button>
               ))}
             </div>
-            <div className="flex-1 min-w-0 flex items-center gap-2 pl-3 sm:border-l sm:border-zinc-200 [&_input]:border-0 [&_input]:focus:ring-0 [&_input]:h-12 [&_input]:text-base [&_input]:bg-transparent">
+            <div className="flex-1 min-w-0 lg:max-w-[17rem] flex items-center gap-2 pl-3 lg:border-l lg:border-zinc-200 [&_input]:border-0 [&_input]:focus:ring-0 [&_input]:h-12 [&_input]:text-base [&_input]:bg-transparent">
               <svg className="w-5 h-5 text-zinc-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
-              <div className="flex-1 min-w-0"><Ortssuche ort={ort} onChange={setOrt} /></div>
+              <div className="flex-1 min-w-0"><Ortssuche ort={ort} onChange={setOrt} platzhalter="Ort oder PLZ" /></div>
             </div>
-            <button onClick={() => suchen({ transaktion, ort })} className="h-12 px-8 rounded-full bg-zinc-900 text-white font-semibold hover:bg-black transition flex items-center justify-center gap-2">
+            <div className="flex-[1.4] min-w-0 flex items-center gap-2 pl-3 pr-1 border-t border-zinc-100 pt-2 lg:pt-0 lg:border-t-0 lg:border-l lg:border-zinc-200">
+              <svg aria-hidden="true" className="w-5 h-5 text-zinc-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="3" width="14" height="14" rx="3" /><path d="M5 11h14M9 21l-2-4M15 21l2-4" /><circle cx="9" cy="14" r=".6" fill="currentColor" /><circle cx="15" cy="14" r=".6" fill="currentColor" /></svg>
+              <LinienFeld bezug={ort} ausgewaehlt={linien} onChange={setLinien} umkreis={umkreis} onUmkreis={setUmkreis} />
+            </div>
+            <button onClick={() => suchen({ transaktion, ort, linien, linienUmkreisM: umkreis })} className="h-12 px-8 rounded-full bg-zinc-900 text-white font-semibold hover:bg-black transition flex items-center justify-center gap-2">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
               Suchen
             </button>
@@ -97,7 +105,7 @@ export default function Startseite() {
           <div className="flex flex-wrap justify-center items-center gap-2 text-sm">
             <span className="text-zinc-500">Beliebt:</span>
             {STAEDTE.slice(0, 4).map(stadt => (
-              <button key={stadt.name} onClick={() => suchen({ transaktion, ort: stadt })}
+              <button key={stadt.name} onClick={() => suchen({ transaktion, ort: stadt, linien, linienUmkreisM: umkreis })}
                 className="px-3 py-1.5 rounded-full bg-white border border-zinc-200 font-medium text-zinc-700 hover:border-zinc-900 hover:text-black transition">{stadt.kurzname}</button>
             ))}
           </div>
@@ -105,8 +113,8 @@ export default function Startseite() {
           <dl className="grid grid-cols-3 gap-6 md:gap-16 mt-6 md:mt-10">
             {[
               [anzahl !== null ? anzahl.toLocaleString('de-DE') : '…', 'Angebote'],
-              ['21.800', 'ÖPNV-Linien'],
-              ['382.000', 'Haltestellen'],
+              ['26.200', 'ÖPNV-Linien'],
+              ['466.000', 'Haltestellen'],
             ].map(([w, n]) => (
               <div key={n} className="flex flex-col items-center">
                 <dt className="order-2 text-xs md:text-sm text-zinc-500">{n}</dt>

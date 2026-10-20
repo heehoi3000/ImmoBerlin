@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 import { useNutzer } from '../../lib/konto';
 import { Anzeige } from '../../lib/suche';
+import { FOTO_BUCKET, fotoPfad, fotoUrl } from '../../lib/fotos';
 import { SPERR_KATEGORIEN, moderationsFehler } from '../../lib/moderation';
 
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -35,9 +36,9 @@ export default function MeineInserate() {
     if (!confirm(`„${a.titel}“ endgültig löschen?`)) return;
     const { error } = await supabase.from('anzeigen').delete().eq('id', a.id);
     if (error) return;
-    // Fotos aus dem Speicher entfernen (Pfad nach dem Bucket-Namen)
-    const pfade = (a.bilder as string[] ?? []).map(url => url.split('/inserat-bilder/')[1]).filter(Boolean);
-    if (pfade.length) await supabase.storage.from('inserat-bilder').remove(pfade);
+    // Fotos aus dem Speicher entfernen
+    const pfade = (a.bilder as string[] ?? []).map(fotoPfad).filter(Boolean);
+    if (pfade.length) await supabase.storage.from(FOTO_BUCKET).remove(pfade);
     setInserate(liste => liste!.filter(x => x.id !== a.id));
   }
 
@@ -76,7 +77,7 @@ export default function MeineInserate() {
             <div key={a.id} className="bg-white border border-zinc-200 rounded-2xl p-3 flex flex-col sm:flex-row gap-4">
               <div className="w-full sm:w-40 aspect-[4/3] rounded-xl overflow-hidden bg-zinc-100 shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {a.bilder?.[0] ? <img src={a.bilder[0]} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">🏠</div>}
+                {a.bilder?.[0] ? <img src={fotoUrl(a.bilder[0])} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl">🏠</div>}
               </div>
               <div className="flex-1 min-w-0 flex flex-col gap-1">
                 <div className="flex items-center gap-2">

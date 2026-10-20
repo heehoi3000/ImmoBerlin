@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { BASIS } from './basis';
 
 // undefined = wird noch geprüft, null = nicht angemeldet
 export function useNutzer(): User | null | undefined {
@@ -29,5 +30,5 @@ export function authFehlerText(nachricht: string): string {
 
 // Adresse der Seite inkl. basePath, für Links in Bestätigungsmails
 export function seitenUrl(pfad: string) {
-  return new URL(`/ImmoBerlin${pfad}`, window.location.origin).href;
+  return new URL(`${BASIS}${pfad}`, window.location.origin).href;
 }

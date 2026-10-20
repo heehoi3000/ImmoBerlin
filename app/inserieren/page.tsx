@@ -8,9 +8,9 @@ import { useNutzer } from '../../lib/konto';
 import { Adresse, adressenSuchen } from '../../lib/adresse';
 import { AUSSTATTUNG, ENERGIEKLASSEN, OBJEKTARTEN } from '../../lib/filter';
 import { MAX_EINGANG_MB, bildVorbereiten } from '../../lib/bilder';
+import { FOTO_BUCKET, fotoUrl } from '../../lib/fotos';
 
 const MAX_BILDER = 15;
-const BUCKET = 'inserat-bilder';
 
 interface Formular {
   transaktions_typ: 'mieten' | 'kaufen';
@@ -135,11 +135,10 @@ export default function Inserieren() {
       try { bild = await bildVorbereiten(datei); }
       catch (err) { console.error(err); setHochladen(n => n - 1); setFehler(`${datei.name} konnte nicht gelesen werden. Erlaubt sind JPG, PNG und WebP.`); continue; }
       const pfad = `${nutzer.id}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${bild.endung}`;
-      const { error } = await supabase.storage.from(BUCKET).upload(pfad, bild.blob, { contentType: bild.blob.type });
+      const { error } = await supabase.storage.from(FOTO_BUCKET).upload(pfad, bild.blob, { contentType: bild.blob.type });
       setHochladen(n => n - 1);
       if (error) { console.error(error); setFehler(`${datei.name} konnte nicht hochgeladen werden. Bitte versuche es noch einmal.`); continue; }
-      const url = supabase.storage.from(BUCKET).getPublicUrl(pfad).data.publicUrl;
-      setF(alt => ({ ...alt, bilder: [...alt.bilder, url] }));
+      setF(alt => ({ ...alt, bilder: [...alt.bilder, pfad] }));
     }
   }
 
@@ -345,7 +344,7 @@ export default function Inserieren() {
           {f.bilder.map((url, i) => (
             <div key={url} className="relative aspect-[4/3] rounded-lg overflow-hidden bg-zinc-100 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+              <img src={fotoUrl(url)} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
               {i === 0 && <span className="absolute left-1 top-1 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Titelbild</span>}
               <button type="button" onClick={() => setze({ bilder: f.bilder.filter(b => b !== url) })} aria-label="Foto entfernen"
                 className="absolute right-1 top-1 w-6 h-6 rounded-full bg-white/90 text-black text-sm font-bold shadow">×</button>

@@ -2,9 +2,9 @@
 // Normalerweise aus vorab erzeugten Dateien unter public/gebiete (siehe scripts/gebiete/gebiete_bauen.py),
 // die mit der Seite ausgeliefert werden und sofort da sind. Fehlen sie, fragen wir Overpass und Nominatim.
 import { Bezirk, Ort } from './filter';
+import { BASIS } from './basis';
 
-// '/ImmoBerlin' ist der basePath aus next.config.ts
-export const GEBIETE_URL = '/ImmoBerlin/gebiete';
+export const GEBIETE_URL = `${BASIS}/gebiete`;
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/lookup';

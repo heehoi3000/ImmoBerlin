@@ -5,6 +5,7 @@ import { Anzeige, NaechsteHaltestelle } from '../lib/suche';
 import { useMerkliste } from '../lib/merkliste';
 import { OBJEKTARTEN } from '../lib/filter';
 import { haltestelleKurz } from '../lib/oepnv';
+import { fotoUrl } from '../lib/fotos';
 
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const objektartName: Record<string, string> = Object.fromEntries(
@@ -44,7 +45,7 @@ export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt }: {
       className={`group relative flex ${kompakt ? 'flex-row gap-3' : 'flex-col gap-3'} rounded-2xl transition ${aktiv ? 'ring-2 ring-black ring-offset-4 ring-offset-zinc-50' : ''}`}>
       <Link href={`/anzeige/?id=${a.id}`} className={`relative block overflow-hidden rounded-2xl bg-zinc-100 shrink-0 ${kompakt ? 'w-32 h-28' : 'aspect-[16/10] sm:aspect-[4/3]'}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {a.bilder?.[0] ? <img src={a.bilder[0]} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" /> : <KeinFoto id={a.id} />}
+        {a.bilder?.[0] ? <img src={fotoUrl(a.bilder[0])} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" /> : <KeinFoto id={a.id} />}
         {!kompakt && (
           <div className="absolute left-3 top-3 flex gap-1.5">
             {neu(a.erstellt_am) && <span className="px-2 py-1 rounded-full bg-white text-[11px] font-bold shadow-sm">Neu</span>}

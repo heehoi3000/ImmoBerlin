@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const seite = `http://localhost:4173${process.env.NEXT_PUBLIC_BASIS_PFAD ?? '/ImmoBerlin'}/`;
+
 // Browser-Tests gegen den fertigen statischen Export (npm run test:e2e).
 // Vorher bauen mit NEXT_PUBLIC_SUPABASE_URL=http://supabase.test, die Tests ersetzen Supabase vollständig.
 export default defineConfig({
@@ -8,7 +10,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: 'http://localhost:4173/ImmoBerlin/',
+    baseURL: seite,
     locale: 'de-DE',
     trace: 'retain-on-failure',
     // In der Cloud-Sandbox liegt Chromium an einem festen Ort, sonst lädt "npx playwright install" ihn
@@ -20,7 +22,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'node tests/e2e/server.mjs',
-    url: 'http://localhost:4173/ImmoBerlin/',
+    url: seite,
     reuseExistingServer: !process.env.CI,
   },
 });

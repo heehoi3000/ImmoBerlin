@@ -121,7 +121,7 @@ export async function attrappeEinrichten(page: Page, daten: Daten): Promise<Aufz
     // Pankow als Rechteck um 52.55 N: enthält nur a2 aus STANDARD_DATEN
     'g/2.json': { type: 'Polygon', coordinates: [[[13.3, 52.54], [13.5, 52.54], [13.5, 52.6], [13.3, 52.6], [13.3, 52.54]]] },
   };
-  await page.route('**/ImmoBerlin/gebiete/**', route => {
+  await page.route('**/gebiete/**', route => {
     const teil = new URL(route.request().url()).pathname.replace(/^.*\/gebiete\//, '');
     return teil in gebiete ? json(route, gebiete[teil]) : route.fulfill({ status: 404, body: '' });
   });

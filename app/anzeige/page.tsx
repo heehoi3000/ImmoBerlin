@@ -5,6 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { supabase } from '../../lib/supabase';
 import { Anzeige } from '../../lib/suche';
+import { fotoUrl } from '../../lib/fotos';
 import { AUSSTATTUNG, OBJEKTARTEN } from '../../lib/filter';
 import { useMerkliste } from '../../lib/merkliste';
 import { useNutzer } from '../../lib/konto';
@@ -57,7 +58,7 @@ export default function AnzeigeSeite() {
   }
 
   const miete = a.transaktions_typ === 'mieten';
-  const bilder: string[] = a.bilder ?? [];
+  const bilder: string[] = (a.bilder ?? []).map(fotoUrl);
   const ausstattung = AUSSTATTUNG.filter(x => a[x.wert]);
   const eigenes = nutzer && a.inserent_id === nutzer.id;
   const etage = a.etage === null || a.etage === undefined ? null : a.etage === 0 ? 'Erdgeschoss' : a.etage < 0 ? 'Souterrain' : `${a.etage}. OG`;

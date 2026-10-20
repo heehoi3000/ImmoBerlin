@@ -12,12 +12,13 @@ import { Kartenausschnitt, Linie, haltestelleKurz } from '../lib/oepnv';
 import { Bezirk } from '../lib/filter';
 import { bezirkeAusdehnung } from '../lib/bezirke';
 import { Anzeige, Haltestelle, NaechsteHaltestelle } from '../lib/suche';
+import { BASIS } from '../lib/basis';
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: '/ImmoBerlin/leaflet/marker-icon-2x.png',
-  iconUrl: '/ImmoBerlin/leaflet/marker-icon.png',
-  shadowUrl: '/ImmoBerlin/leaflet/marker-shadow.png',
+  iconRetinaUrl: `${BASIS}/leaflet/marker-icon-2x.png`,
+  iconUrl: `${BASIS}/leaflet/marker-icon.png`,
+  shadowUrl: `${BASIS}/leaflet/marker-shadow.png`,
 });
 
 
@@ -28,8 +29,7 @@ const KARTE_HINWEIS = '<a href="https://openfreemap.org">OpenFreeMap</a> &copy; 
 const FAHRPLAN_HINWEIS = 'Fahrplandaten: <a href="https://www.delfi.de">DELFI e.V.</a>, CC BY 4.0';
 
 // Der Worker liegt unter public/maplibre/ (siehe scripts/maplibre-worker-kopieren.mjs).
-// '/ImmoBerlin' ist der basePath aus next.config.ts.
-setWorkerUrl(new URL('/ImmoBerlin/maplibre/maplibre-gl-worker.mjs', window.location.href).href);
+setWorkerUrl(new URL(`${BASIS}/maplibre/maplibre-gl-worker.mjs`, window.location.href).href);
 
 function Hintergrundkarte() {
   const map = useMap();

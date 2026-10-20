@@ -1,10 +1,10 @@
-// Liefert den statischen Export (out/) unter /ImmoBerlin aus, wie GitHub Pages oder später der eigene Server.
+// Liefert den statischen Export (out/) unter dem Seitenpfad aus (Standard /ImmoBerlin), wie GitHub Pages oder später der eigene Server.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 
 const WURZEL = join(process.cwd(), 'out');
-const BASIS = '/ImmoBerlin';
+const BASIS = process.env.NEXT_PUBLIC_BASIS_PFAD ?? '/ImmoBerlin';
 const PORT = Number(process.env.PORT ?? 4173);
 const TYPEN = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain' };

@@ -148,7 +148,7 @@ def main(feed_pfad, ziel_pfad):
             i["typ"] = "ersatzverkehr"
 
     tage_je_service = betriebstage(zf)
-    # Ohne Kalender zählt jede Fahrt wie ein einziger gemeinsamer Tag, dann bleiben alle Haltestellen
+    # Ohne Kalender zählt jede Fahrt wie ein einziger gemeinsamer Tag, dann gilt nur der Anteil der Fahrten
     ohne_kalender = 0 if tage_je_service else 1
     trip_route, trip_tage, trip_tage_anzahl = {}, {}, {}
     for r in gtfs_rows(zf, "trips.txt"):

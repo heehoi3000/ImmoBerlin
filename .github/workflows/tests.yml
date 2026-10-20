@@ -1,0 +1,73 @@
+name: Tests
+
+# Startet bei jedem Push und jedem Pull Request alle automatischen Tests.
+# Die Browser-Tests laufen gegen einen Testbuild mit Platzhalter-Adresse; Supabase und fremde Dienste
+# werden im Browser ersetzt, die echte Datenbank bleibt unberührt. Läuft so auch mit Forgejo Actions.
+on:
+  push:
+    # Datenbranches der Gebietsdaten enthalten keinen Code
+    branches-ignore: [gebiete, gebiete-test]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  logik:
+    name: Logik und Code-Prüfung
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Code-Prüfung (ESLint)
+        run: npm run lint
+      - name: Typen prüfen
+        run: npx tsc --noEmit
+      - name: Logik-Tests (Vitest)
+        run: npm test
+
+  python:
+    name: ÖPNV- und Gebietsskripte
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install shapely==2.0.6
+      - run: python3 -m unittest discover -s tests/python -v
+
+  browser:
+    name: Browser-Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Testbuild
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: http://supabase.test
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-schluessel
+        run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Browser-Tests (Playwright)
+        run: npm run test:e2e
+      - name: Bericht bei Fehlern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-bericht
+          path: playwright-report/
+          retention-days: 14

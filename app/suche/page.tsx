@@ -174,7 +174,8 @@ export default function Suche() {
   const weitere = weitereFilterAnzahl(filter);
   const sortierungen = SORTIERUNGEN.filter(s => !s.nurMitLinien || angewendet.linien.length > 0);
 
-  const typName = angewendet.immobilientyp === 'wohnung' ? 'Wohnungen' : 'Häuser';
+  const einzeln = ergebnis.anzeigen.length === 1;
+  const typName = angewendet.immobilientyp === 'wohnung' ? (einzeln ? 'Wohnung' : 'Wohnungen') : (einzeln ? 'Haus' : 'Häuser');
   const transaktionName = angewendet.transaktion === 'mieten' ? 'zur Miete' : 'zum Kauf';
   const grenzen = angewendet.bezirke.length ? angewendet.bezirke : ergebnis.ortGrenze ? [ergebnis.ortGrenze] : [];
   const ortKreis = angewendet.ort && grenzen.length === 0

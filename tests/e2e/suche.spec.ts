@@ -48,7 +48,7 @@ test.describe('Suche', () => {
     await page.getByPlaceholder(/Bezirk oder Ortsteil/).fill('Pa');
     await page.getByRole('button', { name: /Pankow/ }).click();
     await page.getByRole('button', { name: 'Ergebnisse anzeigen' }).click();
-    await expect(page.getByRole('heading', { name: /^1 Wohnung(en)? zur Miete/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '1 Wohnung zur Miete' })).toBeVisible();
     await expect(page.getByText('Neubau mit Balkon')).toBeVisible();
   });
 

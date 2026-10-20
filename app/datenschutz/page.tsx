@@ -105,12 +105,13 @@ export default function Datenschutz() {
       <section>
         <h2>8. Karte und Ortssuche</h2>
         <p>
-          Damit du die Karte siehst und Orte, Adressen und Bezirke suchen kannst, lädt dein Browser Daten direkt von diesen Diensten. Dabei erhalten sie deine IP-Adresse und den Suchbegriff:
+          Orte, Postleitzahlen und Bezirke suchst du in eigenen Dateien, die wir mit der Seite ausliefern; dein Suchbegriff geht dabei an keinen fremden Dienst.
+          Für die Karte und die Adresssuche beim Inserieren lädt dein Browser Daten direkt von diesen Diensten. Dabei erhalten sie deine IP-Adresse und gegebenenfalls den Suchbegriff:
         </p>
         <ul>
           <li>Kartenkacheln: OpenFreeMap (openfreemap.org)</li>
-          <li>Orts- und Adresssuche: Photon der komoot GmbH, Potsdam (photon.komoot.io)</li>
-          <li>Nur falls eine Gebietsgrenze nicht in unseren eigenen Dateien liegt: Nominatim der OpenStreetMap Foundation (nominatim.openstreetmap.org) und die Overpass API (overpass-api.de)</li>
+          <li>Adresssuche beim Inserieren: Photon der komoot GmbH, Potsdam (photon.komoot.io)</li>
+          <li>Nur falls ein Ort oder eine Gebietsgrenze nicht in unseren eigenen Dateien liegt: Photon (wie oben), Nominatim der OpenStreetMap Foundation (nominatim.openstreetmap.org) und die Overpass API (overpass-api.de)</li>
         </ul>
         <p>Rechtsgrundlage ist unser berechtigtes Interesse an einer funktionierenden Kartensuche (Art. 6 Abs. 1 lit. f DSGVO). Die Dienste speichern nach eigenen Angaben keine Profile über Nutzer.</p>
       </section>

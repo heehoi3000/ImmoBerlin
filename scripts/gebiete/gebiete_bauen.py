@@ -30,7 +30,9 @@ BEZIRK_EBENEN = {'9': 'bezirk', '10': 'ortsteil'}
 MAX_BEZIRKE_LAND = 400
 VEREINFACHUNG = 0.0001  # Grad, etwa 10 m
 # Gewicht für die Reihenfolge der Vorschläge, wenn keine Einwohnerzahl getaggt ist
-GEWICHT_OHNE_EINWOHNER = {'4': 3_000_000, '6': 150_000, '8': 1_000, '9': 50_000, '10': 5_000, 'plz': 0}
+GEWICHT_OHNE_EINWOHNER = {'4': 3_000_000, '6': 150_000, '8': 2_000, '9': 3_000, '10': 500, 'plz': 0}
+# Landkreise ohne Einwohnerzahl hinter gleichnamige Städte stellen
+GEWICHT_LANDKREIS = 20_000
 # Füllwörter tragen keinen eigenen Suchschlüssel (der Namensanfang zählt trotzdem)
 FUELLWOERTER = {'am', 'an', 'auf', 'bei', 'der', 'die', 'den', 'des', 'dem', 'im', 'in', 'ob', 'vor', 'zu', 'zum', 'zur',
                 'kreis', 'landkreis', 'stadt', 'kreisfreie', 'gemeinde', 'samtgemeinde', 'verwaltungsgemeinschaft'}
@@ -153,6 +155,8 @@ def ortsindex(orte, bezirke, plz, mit_grenze, mit_liste, baum):
             'b': [round(b[0], 3), round(b[1], 3), round(b[2], 3), round(b[3], 3)],
             'w': e['einwohner'] if e['einwohner'] is not None else GEWICHT_OHNE_EINWOHNER[e['ebene']],
         }
+        if e['einwohner'] is None and e['ebene'] == '6' and re.match(r'(Land)?[Kk]reis|Region', e['name']):
+            eintrag['w'] = GEWICHT_LANDKREIS
         if e['id'] in mit_grenze:
             eintrag['r'] = e['id']
         # Kreisfreie Städte gibt es oft doppelt (admin_level 6 und 8): den Eintrag mit Bezirksliste behalten
@@ -182,7 +186,9 @@ def ortsindex(orte, bezirke, plz, mit_grenze, mit_liste, baum):
     for b in bezirke:
         um = umgebend(baum, orte, b['geom'], ORT_EBENEN)
         stadt = um[0]['name'] if um else None
-        hinzu(b, ', '.join(t for t in (b['name'], stadt if stadt != b['name'] else None) if t), b['name'])
+        # Namen wie "Stadtmitte, Innenstadt, Frankfurt (Oder)" enthalten die Stadt schon
+        zusatz = stadt if stadt and stadt not in b['name'] else None
+        hinzu(b, ', '.join(t for t in (b['name'], zusatz) if t), b['name'])
 
     for p in plz:
         um = umgebend(baum, orte, p['geom'], {'8', '6', '4'})

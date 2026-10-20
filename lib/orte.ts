@@ -15,7 +15,9 @@ interface OrtEintrag {
 
 // Muss zu normalisieren() in scripts/gebiete/gebiete_bauen.py passen
 export function normalisieren(text: string): string {
+  // "koeln" und "köln" sollen dasselbe finden
   return text.toLowerCase().replace(/ß/g, 'ss').normalize('NFD').replace(/\p{Mn}/gu, '')
+    .replace(/ae/g, 'a').replace(/oe/g, 'o').replace(/ue/g, 'u')
     .replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
@@ -66,12 +68,12 @@ export async function orteSuchen(suchtext: string, anzahl = 6): Promise<Ort[] | 
     const alle = normalisieren(e.n).split(' ');
     return eigen.some(w => w.startsWith(erstes)) && worte.slice(1).every(q => alle.some(w => w.startsWith(q)));
   });
-  // Genauer Treffer und Namensanfang vor Treffern mitten im Namen, sonst nach Größe
+  // Genauer Treffer und Namensanfang zählen mehr als ein Treffer mitten im Namen, große Orte mehr als kleine
   const suche = worte.join(' ');
-  const rang = (e: OrtEintrag) => {
+  const punkte = (e: OrtEintrag) => {
     const k = normalisieren(e.k);
-    return k === suche ? 0 : k.startsWith(suche) ? 1 : 2;
+    return (e.w + 1) * (k === suche ? 10 : k.startsWith(suche) ? 3 : 1);
   };
-  treffer.sort((x, y) => rang(x) - rang(y) || y.w - x.w);
+  treffer.sort((x, y) => punkte(y) - punkte(x));
   return treffer.slice(0, anzahl).map(alsOrt);
 }

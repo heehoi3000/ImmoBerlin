@@ -74,6 +74,8 @@ def normalisieren(text):
     text = text.lower().replace('ß', 'ss')
     text = unicodedata.normalize('NFD', text)
     text = ''.join(z for z in text if unicodedata.category(z) != 'Mn')
+    # "koeln" und "köln" sollen dasselbe finden
+    text = text.replace('ae', 'a').replace('oe', 'o').replace('ue', 'u')
     return re.sub(r'[^a-z0-9]+', ' ', text).strip()
 
 

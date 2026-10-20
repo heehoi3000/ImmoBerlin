@@ -8,7 +8,7 @@ import { useNutzer } from '../../lib/konto';
 import { Adresse, adressenSuchen } from '../../lib/adresse';
 import { AUSSTATTUNG, ENERGIEKLASSEN, OBJEKTARTEN } from '../../lib/filter';
 import { MAX_EINGANG_MB, bildVorbereiten } from '../../lib/bilder';
-import { FOTO_BUCKET, fotoUrl } from '../../lib/fotos';
+import { FOTO_BUCKET, fotoFallback, fotoUrl, kleinPfad } from '../../lib/fotos';
 
 const MAX_BILDER = 15;
 
@@ -61,7 +61,7 @@ function Feld({ titel, pflicht, hinweis, children, breit }: { titel: string; pfl
     <label className={`flex flex-col gap-1.5 ${breit ? 'md:col-span-2' : ''}`}>
       <span className="text-xs font-bold text-zinc-700">{titel}{pflicht && <span className="text-red-600"> *</span>}</span>
       {children}
-      {hinweis && <span className="text-[11px] text-zinc-400">{hinweis}</span>}
+      {hinweis && <span className="text-[11px] text-zinc-500">{hinweis}</span>}
     </label>
   );
 }
@@ -135,7 +135,12 @@ export default function Inserieren() {
       try { bild = await bildVorbereiten(datei); }
       catch (err) { console.error(err); setHochladen(n => n - 1); setFehler(`${datei.name} konnte nicht gelesen werden. Erlaubt sind JPG, PNG und WebP.`); continue; }
       const pfad = `${nutzer.id}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${bild.endung}`;
-      const { error } = await supabase.storage.from(FOTO_BUCKET).upload(pfad, bild.blob, { contentType: bild.blob.type });
+      const speicher = supabase.storage.from(FOTO_BUCKET);
+      const [gross, klein] = await Promise.all([
+        speicher.upload(pfad, bild.blob, { contentType: bild.blob.type }),
+        speicher.upload(kleinPfad(pfad), bild.klein, { contentType: bild.klein.type }),
+      ]);
+      const error = gross.error ?? klein.error;
       setHochladen(n => n - 1);
       if (error) { console.error(error); setFehler(`${datei.name} konnte nicht hochgeladen werden. Bitte versuche es noch einmal.`); continue; }
       setF(alt => ({ ...alt, bilder: [...alt.bilder, pfad] }));
@@ -344,7 +349,7 @@ export default function Inserieren() {
           {f.bilder.map((url, i) => (
             <div key={url} className="relative aspect-[4/3] rounded-lg overflow-hidden bg-zinc-100 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={fotoUrl(url)} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+              <img src={fotoUrl(url, 'klein')} onError={fotoFallback(url)} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
               {i === 0 && <span className="absolute left-1 top-1 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">Titelbild</span>}
               <button type="button" onClick={() => setze({ bilder: f.bilder.filter(b => b !== url) })} aria-label="Foto entfernen"
                 className="absolute right-1 top-1 w-6 h-6 rounded-full bg-white/90 text-black text-sm font-bold shadow">×</button>
@@ -362,7 +367,7 @@ export default function Inserieren() {
             </label>
           )}
         </div>
-        <p className="text-[11px] text-zinc-400">Lade nur Fotos hoch, an denen du die Rechte hast.</p>
+        <p className="text-[11px] text-zinc-500">Lade nur Fotos hoch, an denen du die Rechte hast.</p>
       </Karte>
 
       <Karte titel="Anbieter" beschreibung="Gewerbliche Anbieter wie Makler oder Hausverwaltungen werden im Inserat gekennzeichnet.">
@@ -374,7 +379,7 @@ export default function Inserieren() {
 
       <div className="sticky bottom-0 -mx-4 px-4 py-3 bg-zinc-50/90 backdrop-blur border-t border-zinc-200 flex items-center justify-end gap-3">
         <Link href="/meine-inserate/" className="h-11 px-4 rounded-lg text-sm font-semibold text-zinc-600 hover:bg-zinc-100 flex items-center">Abbrechen</Link>
-        <p className="text-[11px] text-zinc-400">Mit dem Veröffentlichen bestätigst du, dass dein Inserat unseren <Link href="/nutzungsbedingungen/" target="_blank" className="underline underline-offset-2">Nutzungsbedingungen</Link> entspricht.</p>
+        <p className="text-[11px] text-zinc-500">Mit dem Veröffentlichen bestätigst du, dass dein Inserat unseren <Link href="/nutzungsbedingungen/" target="_blank" className="underline underline-offset-2">Nutzungsbedingungen</Link> entspricht.</p>
         <button type="submit" disabled={laedt || hochladen > 0} className="h-11 px-6 rounded-lg bg-black text-white text-sm font-bold hover:bg-zinc-800 disabled:opacity-50">
           {laedt ? 'Wird gespeichert…' : id ? 'Änderungen speichern' : 'Inserat veröffentlichen'}
         </button>

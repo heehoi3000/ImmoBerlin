@@ -5,7 +5,7 @@ import { Anzeige, NaechsteHaltestelle } from '../lib/suche';
 import { useMerkliste } from '../lib/merkliste';
 import { OBJEKTARTEN } from '../lib/filter';
 import { haltestelleKurz } from '../lib/oepnv';
-import { fotoUrl } from '../lib/fotos';
+import { fotoFallback, fotoUrl } from '../lib/fotos';
 
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const objektartName: Record<string, string> = Object.fromEntries(
@@ -28,7 +28,7 @@ export function KeinFoto({ id }: { id: string }) {
   const verlauf = ['from-stone-100 to-stone-200', 'from-slate-100 to-slate-200', 'from-zinc-100 to-zinc-200', 'from-neutral-100 to-stone-200'][ton];
   return (
     <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${verlauf}`}>
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-zinc-400"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" strokeLinejoin="round" /></svg>
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-zinc-500"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" strokeLinejoin="round" /></svg>
     </div>
   );
 }
@@ -43,9 +43,10 @@ export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt }: {
   return (
     <div id={`kachel-${a.id}`} onMouseEnter={() => onHover?.(a.id)} onMouseLeave={() => onHover?.(null)}
       className={`group relative flex ${kompakt ? 'flex-row gap-3' : 'flex-col gap-3'} rounded-2xl transition ${aktiv ? 'ring-2 ring-black ring-offset-4 ring-offset-zinc-50' : ''}`}>
-      <Link href={`/anzeige/?id=${a.id}`} className={`relative block overflow-hidden rounded-2xl bg-zinc-100 shrink-0 ${kompakt ? 'w-32 h-28' : 'aspect-[16/10] sm:aspect-[4/3]'}`}>
+      {/* Foto verlinkt doppelt zum Titel darunter; für Tastatur und Bildschirmleser reicht der Titel-Link */}
+      <Link href={`/anzeige/?id=${a.id}`} tabIndex={-1} aria-hidden="true" className={`relative block overflow-hidden rounded-2xl bg-zinc-100 shrink-0 ${kompakt ? 'w-32 h-28' : 'aspect-[16/10] sm:aspect-[4/3]'}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {a.bilder?.[0] ? <img src={fotoUrl(a.bilder[0])} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" /> : <KeinFoto id={a.id} />}
+        {a.bilder?.[0] ? <img src={fotoUrl(a.bilder[0], 'klein')} onError={fotoFallback(a.bilder[0])} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" /> : <KeinFoto id={a.id} />}
         {!kompakt && (
           <div className="absolute left-3 top-3 flex gap-1.5">
             {neu(a.erstellt_am) && <span className="px-2 py-1 rounded-full bg-white text-[11px] font-bold shadow-sm">Neu</span>}
@@ -57,6 +58,7 @@ export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt }: {
         {gemerkt(a.id) ? '♥' : '♡'}
       </button>
       <Link href={`/anzeige/?id=${a.id}`} className="flex flex-col gap-0.5 min-w-0 px-0.5">
+        {neu(a.erstellt_am) && <span className="sr-only">Neu:</span>}
         <div className="flex items-baseline gap-2">
           <span className="text-lg font-extrabold tracking-tight">{euro.format(Number(miete && a.warmmiete ? a.warmmiete : a.preis))}</span>
           <span className="text-xs text-zinc-500">{miete ? (a.warmmiete ? 'warm' : 'kalt') : 'Kaufpreis'}</span>
@@ -64,7 +66,7 @@ export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt }: {
         <p className="text-sm text-zinc-800">{fakten.join(' · ')}</p>
         <p className="text-sm text-zinc-500 truncate">{ort}</p>
         {n && <p className="text-xs font-semibold text-blue-700 mt-0.5 truncate">{n.linie} · {n.distanz_m} m bis {haltestelleKurz(n.haltestelle)}</p>}
-        {!kompakt && <p className="text-xs text-zinc-400 truncate mt-0.5">{a.titel}</p>}
+        {!kompakt && <p className="text-xs text-zinc-500 truncate mt-0.5">{a.titel}</p>}
       </Link>
     </div>
   );

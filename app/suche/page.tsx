@@ -29,7 +29,7 @@ function Umschalter<T extends string>({ werte, wert, onChange }: { werte: { wert
   return (
     <div className="flex shrink-0 bg-zinc-100 rounded-full p-1 h-10">
       {werte.map(w => (
-        <button key={w.wert} onClick={() => onChange(w.wert)} className={`px-3.5 rounded-full text-[13px] font-semibold transition-all ${wert === w.wert ? 'bg-white text-black shadow-sm' : 'text-zinc-500 hover:text-black'}`}>
+        <button key={w.wert} onClick={() => onChange(w.wert)} aria-pressed={wert === w.wert} className={`px-3.5 rounded-full text-[13px] font-semibold transition-all ${wert === w.wert ? 'bg-white text-black shadow-sm' : 'text-zinc-600 hover:text-black'}`}>
           {w.name}
         </button>
       ))}
@@ -39,9 +39,9 @@ function Umschalter<T extends string>({ werte, wert, onChange }: { werte: { wert
 
 function FilterKnopf({ titel, wert, aktiv, offen, onClick }: { titel: string; wert?: string; aktiv: boolean; offen: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick} className={`flex shrink-0 items-center gap-1.5 h-9 px-3.5 rounded-full border text-[13px] font-semibold transition-all whitespace-nowrap ${aktiv ? 'border-zinc-900 bg-zinc-900 text-white' : offen ? 'border-zinc-900 bg-white text-black' : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400'}`}>
+    <button onClick={onClick} aria-expanded={offen} aria-controls={offen ? 'filter-bereich' : undefined} className={`flex shrink-0 items-center gap-1.5 h-9 px-3.5 rounded-full border text-[13px] font-semibold transition-all whitespace-nowrap ${aktiv ? 'border-zinc-900 bg-zinc-900 text-white' : offen ? 'border-zinc-900 bg-white text-black' : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400'}`}>
       <span className="max-w-[220px] truncate">{titel}{wert ? `: ${wert}` : ''}</span>
-      <svg className={`w-3.5 h-3.5 transition-transform ${offen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+      <svg aria-hidden="true" className={`w-3.5 h-3.5 transition-transform ${offen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
     </button>
   );
 }
@@ -55,13 +55,13 @@ function Abschnitt({ titel, children }: { titel: string; children: ReactNode }) 
   );
 }
 
-function VonBis({ min, max, onMin, onMax, einheit }: { min: string; max: string; onMin: (v: string) => void; onMax: (v: string) => void; einheit?: string }) {
-  const feld = "flex-1 w-full min-w-0 h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium focus:ring-2 focus:ring-black/10 focus:border-zinc-900 outline-none placeholder:text-zinc-400";
+function VonBis({ name, min, max, onMin, onMax, einheit }: { name: string; min: string; max: string; onMin: (v: string) => void; onMax: (v: string) => void; einheit?: string }) {
+  const feld = "flex-1 w-full min-w-0 h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium focus:ring-2 focus:ring-black/10 focus:border-zinc-900 outline-none placeholder:text-zinc-500";
   return (
     <div className="flex gap-1.5 w-full items-center">
-      <input type="number" placeholder="von" value={min} onChange={(e) => onMin(e.target.value)} className={feld} />
-      <span className="text-zinc-400">–</span>
-      <input type="number" placeholder="bis" value={max} onChange={(e) => onMax(e.target.value)} className={feld} />
+      <input type="number" placeholder="von" aria-label={`${name} von`} value={min} onChange={(e) => onMin(e.target.value)} className={feld} />
+      <span className="text-zinc-500" aria-hidden="true">–</span>
+      <input type="number" placeholder="bis" aria-label={`${name} bis`} value={max} onChange={(e) => onMax(e.target.value)} className={feld} />
       {einheit && <span className="text-xs text-zinc-500 w-8">{einheit}</span>}
     </div>
   );
@@ -69,7 +69,7 @@ function VonBis({ min, max, onMin, onMax, einheit }: { min: string; max: string;
 
 function Chip({ aktiv, onClick, children }: { aktiv: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button onClick={onClick} className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${aktiv ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 hover:text-black'}`}>
+    <button onClick={onClick} aria-pressed={aktiv} className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${aktiv ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 hover:text-black'}`}>
       {children}
     </button>
   );
@@ -169,7 +169,9 @@ export default function Suche() {
     suchen(neu);
   };
 
-  const oeffne = (p: Panel) => setPanel(panel === p ? null : p);
+  // Knopf, der den Aufklappbereich geöffnet hat: Escape schließt den Bereich und springt dorthin zurück
+  const panelKnopf = useRef<HTMLElement | null>(null);
+  const oeffne = (p: Panel) => { panelKnopf.current = document.activeElement as HTMLElement | null; setPanel(panel === p ? null : p); };
   const istMiete = filter.transaktion === 'mieten';
   const weitere = weitereFilterAnzahl(filter);
   const sortierungen = SORTIERUNGEN.filter(s => !s.nurMitLinien || angewendet.linien.length > 0);
@@ -206,7 +208,7 @@ export default function Suche() {
         <div className="px-4 lg:px-6 py-3 flex flex-col gap-2.5">
           <div className="flex items-center gap-2">
             <div className="flex flex-1 min-w-0 max-w-3xl items-center gap-1 h-12 pl-4 pr-1.5 bg-white border border-zinc-200 rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.06)] focus-within:border-zinc-900 transition">
-              <svg className="w-4 h-4 text-zinc-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+              <svg className="w-4 h-4 text-zinc-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
               <div className="flex-1 min-w-0 [&_input]:border-0 [&_input]:focus:ring-0 [&_input]:h-10 [&_input]:bg-transparent [&_input]:text-[15px]">
                 <Ortssuche ort={filter.ort} onChange={(o) => setze({ ort: o, bezirke: [] })} />
               </div>
@@ -244,7 +246,8 @@ export default function Suche() {
 
           {/* Aufklappbereiche */}
           {panel && (
-            <div className="absolute top-full left-4 right-4 md:right-auto lg:left-6 md:min-w-[440px] mt-2 p-5 border border-zinc-200 rounded-2xl shadow-2xl bg-white z-50 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+            <div id="filter-bereich" onKeyDown={(e) => { if (e.key === 'Escape') { setPanel(null); panelKnopf.current?.focus(); } }}
+              className="absolute top-full left-4 right-4 md:right-auto lg:left-6 md:min-w-[440px] mt-2 p-5 border border-zinc-200 rounded-2xl shadow-2xl bg-white z-50 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
               {panel === 'bezirke' && filter.ort && (
                 <Bezirksauswahl ort={filter.ort} ausgewaehlt={filter.bezirke} onChange={(b) => setze({ bezirke: b })} />
               )}
@@ -256,7 +259,7 @@ export default function Suche() {
                       <Chip aktiv={filter.preisArt === 'warm'} onClick={() => setze({ preisArt: 'warm' })}>Warmmiete</Chip>
                     </div>
                   )}
-                  <VonBis min={filter.preisMin} max={filter.preisMax} onMin={(v) => setze({ preisMin: v })} onMax={(v) => setze({ preisMax: v })} einheit="€" />
+                  <VonBis name={istMiete ? (filter.preisArt === 'warm' ? 'Warmmiete' : 'Kaltmiete') : 'Kaufpreis'} min={filter.preisMin} max={filter.preisMax} onMin={(v) => setze({ preisMin: v })} onMax={(v) => setze({ preisMax: v })} einheit="€" />
                 </>
               )}
               {panel === 'zimmer' && (
@@ -266,11 +269,11 @@ export default function Suche() {
                       <Chip key={z} aktiv={filter.zimmerMin === z && !filter.zimmerMax} onClick={() => setze({ zimmerMin: z, zimmerMax: '' })}>ab {z}</Chip>
                     ))}
                   </div>
-                  <VonBis min={filter.zimmerMin} max={filter.zimmerMax} onMin={(v) => setze({ zimmerMin: v })} onMax={(v) => setze({ zimmerMax: v })} />
+                  <VonBis name="Zimmer" min={filter.zimmerMin} max={filter.zimmerMax} onMin={(v) => setze({ zimmerMin: v })} onMax={(v) => setze({ zimmerMax: v })} />
                 </>
               )}
               {panel === 'flaeche' && (
-                <VonBis min={filter.flaecheMin} max={filter.flaecheMax} onMin={(v) => setze({ flaecheMin: v })} onMax={(v) => setze({ flaecheMax: v })} einheit="m²" />
+                <VonBis name="Fläche" min={filter.flaecheMin} max={filter.flaecheMax} onMin={(v) => setze({ flaecheMin: v })} onMax={(v) => setze({ flaecheMax: v })} einheit="m²" />
               )}
               {panel === 'linien' && (
                 <Linienauswahl bezug={filter.ort ?? (ausschnitt ? { lat: (ausschnitt.minLat + ausschnitt.maxLat) / 2, lon: (ausschnitt.minLon + ausschnitt.maxLon) / 2 } : null)} ausgewaehlt={filter.linien} onChange={(l) => setze({ linien: l })}
@@ -295,19 +298,19 @@ export default function Suche() {
                     </Abschnitt>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <Abschnitt titel="Baujahr">
-                        <VonBis min={filter.baujahrMin} max={filter.baujahrMax} onMin={(v) => setze({ baujahrMin: v })} onMax={(v) => setze({ baujahrMax: v })} />
+                        <VonBis name="Baujahr" min={filter.baujahrMin} max={filter.baujahrMax} onMin={(v) => setze({ baujahrMin: v })} onMax={(v) => setze({ baujahrMax: v })} />
                       </Abschnitt>
                       {filter.immobilientyp === 'wohnung' && (
                         <Abschnitt titel="Etage (0 = Erdgeschoss)">
-                          <VonBis min={filter.etageMin} max={filter.etageMax} onMin={(v) => setze({ etageMin: v })} onMax={(v) => setze({ etageMax: v })} />
+                          <VonBis name="Etage" min={filter.etageMin} max={filter.etageMax} onMin={(v) => setze({ etageMin: v })} onMax={(v) => setze({ etageMax: v })} />
                         </Abschnitt>
                       )}
                       <Abschnitt titel="Bezugsfrei bis">
-                        <input type="date" value={filter.bezugsfreiBis} onChange={(e) => setze({ bezugsfreiBis: e.target.value })}
+                        <input type="date" aria-label="Bezugsfrei bis" value={filter.bezugsfreiBis} onChange={(e) => setze({ bezugsfreiBis: e.target.value })}
                           className="w-full h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium focus:ring-1 focus:ring-black outline-none" />
                       </Abschnitt>
                       <Abschnitt titel="Energieeffizienz mindestens">
-                        <select value={filter.energieMindestens} onChange={(e) => setze({ energieMindestens: e.target.value })}
+                        <select aria-label="Energieeffizienz mindestens" value={filter.energieMindestens} onChange={(e) => setze({ energieMindestens: e.target.value })}
                           className="w-full h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium">
                           <option value="">Egal</option>
                           {ENERGIEKLASSEN.map(k => <option key={k} value={k}>Klasse {k}{k !== 'A+' ? ' oder besser' : ''}</option>)}
@@ -340,7 +343,7 @@ export default function Suche() {
         <section className={`${ansicht === 'karte' ? 'hidden' : 'block'} lg:block w-full lg:w-[55%] xl:w-[58%] 2xl:w-[60%] px-4 lg:px-6 pt-5 pb-24 lg:pb-10`}>
           <div className="flex items-end justify-between gap-3 mb-5">
             <div className="min-w-0">
-              <h1 className="text-xl md:text-2xl font-bold tracking-tight">
+              <h1 aria-live="polite" className="text-xl md:text-2xl font-bold tracking-tight">
                 {laedt ? 'Suche läuft…' : fehler ? 'Suche fehlgeschlagen' : `${ergebnis.anzeigen.length.toLocaleString('de-DE')} ${typName} ${transaktionName}`}
               </h1>
               <p className="text-sm text-zinc-500 truncate">

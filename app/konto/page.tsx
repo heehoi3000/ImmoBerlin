@@ -93,8 +93,8 @@ export default function Konto() {
       {(modus === 'anmelden' || modus === 'registrieren') && (
         <div className="grid grid-cols-2 bg-zinc-100 rounded-lg p-1 text-sm font-bold">
           {(['anmelden', 'registrieren'] as const).map(m => (
-            <button key={m} onClick={() => { setModus(m); setFehler(null); setHinweis(null); }}
-              className={`h-9 rounded-md transition ${modus === m ? 'bg-white shadow-sm text-black' : 'text-zinc-500'}`}>
+            <button key={m} onClick={() => { setModus(m); setFehler(null); setHinweis(null); }} aria-pressed={modus === m}
+              className={`h-9 rounded-md transition ${modus === m ? 'bg-white shadow-sm text-black' : 'text-zinc-600'}`}>
               {m === 'anmelden' ? 'Anmelden' : 'Registrieren'}
             </button>
           ))}
@@ -113,7 +113,7 @@ export default function Konto() {
             <span className="text-xs font-bold text-zinc-700">{modus === 'neues_passwort' ? 'Neues Passwort' : 'Passwort'}</span>
             <input type="password" required minLength={modus === 'anmelden' ? undefined : 8} autoComplete={modus === 'anmelden' ? 'current-password' : 'new-password'}
               value={passwort} onChange={(e) => setPasswort(e.target.value)} className={feld} />
-            {modus !== 'anmelden' && <span className="text-[11px] text-zinc-400">Mindestens 8 Zeichen</span>}
+            {modus !== 'anmelden' && <span className="text-[11px] text-zinc-500">Mindestens 8 Zeichen</span>}
           </label>
         )}
         {modus === 'registrieren' && (

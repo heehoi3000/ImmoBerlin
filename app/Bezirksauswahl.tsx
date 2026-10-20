@@ -51,12 +51,12 @@ export default function Bezirksauswahl({ ort, ausgewaehlt, onChange }: Props) {
   return (
     <div className="md:w-[420px]">
       <p className="text-[11px] text-zinc-500 mb-2">Bezirke und Ortsteile in {ort.kurzname ?? ort.name}. Ohne Auswahl wird im ganzen Ort gesucht.</p>
-      <input type="text" placeholder="Bezirk oder Ortsteil, z.B. Mitte, Prenzlauer Berg" value={suchtext} onChange={(e) => setSuchtext(e.target.value)} className="w-full h-[38px] bg-white border border-zinc-200 rounded-md px-3 text-sm font-medium focus:ring-1 focus:ring-black outline-none placeholder:text-zinc-400" />
+      <input type="text" aria-label="Bezirk oder Ortsteil suchen" placeholder="Bezirk oder Ortsteil, z.B. Mitte, Prenzlauer Berg" value={suchtext} onChange={(e) => setSuchtext(e.target.value)} className="w-full h-[38px] bg-white border border-zinc-200 rounded-md px-3 text-sm font-medium focus:ring-1 focus:ring-black outline-none placeholder:text-zinc-500" />
       {begriff !== '' && (
         <div className="mt-1 w-full bg-white border border-zinc-200 rounded-lg max-h-56 overflow-y-auto">
-          {!eintraege && !fehler && <p className="px-4 py-3 text-xs text-zinc-500">Bezirke werden geladen…</p>}
+          {!eintraege && !fehler && <p role="status" className="px-4 py-3 text-xs text-zinc-500">Bezirke werden geladen…</p>}
           {eintraege && treffer.length === 0 && (
-            <p className="px-4 py-3 text-xs text-zinc-500">{eintraege.length === 0 ? 'Für diesen Ort sind keine Bezirke bekannt.' : 'Kein passender Bezirk.'}</p>
+            <p role="status" className="px-4 py-3 text-xs text-zinc-500">{eintraege.length === 0 ? 'Für diesen Ort sind keine Bezirke bekannt.' : 'Kein passender Bezirk.'}</p>
           )}
           {treffer.slice(0, MAX_LISTE).map(b => (
             <button key={b.id} disabled={laedtGrenze !== null} onClick={() => waehlen(b)}
@@ -67,12 +67,12 @@ export default function Bezirksauswahl({ ort, ausgewaehlt, onChange }: Props) {
           ))}
         </div>
       )}
-      {fehler && <p className="mt-2 text-xs text-red-600">{fehler}</p>}
+      {fehler && <p role="alert" className="mt-2 text-xs text-red-600">{fehler}</p>}
       {ausgewaehlt.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-3">
           {ausgewaehlt.map(b => (
             <button key={b.id} onClick={() => onChange(ausgewaehlt.filter(a => a.id !== b.id))} className="px-2.5 py-1 rounded-md bg-black text-white text-xs font-bold flex items-center gap-1.5">
-              <span>{b.name}</span><span>×</span>
+              <span>{b.name}</span><span aria-hidden="true">×</span><span className="sr-only">entfernen</span>
             </button>
           ))}
         </div>

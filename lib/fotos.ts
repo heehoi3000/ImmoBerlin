@@ -14,7 +14,22 @@ export function fotoPfad(wert: string): string {
 }
 
 // Adresse zum Anzeigen
-export function fotoUrl(wert: string): string {
+// Neben jedem Foto liegt eine kleine Fassung für Listen: abc.webp → abc-klein.webp
+export function kleinPfad(pfad: string): string {
+  return pfad.replace(/(\.[a-z0-9]+)$/i, '-klein$1');
+}
+
+// klein = Fassung für Listen; ältere Fotos haben keine, dafür sorgt fotoFallback()
+export function fotoUrl(wert: string, groesse: 'gross' | 'klein' = 'gross'): string {
   const pfad = fotoPfad(wert);
-  return pfad ? supabase.storage.from(FOTO_BUCKET).getPublicUrl(pfad).data.publicUrl : wert;
+  if (!pfad) return wert;
+  return supabase.storage.from(FOTO_BUCKET).getPublicUrl(groesse === 'klein' ? kleinPfad(pfad) : pfad).data.publicUrl;
+}
+
+// onError eines <img> mit der kleinen Fassung: einmal auf das große Foto ausweichen
+export function fotoFallback(wert: string) {
+  return (e: { currentTarget: HTMLImageElement }) => {
+    const gross = fotoUrl(wert);
+    if (e.currentTarget.src !== gross) e.currentTarget.src = gross;
+  };
 }

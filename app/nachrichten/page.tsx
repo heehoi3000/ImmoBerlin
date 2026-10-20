@@ -97,7 +97,7 @@ export default function Postfach() {
                 <span className="flex-1 min-w-0">
                   <span className="flex justify-between gap-3">
                     <span className={`truncate ${neu ? 'font-bold' : 'font-semibold'}`}>{ansicht === 'eingang' ? n.name : n.anzeigen?.titel ?? 'Inserat gelöscht'}</span>
-                    <span className="text-xs text-zinc-400 shrink-0">{zeit(n.erstellt_am)}</span>
+                    <span className="text-xs text-zinc-500 shrink-0">{zeit(n.erstellt_am)}</span>
                   </span>
                   {ansicht === 'eingang' && <span className="block text-xs text-zinc-500 truncate">zu {n.anzeigen?.titel ?? 'einem gelöschten Inserat'}</span>}
                   {offen !== n.id && <span className="block text-sm text-zinc-500 truncate mt-0.5">{n.nachricht}</span>}

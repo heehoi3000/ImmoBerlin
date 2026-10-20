@@ -1,7 +1,7 @@
 "use client";
 // Eingabefeld für Ort oder PLZ. Vorschläge kommen aus den vorab erzeugten Gebietsdateien (lib/orte.ts);
 // nur wenn diese fehlen, fragt die Seite Photon (OpenStreetMap-Geocoder, kostenlos, ohne Schlüssel).
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Ort } from '../lib/filter';
 import { orteSuchen } from '../lib/orte';
 
@@ -49,6 +49,10 @@ export default function Ortssuche({ ort, onChange }: { ort: Ort | null; onChange
 
   // Ohne Eingabe keine (veralteten) Vorschläge zeigen
   const sichtbar = offen && text.trim().length > 0 && text.trim() !== ort?.name ? vorschlaege : [];
+  // Mit Pfeiltasten markierter Vorschlag (Enter übernimmt ihn, ohne Markierung den ersten)
+  const [markiert, setMarkiert] = useState(-1);
+  const listeId = useId();
+  const waehle = (v: Ort) => { onChange(v); setText(v.name); setOffen(false); setMarkiert(-1); };
 
   useEffect(() => {
     const suchtext = text.trim();
@@ -82,22 +86,34 @@ export default function Ortssuche({ ort, onChange }: { ort: Ort | null; onChange
         type="text"
         value={text}
         placeholder="Ort oder PLZ, z.B. Berlin, Potsdam, 10115"
-        onChange={(e) => { setText(e.target.value); setOffen(true); if (e.target.value === '') onChange(null); }}
+        aria-label="Ort oder Postleitzahl"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={sichtbar.length > 0}
+        aria-controls={listeId}
+        aria-activedescendant={markiert >= 0 && sichtbar[markiert] ? `${listeId}-${markiert}` : undefined}
+        onChange={(e) => { setText(e.target.value); setOffen(true); setMarkiert(-1); if (e.target.value === '') onChange(null); }}
         onFocus={() => setOffen(true)}
         onBlur={() => setTimeout(() => setOffen(false), 150)}
-        // Enter übernimmt den ersten Vorschlag
-        onKeyDown={(e) => { if (e.key === 'Enter' && sichtbar[0]) { onChange(sichtbar[0]); setText(sichtbar[0].name); setOffen(false); } }}
-        className="w-full h-[38px] bg-white border border-zinc-200 rounded-md px-3 pr-8 text-sm font-medium focus:ring-1 focus:ring-black outline-none placeholder:text-zinc-400"
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown' && sichtbar.length) { e.preventDefault(); setMarkiert(m => (m + 1) % sichtbar.length); }
+          else if (e.key === 'ArrowUp' && sichtbar.length) { e.preventDefault(); setMarkiert(m => (m <= 0 ? sichtbar.length : m) - 1); }
+          else if (e.key === 'Escape') { setOffen(false); setMarkiert(-1); }
+          else if (e.key === 'Enter' && sichtbar.length) waehle(sichtbar[Math.max(markiert, 0)]);
+        }}
+        className="w-full h-[38px] bg-white border border-zinc-200 rounded-md px-3 pr-8 text-sm font-medium focus:ring-1 focus:ring-black outline-none placeholder:text-zinc-500"
       />
       {ort && (
-        <button title="Ort entfernen" onClick={() => { onChange(null); setText(''); setVorschlaege([]); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black text-lg leading-none">×</button>
+        <button title="Ort entfernen" aria-label="Ort entfernen" onClick={() => { onChange(null); setText(''); setVorschlaege([]); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-black text-lg leading-none">×</button>
       )}
       {sichtbar.length > 0 && (
-        <div className="absolute top-full mt-1 w-full bg-white border border-zinc-200 rounded-lg shadow-lg z-30 max-h-60 overflow-y-auto">
+        <div id={listeId} role="listbox" aria-label="Vorschläge" className="absolute top-full mt-1 w-full bg-white border border-zinc-200 rounded-lg shadow-lg z-30 max-h-60 overflow-y-auto">
           {sichtbar.map((v, i) => (
-            <button key={`${v.name}-${i}`} onMouseDown={(e) => e.preventDefault()} onClick={() => { onChange(v); setText(v.name); setOffen(false); }} className="w-full text-left px-3 py-2 hover:bg-zinc-100 text-sm text-zinc-800">
+            <div key={`${v.name}-${i}`} id={`${listeId}-${i}`} role="option" aria-selected={i === markiert}
+              onMouseDown={(e) => e.preventDefault()} onClick={() => waehle(v)}
+              className={`w-full text-left px-3 py-2 hover:bg-zinc-100 text-sm text-zinc-800 cursor-pointer ${i === markiert ? 'bg-zinc-100' : ''}`}>
               {v.name}
-            </button>
+            </div>
           ))}
         </div>
       )}

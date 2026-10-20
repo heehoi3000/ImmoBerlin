@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fotoPfad, fotoUrl } from '../../lib/fotos';
+import { fotoPfad, fotoUrl, kleinPfad } from '../../lib/fotos';
 
 describe('Fotos', () => {
   const alt = 'https://jugqpccbynyzzxvyettv.supabase.co/storage/v1/object/public/inserat-bilder/nutzer/1.webp';
@@ -17,5 +17,12 @@ describe('Fotos', () => {
 
   it('lässt fremde Adressen unverändert', () => {
     expect(fotoUrl('https://example.org/bild.jpg')).toBe('https://example.org/bild.jpg');
+  });
+});
+
+describe('kleine Fassung', () => {
+  it('liegt neben dem Foto', () => {
+    expect(kleinPfad('nutzer/1.webp')).toBe('nutzer/1-klein.webp');
+    expect(fotoUrl('nutzer/1.jpg', 'klein')).toBe('http://supabase.test/storage/v1/object/public/inserat-bilder/nutzer/1-klein.jpg');
   });
 });

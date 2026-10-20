@@ -41,7 +41,7 @@ test.describe('Suche', () => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('suche/');
     await page.getByPlaceholder(/Ort oder PLZ/).fill('Berl');
-    await page.getByRole('button', { name: 'Berlin', exact: true }).click();
+    await page.getByRole('option', { name: 'Berlin', exact: true }).click();
     await page.getByRole('button', { name: 'Suchen', exact: true }).click();
     await expect(page.getByText('in Berlin', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Bezirke' }).click();

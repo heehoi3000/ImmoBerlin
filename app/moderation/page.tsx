@@ -99,16 +99,16 @@ export default function Moderation() {
             <div key={m.id} className="bg-white border border-zinc-200 rounded-2xl p-4 flex flex-col gap-2">
               <div className="flex flex-wrap items-center gap-2 text-[11px]">
                 <span className={`font-bold px-2 py-0.5 rounded-full ${m.art === 'inserat' ? 'bg-amber-100 text-amber-900' : 'bg-zinc-100 text-zinc-700'}`}>{ARTEN[m.art] ?? m.art}</span>
-                <span className="text-zinc-400">{datum(m.erstellt_am)}</span>
+                <span className="text-zinc-500">{datum(m.erstellt_am)}</span>
                 {m.email && <a href={`mailto:${m.email}`} className="text-zinc-500 underline underline-offset-2">{m.email}</a>}
               </div>
               {m.anzeigen && (
                 <p className="text-sm">Inserat: <Link href={`/anzeige/?id=${m.anzeigen.id}`} className="font-semibold underline underline-offset-2">{m.anzeigen.titel}</Link>
                   {m.anzeigen.status === 'gesperrt' && <span className="ml-2 text-[11px] font-bold text-red-700">gesperrt</span>}</p>
               )}
-              {m.art === 'inserat' && !m.anzeigen && <p className="text-xs text-zinc-400">Das Inserat gibt es nicht mehr.</p>}
+              {m.art === 'inserat' && !m.anzeigen && <p className="text-xs text-zinc-500">Das Inserat gibt es nicht mehr.</p>}
               <p className="text-sm text-zinc-800 whitespace-pre-line">{m.nachricht}</p>
-              {m.seite && <p className="text-[11px] text-zinc-400 truncate">Seite: {m.seite}</p>}
+              {m.seite && <p className="text-[11px] text-zinc-500 truncate">Seite: {m.seite}</p>}
               <div className="flex flex-wrap gap-2 mt-1">
                 {m.anzeigen && m.anzeigen.status !== 'gesperrt' && (
                   <button onClick={() => setSperren({ id: m.anzeigen!.id, titel: m.anzeigen!.titel })} className={`${knopf} text-red-700`}>Inserat sperren</button>
@@ -144,7 +144,7 @@ function GesperrtKarte({ g, rpc }: { g: Gesperrt; rpc: (name: string, args: Reco
     <div className={`bg-white border rounded-2xl p-4 flex flex-col gap-2 ${einspruchOffen ? 'border-amber-400' : 'border-zinc-200'}`}>
       <div className="flex flex-wrap items-center gap-2 text-[11px]">
         <span className="font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-800">Gesperrt</span>
-        <span className="text-zinc-400">{datum(g.gesperrt_am)}</span>
+        <span className="text-zinc-500">{datum(g.gesperrt_am)}</span>
         {einspruchOffen && <span className="font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">Einspruch offen</span>}
       </div>
       <Link href={`/anzeige/?id=${g.id}`} className="font-semibold underline underline-offset-2 w-max max-w-full truncate">{g.titel}</Link>

@@ -172,7 +172,7 @@ export default function AnzeigeSeite() {
               {gemerkt(a.id) ? '♥ Gemerkt' : '♡ Merken'}
             </button>
             {eigenes && <Link href={`/inserieren/?id=${a.id}`} className="h-11 rounded-lg bg-black text-white text-sm font-bold flex items-center justify-center">Inserat bearbeiten</Link>}
-            <p className="text-[11px] text-zinc-400">Inseriert am {new Date(a.erstellt_am).toLocaleDateString('de-DE')}</p>
+            <p className="text-[11px] text-zinc-500">Inseriert am {new Date(a.erstellt_am).toLocaleDateString('de-DE')}</p>
           </div>
           {!eigenes && (
             <div className="bg-white border border-zinc-200 rounded-2xl p-5">

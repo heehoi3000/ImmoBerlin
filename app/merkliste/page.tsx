@@ -30,7 +30,7 @@ export default function Merkliste() {
         </div>
       )}
       {anzeigen && <Ergebnisliste anzeigen={anzeigen} naechste={{}} />}
-      {anzeigen && anzeigen.length < ids.length && <p className="text-xs text-zinc-400">{ids.length - anzeigen.length} gemerkte Inserate sind nicht mehr online.</p>}
+      {anzeigen && anzeigen.length < ids.length && <p className="text-xs text-zinc-500">{ids.length - anzeigen.length} gemerkte Inserate sind nicht mehr online.</p>}
     </div>
   );
 }

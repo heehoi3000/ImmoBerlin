@@ -79,13 +79,13 @@ export default function Startseite() {
           <div className="w-full max-w-3xl mt-2 bg-white border border-zinc-200 rounded-[28px] shadow-[0_12px_40px_rgba(0,0,0,0.10)] p-2 flex flex-col sm:flex-row sm:items-center gap-2 text-left">
             <div className="flex shrink-0 bg-zinc-100 rounded-full p-1 h-12 self-stretch sm:self-auto">
               {(['mieten', 'kaufen'] as const).map(t => (
-                <button key={t} onClick={() => setTransaktion(t)} className={`flex-1 sm:flex-none px-5 rounded-full text-sm font-semibold transition ${transaktion === t ? 'bg-white shadow-sm' : 'text-zinc-500 hover:text-black'}`}>
+                <button key={t} onClick={() => setTransaktion(t)} aria-pressed={transaktion === t} className={`flex-1 sm:flex-none px-5 rounded-full text-sm font-semibold transition ${transaktion === t ? 'bg-white shadow-sm' : 'text-zinc-600 hover:text-black'}`}>
                   {t === 'mieten' ? 'Mieten' : 'Kaufen'}
                 </button>
               ))}
             </div>
             <div className="flex-1 min-w-0 flex items-center gap-2 pl-3 sm:border-l sm:border-zinc-200 [&_input]:border-0 [&_input]:focus:ring-0 [&_input]:h-12 [&_input]:text-base [&_input]:bg-transparent">
-              <svg className="w-5 h-5 text-zinc-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+              <svg className="w-5 h-5 text-zinc-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
               <div className="flex-1 min-w-0"><Ortssuche ort={ort} onChange={setOrt} /></div>
             </div>
             <button onClick={() => suchen({ transaktion, ort })} className="h-12 px-8 rounded-full bg-zinc-900 text-white font-semibold hover:bg-black transition flex items-center justify-center gap-2">

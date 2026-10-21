@@ -45,7 +45,7 @@ export default function Grundversorgung({ orte, fehler, aufKarte, onAufKarte }: 
           })}
         </dl>
       )}
-      <p className="text-[11px] text-zinc-500 mt-3">Daten: © OpenStreetMap-Mitwirkende (ODbL), nicht überall vollständig. Hausarzt: nur Praxen mit Angabe Allgemeinmedizin.</p>
+      <p className="text-[11px] text-zinc-500 mt-3">Daten: © OpenStreetMap-Mitwirkende (ODbL), nicht überall vollständig. Hausarzt: nur Praxen mit Angabe Allgemeinmedizin, ohne Namen.</p>
     </section>
   );
 }

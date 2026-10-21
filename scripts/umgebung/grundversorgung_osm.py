@@ -36,6 +36,9 @@ def art(p):
 
 
 def name(p, a):
+    # Praxisnamen sind meist Namen von Personen (DSGVO); für die Wohnungssuche reicht die Entfernung
+    if a == 'hausarzt':
+        return ''
     n = p.get('name') or p.get('brand') or p.get('operator') or ''
     if not n and a == 'post' and p.get('amenity') == 'parcel_locker':
         n = 'Paketstation'

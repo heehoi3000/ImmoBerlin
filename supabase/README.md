@@ -6,7 +6,9 @@
     aus der laufenden Datenbank: Tabellen, Funktionen, Rechte, Regeln (RLS), Trigger, Foto-Bucket, Rollen-Einstellungen.
     Keine Daten. Nicht von Hand ändern, sondern den Workflow neu starten.
   - `0002_fotos_als_pfad.sql` wandelt alte volle Foto-Adressen in Pfade um (am Umzugstag nach dem Daten-Import).
-  - Neue Änderungen kommen als `0003_….sql` usw. dazu.
+  - `0003_meldungen_erledigt_am.sql` merkt, wann eine Meldung erledigt wurde (für die Löschung nach einem Jahr
+    in `aufraeumen.yml`).
+  - Neue Änderungen kommen als `0004_….sql` usw. dazu.
 - `oepnv_laden.sql` – lädt die ÖPNV-Daten (Workflow `oepnv.yml`).
 - `functions/` – Edge Functions (`konto-loeschen`).
 - `verlauf/` – die SQL-Dateien, mit denen die Datenbank Schritt für Schritt entstanden ist. Nur zum Nachlesen;

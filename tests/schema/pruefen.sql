@@ -45,3 +45,22 @@ begin
   end if;
   raise notice 'Datenbank-Aufbau vollständig und abgesichert';
 end $$;
+
+-- Erledigte Meldungen bekommen ihren Zeitpunkt, damit aufraeumen.yml sie nach einem Jahr löschen kann
+-- (supabase/migrations/0003_meldungen_erledigt_am.sql). Läuft in einer Transaktion und hinterlässt nichts.
+begin;
+do $$
+declare
+  m uuid;
+  zeit timestamptz;
+begin
+  insert into public.meldungen (art, nachricht) values ('fehler', 'Prüfung erledigt_am') returning id into m;
+  update public.meldungen set erledigt = true where id = m;
+  select erledigt_am into zeit from public.meldungen where id = m;
+  if zeit is null then raise exception 'erledigt_am wird beim Erledigen nicht gesetzt'; end if;
+  update public.meldungen set erledigt = false where id = m;
+  select erledigt_am into zeit from public.meldungen where id = m;
+  if zeit is not null then raise exception 'erledigt_am bleibt nach dem Wiederöffnen stehen'; end if;
+  raise notice 'Erledigungszeitpunkt der Meldungen funktioniert';
+end $$;
+rollback;

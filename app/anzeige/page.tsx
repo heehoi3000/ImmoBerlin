@@ -15,6 +15,8 @@ import { KeinFoto } from '../Ergebnisliste';
 import { useModerator } from '../../lib/moderation';
 import Sperrdialog from '../Sperrdialog';
 import OepnvNaehe from '../OepnvNaehe';
+import Grundversorgung from '../Grundversorgung';
+import { Ort, grundversorgungLaden } from '../../lib/grundversorgung';
 import { Station, nurMitNeuenLinien, stationenDerLinien, stationenLaden } from '../../lib/oepnvNaehe';
 
 const Map = dynamic(() => import('../Map'), { ssr: false, loading: () => <div className="h-full w-full bg-zinc-100" /> });
@@ -72,6 +74,20 @@ export default function AnzeigeSeite() {
       .catch(e => { console.error('Haltestellen in der Nähe:', e); if (aktuell) setStationenFehler(true); });
     return () => { aktuell = false; };
   }, [lat, lon, linienSchluessel]);
+
+  // Grundversorgung in der Nähe (Supermarkt, Apotheke …)
+  const [orte, setOrte] = useState<Ort[] | null>(null);
+  const [orteFehler, setOrteFehler] = useState(false);
+  const [orteAufKarte, setOrteAufKarte] = useState(false);
+  useEffect(() => {
+    if (lat == null || lon == null) return;
+    let aktuell = true;
+    setOrte(null); setOrteFehler(false); // eslint-disable-line react-hooks/set-state-in-effect
+    grundversorgungLaden(lat, lon)
+      .then(o => { if (aktuell) setOrte(o); })
+      .catch(e => { console.error('Grundversorgung:', e); if (aktuell) setOrteFehler(true); });
+    return () => { aktuell = false; };
+  }, [lat, lon]);
 
   // Titel im Browser-Tab und für Suchmaschinen, die die Seite ausführen (geteilte Links zeigen die allgemeine Vorschau)
   useEffect(() => {
@@ -194,10 +210,13 @@ export default function AnzeigeSeite() {
           <OepnvNaehe stationen={stationen} auswahl={station} onAuswahl={setStation} fehler={stationenFehler}
             gewaehlteLinien={linienIds.length ? linienIds : undefined} />
 
-          <section className="h-80 rounded-2xl overflow-hidden border border-zinc-200 relative z-0" aria-label="Karte mit Lage und Haltestellen">
+          <Grundversorgung orte={orte} fehler={orteFehler} aufKarte={orteAufKarte} onAufKarte={setOrteAufKarte} />
+
+          <section className="h-80 rounded-2xl overflow-hidden border border-zinc-200 relative z-0" aria-label="Karte mit Lage, Haltestellen und Grundversorgung">
             <Map anzeigen={[a]} haltestellen={[]} naechste={{}} linienUmkreisM={0}
               ortKreis={stationen?.length ? null : { lat: a.koordinate_lat, lon: a.koordinate_lon, m: 0 }} bezirke={[]} fokus={null}
-              stationen={stationen ?? undefined} stationAuswahl={station} />
+              stationen={stationen ?? undefined} stationAuswahl={station}
+              orte={orteAufKarte && orte ? orte : undefined} />
           </section>
         </div>
 

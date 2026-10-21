@@ -7,7 +7,7 @@ declare
 begin
   select string_agg(t, ', ') into fehlt
     from unnest(array['public.anzeigen', 'public.meldungen', 'public.nachrichten', 'public.oepnv_haltestellen',
-                      'public.oepnv_linien', 'public.oepnv_linie_haltestelle', 'privat.moderatoren', 'privat.drossel']) t
+                      'public.oepnv_linien', 'public.oepnv_linie_haltestelle', 'public.grundversorgung', 'privat.moderatoren', 'privat.drossel']) t
    where to_regclass(t) is null;
   if fehlt is not null then raise exception 'Tabellen fehlen: %', fehlt; end if;
 
@@ -62,5 +62,22 @@ begin
   select erledigt_am into zeit from public.meldungen where id = m;
   if zeit is not null then raise exception 'erledigt_am bleibt nach dem Wiederöffnen stehen'; end if;
   raise notice 'Erledigungszeitpunkt der Meldungen funktioniert';
+end $$;
+rollback;
+
+-- Grundversorgung: je Art nur der nächste Ort im Umkreis (supabase/migrations/0005_grundversorgung.sql)
+begin;
+do $$
+declare
+  n integer;
+  naechster text;
+begin
+  insert into public.grundversorgung (osm_id, art, name, geom) values
+    ('n1', 'supermarkt', 'Nah', 'SRID=4326;POINT(13.401 52.53)'),
+    ('n2', 'supermarkt', 'Fern', 'SRID=4326;POINT(13.41 52.53)'),
+    ('n3', 'apotheke', 'Zu weit', 'SRID=4326;POINT(13.5 52.53)');
+  select count(*), max(name) into n, naechster from public.grundversorgung_in_der_naehe(52.53, 13.40, 1500);
+  if n <> 1 or naechster <> 'Nah' then raise exception 'grundversorgung_in_der_naehe liefert % Orte, nächster %', n, naechster; end if;
+  raise notice 'Grundversorgung in der Nähe funktioniert';
 end $$;
 rollback;

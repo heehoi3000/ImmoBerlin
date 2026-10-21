@@ -14,6 +14,7 @@ import { bezirkeAusdehnung } from '../lib/bezirke';
 import { Anzeige, Haltestelle, NaechsteHaltestelle } from '../lib/suche';
 import { BASIS } from '../lib/basis';
 import { Station } from '../lib/oepnvNaehe';
+import { Ort, artFarbe, artName } from '../lib/grundversorgung';
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -166,6 +167,25 @@ function StationenAnzeige({ stationen, auswahl, von }: { stationen: Station[]; a
   );
 }
 
+// Inseratsseite: Orte der Grundversorgung als farbige Punkte; beim Einblenden passt sich die Karte an
+function OrteAnzeige({ orte, von }: { orte: Ort[]; von: { lat: number; lon: number } }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!orte.length) return;
+    map.fitBounds([[von.lat, von.lon], ...orte.map(o => [o.lat, o.lon] as [number, number])], { padding: [30, 30], maxZoom: 16, animate: false });
+  }, [map, orte, von.lat, von.lon]);
+  return (
+    <>
+      {orte.map(o => (
+        <CircleMarker key={`ort-${o.art}`} center={[o.lat, o.lon]} radius={6}
+          pathOptions={{ color: '#fff', weight: 2, fillColor: artFarbe(o.art), fillOpacity: 1 }}>
+          <Tooltip>{artName(o.art)}{o.name ? `: ${o.name}` : ''} · {o.entfernung_m} m</Tooltip>
+        </CircleMarker>
+      ))}
+    </>
+  );
+}
+
 // Preis kurz für den Pin: 1.160 €, 485 Tsd. €, 1,2 Mio. €
 function kurzPreis(a: Anzeige) {
   const n = Number(a.transaktions_typ === 'mieten' && a.warmmiete ? a.warmmiete : a.preis);
@@ -259,9 +279,11 @@ interface MapProps {
   // Inseratsseite: Haltestellen in der Nähe der ersten Anzeige und die gewählte davon
   stationen?: Station[];
   stationAuswahl?: number;
+  // Inseratsseite: eingeblendete Orte der Grundversorgung
+  orte?: Ort[];
 }
 
-export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreisM, ortKreis, bezirke, fokus = null, aktivId = null, onAuswahl, onAusschnittChange, stationen, stationAuswahl = 0 }: MapProps) {
+export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreisM, ortKreis, bezirke, fokus = null, aktivId = null, onAuswahl, onAusschnittChange, stationen, stationAuswahl = 0, orte }: MapProps) {
   const berlinPosition: [number, number] = [52.516, 13.42];
 
   return (
@@ -281,6 +303,8 @@ export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreis
           <StationenAnzeige stationen={stationen} auswahl={stationAuswahl}
             von={{ lat: anzeigen[0].koordinate_lat, lon: anzeigen[0].koordinate_lon }} />
         )}
+
+        {orte && anzeigen[0] && <OrteAnzeige orte={orte} von={{ lat: anzeigen[0].koordinate_lat, lon: anzeigen[0].koordinate_lon }} />}
 
         <PreisPins anzeigen={anzeigen} aktivId={aktivId} onAuswahl={(id) => onAuswahl?.(id)} />
       </MapContainer>

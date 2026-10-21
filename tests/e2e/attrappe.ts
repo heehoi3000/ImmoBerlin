@@ -12,6 +12,7 @@ export interface Daten {
   haltestellen: Record<number, Zeile[]>;     // je linie_id
   naheLinien: Record<number, string[]>;     // je linie_id: ids der Anzeigen im Umkreis
   naheHalte?: Zeile[];                      // Antwort von haltestellen_in_der_naehe (Inseratsseite)
+  grundversorgung?: Zeile[];                // Antwort von grundversorgung_in_der_naehe (Inseratsseite)
 }
 
 export interface Aufzeichnung {
@@ -76,6 +77,7 @@ export async function attrappeEinrichten(page: Page, daten: Daten): Promise<Aufz
       if (name === 'haltestellen_der_linien') return json(route, ids.flatMap(id => daten.haltestellen[id] ?? []));
       if (name === 'ist_moderator') return json(route, false);
       if (name === 'haltestellen_in_der_naehe') return json(route, daten.naheHalte ?? []);
+      if (name === 'grundversorgung_in_der_naehe') return json(route, daten.grundversorgung ?? []);
       return json(route, []);
     }
 
@@ -174,5 +176,10 @@ export const STANDARD_DATEN: Daten = {
       linien: [{ linie_id: 8, typ: 'ubahn', nummer: 'U8', endpunkte: 'S+U Wittenau – S+U Hermannstr.', fahrten: 167 }] },
     { stop_id: 'h4', name: 'Arkonaplatz', lat: 52.5350, lon: 13.4020, entfernung_m: 560, barrierefrei: null,
       linien: [{ linie_id: 10, typ: 'tram', nummer: 'M10', endpunkte: 'Hauptbahnhof – Warschauer Str.', fahrten: 84 }] },
+  ],
+  // Um a1: Supermarkt und Apotheke, sonst nichts im Umkreis
+  grundversorgung: [
+    { art: 'apotheke', name: 'Linden-Apotheke', lat: 52.5305, lon: 13.4005, entfernung_m: 90 },
+    { art: 'supermarkt', name: 'Rewe', lat: 52.5315, lon: 13.4010, entfernung_m: 180 },
   ],
 };

@@ -77,6 +77,21 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     await expect(bereich).toContainText('Nächste Haltestelle deiner gewählten Linie');
   });
 
+  test('Einkaufen und Alltag mit dem nächsten Ort je Art', async ({ page }) => {
+    const auf = await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('anzeige/?id=a1');
+    const bereich = page.getByRole('region', { name: 'Einkaufen und Alltag' });
+    await expect(bereich.getByRole('definition')).toHaveCount(7);
+    await expect(bereich).toContainText('SupermarktRewe, 180 m');
+    await expect(bereich).toContainText('ApothekeLinden-Apotheke, 90 m');
+    await expect(bereich).toContainText('Drogerienicht im Umkreis von 1,5 km');
+    const knopf = bereich.getByRole('button', { name: 'Auf der Karte zeigen' });
+    await expect(knopf).toHaveAttribute('aria-pressed', 'false');
+    await knopf.click();
+    await expect(knopf).toHaveAttribute('aria-pressed', 'true');
+    expect(auf.rpc.find(r => r.name === 'grundversorgung_in_der_naehe')?.body).toMatchObject({ p_lat: 52.53, p_lon: 13.40, p_radius_m: 1500 });
+  });
+
   test('unbekanntes Inserat', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=gibt-es-nicht');

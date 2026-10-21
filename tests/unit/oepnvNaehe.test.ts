@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 vi.mock('../../lib/supabase', () => ({ supabase: {} }));
-import { NaherHalt, barrierefreiGesamt, stationenBilden, taktText } from '../../lib/oepnvNaehe';
+import { NaherHalt, barrierefreiGesamt, nurMitNeuenLinien, stationenBilden, taktText } from '../../lib/oepnvNaehe';
 
 const u8 = { linie_id: 8, typ: 'ubahn', nummer: 'U8', endpunkte: '', fahrten: 168 };
 const m10 = { linie_id: 10, typ: 'tram', nummer: 'M10', endpunkte: '', fahrten: 167 };
@@ -76,5 +76,29 @@ describe('stationenDerLinien', () => {
     expect(s[0].name).toBe('U Nah');
     expect(s[0].linien.map(l => l.nummer)).toEqual(['U8', 'M10']);
     expect(s[0].entfernung_m).toBe(111);   // 0,001 Grad Breite zum Inserat
+  });
+});
+
+describe('nurMitNeuenLinien', () => {
+  const station = (name: string, lat: number, entfernung_m: number, linien: typeof u8[]) =>
+    ({ name, lat, lon: 13.4, entfernung_m, barrierefrei: null, linien });
+  const bus = (nummer: string) => ({ linie_id: Number(nummer), typ: 'bus', nummer, endpunkte: '', fahrten: 28 });
+  it('lässt Haltestellen ohne neue Linie weg (Marzahn: dreimal Bus 197, dann S7)', () => {
+    const s = nurMitNeuenLinien([
+      station('Sella-Hasse-Str.', 52.54, 100, [bus('197')]),
+      station('Schleusinger Str.', 52.545, 300, [bus('197')]),
+      station('S Mehrower Allee', 52.55, 600, [bus('197'), { ...u8, linie_id: 7, typ: 'sbahn', nummer: 'S7' }]),
+      station('Allee der Kosmonauten', 52.56, 800, [bus('197')]),
+    ]);
+    expect(s.map(x => x.name)).toEqual(['Sella-Hasse-Str.', 'S Mehrower Allee']);
+  });
+  it('gefilterte Station bleibt vorn, Ersatzverkehr mit gleicher Nummer zählt nicht als neu', () => {
+    const vorn = station('U Bernauer Str.', 52.537, 400, [u8]);
+    const s = nurMitNeuenLinien([
+      station('Wolliner Str.', 52.531, 150, [bus('247')]),
+      station('U Bernauer Str.', 52.5371, 380, [u8, m10]),
+      station('Sev-Halt', 52.532, 500, [{ ...u8, linie_id: 99, typ: 'ersatzverkehr' }]),
+    ], [vorn]);
+    expect(s.map(x => x.name)).toEqual(['U Bernauer Str.', 'Wolliner Str.']);
   });
 });

@@ -15,7 +15,7 @@ import { KeinFoto } from '../Ergebnisliste';
 import { useModerator } from '../../lib/moderation';
 import Sperrdialog from '../Sperrdialog';
 import OepnvNaehe from '../OepnvNaehe';
-import { Station, stationenDerLinien, stationenLaden } from '../../lib/oepnvNaehe';
+import { Station, nurMitNeuenLinien, stationenDerLinien, stationenLaden } from '../../lib/oepnvNaehe';
 
 const Map = dynamic(() => import('../Map'), { ssr: false, loading: () => <div className="h-full w-full bg-zinc-100" /> });
 
@@ -44,9 +44,8 @@ export default function AnzeigeSeite() {
   const [stationen, setStationen] = useState<Station[] | null>(null);
   const [stationenFehler, setStationenFehler] = useState(false);
   const [station, setStation] = useState(0);
-  // Linien aus dem Filter der Suche (…&linien=5897,12); dann nur deren nächste Haltestelle, außer man klappt alle auf
+  // Linien aus dem Filter der Suche (…&linien=5897,12): deren nächste Haltestelle steht vorn
   const [linienIds, setLinienIds] = useState<number[]>([]);
-  const [alleHalte, setAlleHalte] = useState(false);
   useEffect(() => {
     const roh = new URLSearchParams(window.location.search).get('linien') ?? '';
     setLinienIds(roh.split(',').map(Number).filter(n => Number.isInteger(n) && n > 0)); // eslint-disable-line react-hooks/set-state-in-effect
@@ -60,15 +59,15 @@ export default function AnzeigeSeite() {
 
   // Haltestellen in der Nähe, sobald die Koordinaten des Inserats bekannt sind
   const lat = a?.koordinate_lat, lon = a?.koordinate_lon;
-  const nurLinien = linienIds.length > 0 && !alleHalte;
-  const linienSchluessel = nurLinien ? linienIds.join(',') : '';
+  const linienSchluessel = linienIds.join(',');
   useEffect(() => {
     if (lat == null || lon == null) return;
     let aktuell = true;
     setStationen(null); setStationenFehler(false); // eslint-disable-line react-hooks/set-state-in-effect
     const ids = linienSchluessel ? linienSchluessel.split(',').map(Number) : [];
-    (ids.length ? stationenDerLinien(lat, lon, ids) : stationenLaden(lat, lon))
-      .then(s => { if (aktuell) { setStationen(s.slice(0, 6)); setStation(0); } })
+    // Danach nur Haltestellen, an denen eine weitere Linie fährt (nicht fünfmal derselbe Bus)
+    Promise.all([ids.length ? stationenDerLinien(lat, lon, ids) : Promise.resolve([]), stationenLaden(lat, lon)])
+      .then(([gefiltert, nahe]) => { if (aktuell) { setStationen(nurMitNeuenLinien(nahe, gefiltert).slice(0, 6)); setStation(0); } })
       .catch(e => { console.error('Haltestellen in der Nähe:', e); if (aktuell) setStationenFehler(true); });
     return () => { aktuell = false; };
   }, [lat, lon, linienSchluessel]);
@@ -192,7 +191,7 @@ export default function AnzeigeSeite() {
           </section>
 
           <OepnvNaehe stationen={stationen} auswahl={station} onAuswahl={setStation} fehler={stationenFehler}
-            gewaehlteLinien={nurLinien ? linienIds : undefined} onAlleZeigen={nurLinien ? () => setAlleHalte(true) : undefined} />
+            gewaehlteLinien={linienIds.length ? linienIds : undefined} />
 
           <section className="h-80 rounded-2xl overflow-hidden border border-zinc-200 relative z-0" aria-label="Karte mit Lage und Haltestellen">
             <Map anzeigen={[a]} haltestellen={[]} naechste={{}} linienUmkreisM={0}

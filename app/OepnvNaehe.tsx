@@ -17,17 +17,18 @@ function Rollstuhl() {
   );
 }
 
-// gewaehlteLinien: Linien aus dem Suchfilter; dann zeigt die Liste nur deren nächste Haltestelle und hebt sie hervor
-export default function OepnvNaehe({ stationen, auswahl, onAuswahl, fehler, gewaehlteLinien, onAlleZeigen }: {
+// gewaehlteLinien: Linien aus dem Suchfilter; deren nächste Haltestelle steht vorn, die Linien sind hervorgehoben
+export default function OepnvNaehe({ stationen, auswahl, onAuswahl, fehler, gewaehlteLinien }: {
   stationen: Station[] | null; auswahl: number; onAuswahl: (i: number) => void; fehler?: boolean;
-  gewaehlteLinien?: number[]; onAlleZeigen?: () => void;
+  gewaehlteLinien?: number[];
 }) {
   const gefiltert = !!gewaehlteLinien?.length;
   return (
     <section className="bg-white border border-zinc-200 rounded-2xl p-5" aria-labelledby="oepnv-titel">
       <h2 id="oepnv-titel" className="font-bold">ÖPNV in der Nähe</h2>
       <p className="text-xs text-zinc-500 mt-0.5 mb-3">
-        {gefiltert ? 'Nächste Haltestelle deiner gewählten Linie. ' : ''}Entfernung in Luftlinie, Takt werktags von 6 bis 20 Uhr
+        {gefiltert ? 'Zuerst die nächste Haltestelle deiner gewählten Linie, danach Haltestellen mit weiteren Linien. ' : 'Nächste Haltestellen, jede mit mindestens einer weiteren Linie. '}
+        Entfernung in Luftlinie, Takt werktags von 6 bis 20 Uhr
       </p>
       {stationen === null && !fehler && <p className="text-sm text-zinc-500" role="status">Haltestellen werden geladen…</p>}
       {fehler && <p className="text-sm text-zinc-500" role="status">Die Haltestellen konnten nicht geladen werden.</p>}
@@ -68,11 +69,6 @@ export default function OepnvNaehe({ stationen, auswahl, onAuswahl, fehler, gewa
             </li>
           ))}
         </ul>
-      )}
-      {onAlleZeigen && stationen && (
-        <button type="button" onClick={onAlleZeigen} className="mt-3 text-sm font-semibold underline underline-offset-2 hover:text-zinc-600">
-          Alle Haltestellen in der Nähe zeigen
-        </button>
       )}
       <p className="text-[11px] text-zinc-500 mt-3">
         Fahrplandaten: DELFI e.V. (CC BY 4.0). Barrierefreiheit: © OpenStreetMap-Mitwirkende (ODbL), nicht überall eingetragen.

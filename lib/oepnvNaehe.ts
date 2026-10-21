@@ -65,6 +65,23 @@ export function stationenBilden(halte: NaherHalt[]): Station[] {
   });
 }
 
+// Gleiche Linie für den Vergleich: Nummer ohne Typ, damit ein Ersatzbus "M10" nicht als neue Linie zählt
+const linienSchluessel = (l: NaheLinie) => l.nummer.trim().toUpperCase();
+
+// Weitere Stationen nur, wenn dort mindestens eine Linie fährt, die an keiner der vorigen (näheren) hält.
+// "vorher" sind Stationen, die schon feststehen (z. B. die der gefilterten Linie); sie bleiben vorn.
+export function nurMitNeuenLinien(stationen: Station[], vorher: Station[] = []): Station[] {
+  const abgedeckt = new Set(vorher.flatMap(s => s.linien.map(linienSchluessel)));
+  const ergebnis = [...vorher];
+  for (const s of stationen) {
+    if (vorher.some(v => v.name === s.name && abstandM(v, s) <= STATION_RADIUS_M)) continue;
+    if (!s.linien.some(l => !abgedeckt.has(linienSchluessel(l)))) continue;
+    s.linien.forEach(l => abgedeckt.add(linienSchluessel(l)));
+    ergebnis.push(s);
+  }
+  return ergebnis;
+}
+
 // Übliche Taktzeiten in Minuten; der berechnete Wert wird auf die nächste gerundet
 const TAKTE = [2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 30, 40, 60, 90, 120];
 

@@ -1,0 +1,72 @@
+name: Grundversorgung aktualisieren
+
+# Lädt einmal im Monat den OSM-Auszug Deutschland (Geofabrik), sucht Supermärkte, Drogerien, Bäckereien,
+# Apotheken, Hausarztpraxen, Post/Paketstationen und Geldautomaten heraus und ersetzt die Tabelle
+# grundversorgung in Supabase (scripts/umgebung/grundversorgung_osm.py, supabase/grundversorgung_laden.sql).
+# Ohne das Secret SUPABASE_DB_URL, mit probe=true oder bei einem Push auf einen claude/-Branch
+# (Probelauf nach Änderungen an diesem Workflow) bleibt die Datenbank unverändert.
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/grundversorgung.yml', 'scripts/umgebung/grundversorgung_osm.py']
+  workflow_dispatch:
+    inputs:
+      probe:
+        description: 'Nur Probelauf, Datenbank bleibt unverändert'
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 5 3 * *'   # am 3. jedes Monats, nach barrierefrei.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: grundversorgung
+  cancel-in-progress: false
+
+jobs:
+  laden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Werkzeuge bereitstellen
+        # auf GitHub fehlt nur osmium; in Forgejo-Runnern (Debian/Ubuntu-Container) auch psql
+        run: |
+          als_root() { if command -v sudo >/dev/null; then sudo "$@"; else "$@"; fi; }
+          fehlt=""
+          command -v osmium >/dev/null || fehlt="$fehlt osmium-tool"
+          command -v psql >/dev/null || fehlt="$fehlt postgresql-client"
+          [ -z "$fehlt" ] || { als_root apt-get update -q && als_root apt-get install -y -q $fehlt; }
+
+      - name: OSM-Auszug herunterladen
+        run: curl -sSfL --retry 3 -o deutschland.osm.pbf https://download.geofabrik.de/europe/germany-latest.osm.pbf
+
+      - name: Orte heraussuchen
+        run: |
+          osmium tags-filter -o orte.osm.pbf deutschland.osm.pbf \
+            nwr/shop=supermarket,chemist,bakery nwr/amenity=pharmacy,doctors,post_office,parcel_locker,atm,bank \
+            nwr/healthcare=doctor
+          rm deutschland.osm.pbf
+          osmium export -f geojsonseq -a type,id -o orte.geojsonseq orte.osm.pbf
+          python3 scripts/umgebung/grundversorgung_osm.py orte.geojsonseq grundversorgung.csv
+          n=$(($(wc -l < grundversorgung.csv) - 1))
+          echo "Orte: $n" | tee -a "$GITHUB_STEP_SUMMARY"
+          python3 -c "import csv,collections,sys; print(collections.Counter(z['art'] for z in csv.DictReader(open(sys.argv[1], encoding='utf-8'))).most_common())" grundversorgung.csv | tee -a "$GITHUB_STEP_SUMMARY"
+          # Schutz vor einem kaputten Auszug (Deutschland hat allein über 15.000 Supermärkte)
+          if [ "$n" -lt 80000 ]; then echo "Zu wenige Daten, Abbruch ohne Änderung an der Datenbank" >&2; exit 1; fi
+
+      - name: In Supabase laden
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PROBE: ${{ inputs.probe }}
+          EREIGNIS: ${{ github.event_name }}
+        run: |
+          if [ "$PROBE" = "true" ] || [ "$EREIGNIS" = "push" ] || [ -z "$SUPABASE_DB_URL" ]; then
+            echo "Probelauf, Datenbank bleibt unverändert" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          cp supabase/grundversorgung_laden.sql .
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f grundversorgung_laden.sql

@@ -373,7 +373,7 @@ export default function Suche() {
             </div>
           ) : (
             <Ergebnisliste anzeigen={ergebnis.anzeigen} naechste={ergebnis.naechste} aktivId={auswahlId} onHover={setHoverId}
-              raster="grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" />
+              raster="grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" linienIds={angewendet.linien.map(l => l.linie_id)} />
           )}
         </section>
 
@@ -386,7 +386,7 @@ export default function Suche() {
                 aktivId={hoverId ?? auswahlId} onAuswahl={pinWaehlen} onAusschnittChange={setAusschnitt} />
               {ausgewaehlt && (
                 <div className="absolute z-[1000] left-3 right-3 bottom-3 sm:left-auto sm:right-3 sm:w-[380px] bg-white rounded-2xl shadow-2xl p-2.5 pr-9">
-                  <AnzeigeKachel a={ausgewaehlt} n={ergebnis.naechste[ausgewaehlt.id]} kompakt />
+                  <AnzeigeKachel a={ausgewaehlt} n={ergebnis.naechste[ausgewaehlt.id]} kompakt linienIds={angewendet.linien.map(l => l.linie_id)} />
                   <button onClick={() => setAuswahlId(null)} aria-label="Schließen" className="absolute right-2 top-2 w-7 h-7 rounded-full hover:bg-zinc-100 text-zinc-500 text-lg leading-none">×</button>
                 </div>
               )}

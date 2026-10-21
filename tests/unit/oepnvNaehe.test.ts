@@ -52,3 +52,29 @@ describe('stationenBilden', () => {
     expect(s.map(x => x.name)).toEqual(['Bahnhof', 'Bahnhof']);
   });
 });
+
+describe('stationenDerLinien', () => {
+  it('nimmt je Linie die nächste Station und dort alle Bahnsteige und Linien', async () => {
+    const { supabase } = await import('../../lib/supabase');
+    const rpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
+      if (name === 'haltestellen_der_linien') {
+        return { data: (args.linien_ids as number[])[0] === 8
+          ? [{ stop_id: 'w', name: 'U Weit Bstggl.1', lat: 52.60, lon: 13.40 }, { stop_id: 'n', name: 'U Nah Bstggl.1', lat: 52.531, lon: 13.40 }]
+          : [], error: null };
+      }
+      return { data: [
+        halt('n', 'U Nah Bstggl.1', 52.531, 5, { barrierefrei: 'ja' }),
+        halt('n2', 'U Nah Bstggl.2', 52.5312, 20, { barrierefrei: 'ja' }),
+        halt('t', 'U Nah', 52.5311, 10, { linien: [m10] }),
+        halt('x', 'Andere Str.', 52.5313, 30, { linien: [m10] }),
+      ], error: null };
+    });
+    (supabase as unknown as { rpc: typeof rpc }).rpc = rpc;
+    const { stationenDerLinien } = await import('../../lib/oepnvNaehe');
+    const s = await stationenDerLinien(52.53, 13.40, [8]);
+    expect(s).toHaveLength(1);
+    expect(s[0].name).toBe('U Nah');
+    expect(s[0].linien.map(l => l.nummer)).toEqual(['U8', 'M10']);
+    expect(s[0].entfernung_m).toBe(111);   // 0,001 Grad Breite zum Inserat
+  });
+});

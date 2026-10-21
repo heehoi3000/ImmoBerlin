@@ -17,21 +17,26 @@ function Rollstuhl() {
   );
 }
 
-export default function OepnvNaehe({ stationen, auswahl, onAuswahl, fehler }: {
+// gewaehlteLinien: Linien aus dem Suchfilter; dann zeigt die Liste nur deren nächste Haltestelle und hebt sie hervor
+export default function OepnvNaehe({ stationen, auswahl, onAuswahl, fehler, gewaehlteLinien, onAlleZeigen }: {
   stationen: Station[] | null; auswahl: number; onAuswahl: (i: number) => void; fehler?: boolean;
+  gewaehlteLinien?: number[]; onAlleZeigen?: () => void;
 }) {
+  const gefiltert = !!gewaehlteLinien?.length;
   return (
     <section className="bg-white border border-zinc-200 rounded-2xl p-5" aria-labelledby="oepnv-titel">
       <h2 id="oepnv-titel" className="font-bold">ÖPNV in der Nähe</h2>
-      <p className="text-xs text-zinc-500 mt-0.5 mb-3">Entfernung in Luftlinie, Takt werktags von 6 bis 20 Uhr</p>
+      <p className="text-xs text-zinc-500 mt-0.5 mb-3">
+        {gefiltert ? 'Nächste Haltestelle deiner gewählten Linie. ' : ''}Entfernung in Luftlinie, Takt werktags von 6 bis 20 Uhr
+      </p>
       {stationen === null && !fehler && <p className="text-sm text-zinc-500" role="status">Haltestellen werden geladen…</p>}
       {fehler && <p className="text-sm text-zinc-500" role="status">Die Haltestellen konnten nicht geladen werden.</p>}
-      {stationen?.length === 0 && <p className="text-sm text-zinc-500" role="status">Keine Haltestelle im Umkreis von 1 km.</p>}
+      {stationen?.length === 0 && <p className="text-sm text-zinc-500" role="status">{gefiltert ? 'Keine Haltestelle der gewählten Linie gefunden.' : 'Keine Haltestelle im Umkreis von 1 km.'}</p>}
       {stationen && stationen.length > 0 && (
         <ul className="flex flex-col gap-2">
           {stationen.map((s, i) => (
             <li key={`${s.name}-${i}`}>
-              <button type="button" onClick={() => onAuswahl(i)} aria-pressed={i === auswahl}
+              <button type="button" onClick={() => onAuswahl(i)} aria-pressed={stationen.length > 1 ? i === auswahl : undefined}
                 className={`w-full text-left rounded-xl border p-3 transition ${i === auswahl ? 'border-black bg-zinc-50' : 'border-zinc-200 hover:border-zinc-400'}`}>
                 <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                   <span className="font-semibold text-sm">
@@ -44,9 +49,11 @@ export default function OepnvNaehe({ stationen, auswahl, onAuswahl, fehler }: {
                   {s.linien.map(l => {
                     const takt = taktText(l.fahrten);
                     const ersatz = l.typ === 'ersatzverkehr';
+                    const gewaehlt = gewaehlteLinien?.includes(l.linie_id);
                     return (
-                      <span key={l.linie_id} className="inline-flex items-center gap-1 rounded-full bg-zinc-100 pl-1 pr-2 py-0.5 text-xs" title={`${LINIENTYPEN[l.typ] ?? l.typ}${l.endpunkte ? `: ${endpunkteKurz(l.endpunkte)}` : ''}`}>
+                      <span key={l.linie_id} className={`inline-flex items-center gap-1 rounded-full pl-1 pr-2 py-0.5 text-xs ${gewaehlt ? 'bg-blue-50 ring-2 ring-blue-700' : 'bg-zinc-100'}`} title={`${LINIENTYPEN[l.typ] ?? l.typ}${l.endpunkte ? `: ${endpunkteKurz(l.endpunkte)}` : ''}`}>
                         <span className={`rounded-full px-1.5 font-bold ${ersatz ? 'bg-white border border-dashed border-zinc-500 text-zinc-800' : 'bg-black text-white'}`}>{l.nummer}</span>
+                        {gewaehlt && <span className="sr-only">(deine gewählte Linie)</span>}
                         {ersatz && <span className="text-zinc-600">Ersatzverkehr</span>}
                         {takt && <span className="text-zinc-600">{takt}</span>}
                       </span>
@@ -61,6 +68,11 @@ export default function OepnvNaehe({ stationen, auswahl, onAuswahl, fehler }: {
             </li>
           ))}
         </ul>
+      )}
+      {onAlleZeigen && stationen && (
+        <button type="button" onClick={onAlleZeigen} className="mt-3 text-sm font-semibold underline underline-offset-2 hover:text-zinc-600">
+          Alle Haltestellen in der Nähe zeigen
+        </button>
       )}
       <p className="text-[11px] text-zinc-500 mt-3">
         Fahrplandaten: DELFI e.V. (CC BY 4.0). Barrierefreiheit: © OpenStreetMap-Mitwirkende (ODbL), nicht überall eingetragen.

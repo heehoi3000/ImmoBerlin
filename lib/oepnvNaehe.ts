@@ -83,6 +83,35 @@ export const BARRIEREFREI_TEXT: Record<Barrierefrei, string> = {
   nein: 'Nicht barrierefrei',
 };
 
+// Nach einem Linienfilter: je gewählter Linie nur ihre nächste Station zum Inserat, mit allen Linien,
+// die dort fahren. Mehrere Linien mit derselben Station ergeben eine Station.
+export async function stationenDerLinien(lat: number, lon: number, linienIds: number[]): Promise<Station[]> {
+  const inserat = { lat, lon };
+  const halteJeLinie = await Promise.all(linienIds.map(async id => {
+    const { data, error } = await supabase.rpc('haltestellen_der_linien', { linien_ids: [id] });
+    if (error) throw error;
+    return (data as { stop_id: string; name: string; lat: number; lon: number }[]) || [];
+  }));
+  const naechste: { name: string; lat: number; lon: number }[] = [];
+  for (const halte of halteJeLinie) {
+    let best: { name: string; lat: number; lon: number } | null = null;
+    for (const h of halte) if (!best || abstandM(inserat, h) < abstandM(inserat, best)) best = h;
+    if (!best) continue;
+    const name = haltestelleKurz(best.name);
+    if (!naechste.some(n => haltestelleKurz(n.name) === name && abstandM(n, best!) <= STATION_RADIUS_M)) naechste.push(best);
+  }
+  const stationen = await Promise.all(naechste.map(async halt => {
+    const { data, error } = await supabase.rpc('haltestellen_in_der_naehe', { p_lat: halt.lat, p_lon: halt.lon, p_radius_m: STATION_RADIUS_M });
+    if (error) throw error;
+    const name = haltestelleKurz(halt.name);
+    // nur die Bahnsteige dieser Station; Entfernung und Lage vom Bahnsteig, der dem Inserat am nächsten ist
+    const bahnsteige = ((data as NaherHalt[]) || []).filter(h => haltestelleKurz(h.name) === name)
+      .map(h => ({ ...h, entfernung_m: Math.round(abstandM(inserat, h)) }));
+    return stationenBilden(bahnsteige)[0];
+  }));
+  return stationen.filter((s): s is Station => !!s).sort((a, b) => a.entfernung_m - b.entfernung_m);
+}
+
 export async function stationenLaden(lat: number, lon: number, radiusM = 1000): Promise<Station[]> {
   const { data, error } = await supabase.rpc('haltestellen_in_der_naehe', { p_lat: lat, p_lon: lon, p_radius_m: radiusM });
   if (error) throw error;

@@ -58,6 +58,28 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     expect(auf.rpc.find(r => r.name === 'haltestellen_in_der_naehe')?.body).toMatchObject({ p_lat: 52.53, p_lon: 13.40 });
   });
 
+  test('nach dem Linienfilter nur die nächste Haltestelle dieser Linie', async ({ page }) => {
+    await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('suche/');
+    await page.getByRole('button', { name: 'ÖPNV-Linien' }).click();
+    await page.getByRole('textbox', { name: 'Linie suchen' }).fill('U8');
+    await page.getByRole('button', { name: /^U8/ }).first().click();
+    await page.getByRole('button', { name: 'Ergebnisse anzeigen' }).click();
+    await expect(page.getByText('2 Wohnungen zur Miete')).toBeVisible();
+    await page.getByRole('link', { name: /Altbau an der U8/ }).click();
+    await expect(page).toHaveURL(/anzeige\/\?id=a1&linien=8$/);
+
+    const bereich = page.getByRole('region', { name: 'ÖPNV in der Nähe' });
+    const stationen = bereich.getByRole('listitem');
+    await expect(stationen).toHaveCount(1);
+    await expect(stationen.first()).toContainText('U Bernauer Str.');
+    await expect(stationen.first()).toContainText('(deine gewählte Linie)');
+    await expect(bereich).toContainText('Nächste Haltestelle deiner gewählten Linie');
+
+    await bereich.getByRole('button', { name: 'Alle Haltestellen in der Nähe zeigen' }).click();
+    await expect(stationen).toHaveCount(3);
+  });
+
   test('unbekanntes Inserat', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=gibt-es-nicht');

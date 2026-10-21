@@ -33,9 +33,15 @@ export function KeinFoto({ id }: { id: string }) {
   );
 }
 
-export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt }: {
-  a: Anzeige; n?: NaechsteHaltestelle; aktiv?: boolean; onHover?: (id: string | null) => void; kompakt?: boolean;
+// Link zum Inserat; nach einem Linienfilter mit den Linien, damit das Inserat deren nächste Haltestelle zeigt
+export function inseratLink(id: string, linienIds?: number[]) {
+  return `/anzeige/?id=${id}${linienIds?.length ? `&linien=${linienIds.join(',')}` : ''}`;
+}
+
+export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt, linienIds }: {
+  a: Anzeige; n?: NaechsteHaltestelle; aktiv?: boolean; onHover?: (id: string | null) => void; kompakt?: boolean; linienIds?: number[];
 }) {
+  const link = inseratLink(a.id, linienIds);
   const { gemerkt, umschalten } = useMerkliste();
   const miete = a.transaktions_typ === 'mieten';
   const fakten = [`${a.zimmer} Zi.`, `${a.quadratmeter} m²`, etageText(a.etage), objektartName[a.objektart]].filter(Boolean);
@@ -44,7 +50,7 @@ export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt }: {
     <div id={`kachel-${a.id}`} onMouseEnter={() => onHover?.(a.id)} onMouseLeave={() => onHover?.(null)}
       className={`group relative flex ${kompakt ? 'flex-row gap-3' : 'flex-col gap-3'} rounded-2xl transition ${aktiv ? 'ring-2 ring-black ring-offset-4 ring-offset-zinc-50' : ''}`}>
       {/* Foto verlinkt doppelt zum Titel darunter; für Tastatur und Bildschirmleser reicht der Titel-Link */}
-      <Link href={`/anzeige/?id=${a.id}`} tabIndex={-1} aria-hidden="true" className={`relative block overflow-hidden rounded-2xl bg-zinc-100 shrink-0 ${kompakt ? 'w-32 h-28' : 'aspect-[16/10] sm:aspect-[4/3]'}`}>
+      <Link href={link} tabIndex={-1} aria-hidden="true" className={`relative block overflow-hidden rounded-2xl bg-zinc-100 shrink-0 ${kompakt ? 'w-32 h-28' : 'aspect-[16/10] sm:aspect-[4/3]'}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {a.bilder?.[0] ? <img src={fotoUrl(a.bilder[0], 'klein')} onError={fotoFallback(a.bilder[0])} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500" /> : <KeinFoto id={a.id} />}
         {!kompakt && (
@@ -57,7 +63,7 @@ export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt }: {
         className={`absolute ${kompakt ? 'left-[6.4rem] top-1.5 w-7 h-7 text-sm' : 'right-3 top-3 w-9 h-9 text-lg'} rounded-full bg-white/90 shadow-sm flex items-center justify-center hover:scale-110 transition ${gemerkt(a.id) ? 'text-red-600' : 'text-zinc-700'}`}>
         {gemerkt(a.id) ? '♥' : '♡'}
       </button>
-      <Link href={`/anzeige/?id=${a.id}`} className="flex flex-col gap-0.5 min-w-0 px-0.5">
+      <Link href={link} className="flex flex-col gap-0.5 min-w-0 px-0.5">
         {neu(a.erstellt_am) && <span className="sr-only">Neu:</span>}
         <div className="flex items-baseline gap-2">
           <span className="text-lg font-extrabold tracking-tight">{euro.format(Number(miete && a.warmmiete ? a.warmmiete : a.preis))}</span>
@@ -78,13 +84,14 @@ interface Props {
   aktivId?: string | null;
   onHover?: (id: string | null) => void;
   raster?: string;
+  linienIds?: number[];
 }
 
-export default function Ergebnisliste({ anzeigen, naechste, aktivId, onHover, raster = 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' }: Props) {
+export default function Ergebnisliste({ anzeigen, naechste, aktivId, onHover, raster = 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3', linienIds }: Props) {
   if (anzeigen.length === 0) return null;
   return (
     <div className={`grid ${raster} gap-x-5 gap-y-8`}>
-      {anzeigen.map(a => <AnzeigeKachel key={a.id} a={a} n={naechste[a.id]} aktiv={aktivId === a.id} onHover={onHover} />)}
+      {anzeigen.map(a => <AnzeigeKachel key={a.id} a={a} n={naechste[a.id]} aktiv={aktivId === a.id} onHover={onHover} linienIds={linienIds} />)}
     </div>
   );
 }

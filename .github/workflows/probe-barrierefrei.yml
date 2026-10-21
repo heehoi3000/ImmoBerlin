@@ -1,0 +1,47 @@
+name: Probe Barrierefreiheit (temporär)
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/probe-barrierefrei.yml']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - run: curl -sSfL --retry 3 -o feed.zip https://mobi.nrw/gtfs-deutschland-gesamt.zip && unzip -l feed.zip
+      - name: Auswertung
+        run: |
+          python3 - <<'PY'
+          import csv, io, zipfile, collections
+          zf = zipfile.ZipFile('feed.zip')
+          def rows(n):
+              with zf.open(n) as raw:
+                  yield from csv.DictReader(io.TextIOWrapper(raw, encoding='utf-8-sig', newline=''))
+          stops = list(rows('stops.txt'))
+          print('stops-Spalten:', list(stops[0].keys()))
+          parent = {s['stop_id']: s for s in stops}
+          gebiete = {'Berlin': (52.33, 52.68, 13.08, 13.77), 'Muenchen': (48.06, 48.25, 11.36, 11.72),
+                     'Hamburg': (53.39, 53.74, 9.73, 10.33), 'Koeln': (50.83, 51.08, 6.77, 7.16),
+                     'Leipzig': (51.24, 51.45, 12.24, 12.54), 'Stuttgart': (48.69, 48.87, 9.04, 9.32)}
+          def wert(s):
+              w = s.get('wheelchair_boarding', '') or ''
+              if w in ('', '0') and s.get('parent_station') in parent:
+                  w = parent[s['parent_station']].get('wheelchair_boarding', '') or w
+              return w or 'leer'
+          ges = collections.Counter(); je = collections.defaultdict(collections.Counter)
+          for s in stops:
+              if s.get('location_type', '') not in ('', '0'): continue
+              w = wert(s); ges[w] += 1
+              try: la, lo = float(s['stop_lat']), float(s['stop_lon'])
+              except ValueError: continue
+              for g, (a, b, c, d) in gebiete.items():
+                  if a <= la <= b and c <= lo <= d: je[g][w] += 1
+          print('Halte-/Bahnsteigpunkte gesamt:', dict(ges))
+          for g, c in je.items(): print(g, dict(c))
+          t = collections.Counter(r.get('wheelchair_accessible', 'fehlt') or 'leer' for r in rows('trips.txt'))
+          print('trips wheelchair_accessible:', dict(t))
+          r0 = next(rows('trips.txt')); print('trips-Spalten:', list(r0.keys()))
+          r1 = next(rows('stop_times.txt')); print('stop_times-Spalten:', list(r1.keys()))
+          PY

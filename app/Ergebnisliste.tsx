@@ -43,7 +43,7 @@ export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt, linienIds }: {
 }) {
   const link = inseratLink(a.id, linienIds);
   const { gemerkt, umschalten } = useMerkliste();
-  const miete = a.transaktions_typ === 'mieten';
+  const miete = a.transaktions_typ !== 'kaufen';
   const fakten = [`${a.zimmer} Zi.`, `${a.quadratmeter} m²`, etageText(a.etage), objektartName[a.objektart]].filter(Boolean);
   const ort = [a.bezirk, a.ort].filter(Boolean).join(', ') || a.adresse;
   return (
@@ -56,6 +56,7 @@ export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt, linienIds }: {
         {!kompakt && (
           <div className="absolute left-3 top-3 flex gap-1.5">
             {neu(a.erstellt_am) && <span className="px-2 py-1 rounded-full bg-white text-[11px] font-bold shadow-sm">Neu</span>}
+            {a.transaktions_typ === 'tauschen' && <span className="px-2 py-1 rounded-full bg-violet-700 text-white text-[11px] font-bold shadow-sm">Tausch</span>}
           </div>
         )}
       </Link>
@@ -65,9 +66,11 @@ export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt, linienIds }: {
       </button>
       <Link href={link} className="flex flex-col gap-0.5 min-w-0 px-0.5">
         {neu(a.erstellt_am) && <span className="sr-only">Neu:</span>}
+        {a.transaktions_typ === 'tauschen' && !kompakt && <span className="sr-only">Tausch:</span>}
         <div className="flex items-baseline gap-2">
           <span className="text-lg font-extrabold tracking-tight">{euro.format(Number(miete && a.warmmiete ? a.warmmiete : a.preis))}</span>
           <span className="text-xs text-zinc-500">{miete ? (a.warmmiete ? 'warm' : 'kalt') : 'Kaufpreis'}</span>
+          {a.transaktions_typ === 'tauschen' && kompakt && <span className="text-[11px] font-bold text-violet-700">Tausch</span>}
         </div>
         <p className="text-sm text-zinc-800">{fakten.join(' · ')}</p>
         <p className="text-sm text-zinc-500 truncate">{ort}</p>

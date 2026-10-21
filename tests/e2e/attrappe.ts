@@ -13,12 +13,15 @@ export interface Daten {
   naheLinien: Record<number, string[]>;     // je linie_id: ids der Anzeigen im Umkreis
   naheHalte?: Zeile[];                      // Antwort von haltestellen_in_der_naehe (Inseratsseite)
   grundversorgung?: Zeile[];                // Antwort von grundversorgung_in_der_naehe (Inseratsseite)
+  tauschWuensche?: Zeile[];                 // Tabelle tausch_wuensche
+  tauschPartner?: Zeile[];                  // Antwort von tausch_partner
 }
 
 export interface Aufzeichnung {
   nachrichten: Zeile[];
   neueAnzeigen: Zeile[];
   rpc: { name: string; body: Zeile }[];
+  wuensche: Zeile[];                        // gespeicherte Tauschwünsche (upsert)
 }
 
 export const NUTZER = { id: '00000000-0000-4000-8000-000000000001', email: 'test@example.org' };
@@ -55,7 +58,7 @@ function ergebnis(route: Route, zeilen: Zeile[]) {
 }
 
 export async function attrappeEinrichten(page: Page, daten: Daten): Promise<Aufzeichnung> {
-  const auf: Aufzeichnung = { nachrichten: [], neueAnzeigen: [], rpc: [] };
+  const auf: Aufzeichnung = { nachrichten: [], neueAnzeigen: [], rpc: [], wuensche: [] };
 
   await page.route(`${SUPABASE}/**`, async route => {
     const req = route.request();
@@ -78,6 +81,7 @@ export async function attrappeEinrichten(page: Page, daten: Daten): Promise<Aufz
       if (name === 'ist_moderator') return json(route, false);
       if (name === 'haltestellen_in_der_naehe') return json(route, daten.naheHalte ?? []);
       if (name === 'grundversorgung_in_der_naehe') return json(route, daten.grundversorgung ?? []);
+      if (name === 'tausch_partner') return json(route, daten.tauschPartner ?? []);
       return json(route, []);
     }
 
@@ -88,6 +92,11 @@ export async function attrappeEinrichten(page: Page, daten: Daten): Promise<Aufz
         return ergebnis(route, [{ id: zeile.id }]);
       }
       return ergebnis(route, filtern(daten.anzeigen, url.searchParams));
+    }
+    if (pfad === '/rest/v1/tausch_wuensche') {
+      if (req.method() === 'POST') { auf.wuensche.push(body); return route.fulfill({ status: 201, headers: { 'Access-Control-Allow-Origin': '*' } }); }
+      if (req.method() === 'DELETE') return route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': '*' } });
+      return ergebnis(route, filtern(daten.tauschWuensche ?? [], url.searchParams));
     }
     if (pfad === '/rest/v1/oepnv_linien') {
       // Die Seite sucht mit ilike; hier reicht: Nummer beginnt mit dem Suchbegriff

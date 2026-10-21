@@ -51,6 +51,7 @@ export default function Nutzungsbedingungen() {
           <li>bei Mietwohnungen das Bestellerprinzip beachten: Mieter dürfen nicht zu einer Provision verpflichtet werden, wenn der Vermieter den Makler beauftragt hat (§ 2 Abs. 1a WoVermittG),</li>
           <li>nur Fotos enthalten, an denen du die Rechte hast und auf denen keine Personen erkennbar sind.</li>
         </ul>
+        <p>Tauschinserate darfst du als Mieter für deine eigene Wohnung aufgeben. Der Tausch braucht die Zustimmung beider Vermieter; IMMOBIL ist daran nicht beteiligt. Ein Entgelt nur dafür, dass du die Wohnung räumst, darfst du nicht verlangen (§ 4a WoVermittG).</p>
         <p>Nicht erlaubt sind insbesondere</p>
         <ul>
           <li>Inhalte, die Menschen wegen ethnischer Herkunft, Geschlecht, Religion, Behinderung, Alter oder sexueller Identität ausschließen oder benachteiligen (Allgemeines Gleichbehandlungsgesetz),</li>

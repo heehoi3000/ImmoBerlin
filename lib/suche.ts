@@ -45,7 +45,7 @@ export async function anzeigenSuchen(f: Filter, erweitert: boolean): Promise<Suc
 
   query = query.eq('transaktions_typ', f.transaktion).eq('immobilien_typ', f.immobilientyp);
 
-  const preisSpalte = erweitert && f.transaktion === 'mieten' && f.preisArt === 'warm' ? 'warmmiete' : 'preis';
+  const preisSpalte = erweitert && f.transaktion !== 'kaufen' && f.preisArt === 'warm' ? 'warmmiete' : 'preis';
   const bereiche: [string, string, string][] = [
     [preisSpalte, f.preisMin, f.preisMax],
     ['zimmer', f.zimmerMin, f.zimmerMax],
@@ -101,7 +101,7 @@ export async function anzeigenSuchen(f: Filter, erweitert: boolean): Promise<Suc
     if (f.energieMindestens) {
       query = query.in('energieeffizienzklasse', ENERGIEKLASSEN.slice(0, ENERGIEKLASSEN.indexOf(f.energieMindestens) + 1));
     }
-    if (f.transaktion === 'mieten' && f.wbs !== 'egal') query = query.eq('wbs_erforderlich', f.wbs === 'nur');
+    if (f.transaktion !== 'kaufen' && f.wbs !== 'egal') query = query.eq('wbs_erforderlich', f.wbs === 'nur');
   }
 
   const sortierung: Record<string, [string, boolean]> = {

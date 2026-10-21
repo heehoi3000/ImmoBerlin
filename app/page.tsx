@@ -20,9 +20,10 @@ const STAEDTE: (Ort & { bild: string })[] = [
   { name: 'Leipzig', kurzname: 'Leipzig', lat: 51.34, lon: 12.375, osmRelation: 62649, ausdehnung: [12.237, 51.238, 12.543, 51.448], bild: 'from-lime-100 to-green-200' },
 ];
 
-const BALD = [
+// link: schon verfügbar, die Karte führt dorthin
+const BALD: { titel: string; text: string; symbol: string; link?: string }[] = [
   { titel: 'Studierende und Wohnheime', text: 'Hochschule wählen, die Linien dorthin sind vorausgewählt. Wohnheime zeigen freie Plätze, WG-Zimmer und Zwischenmiete inklusive.', symbol: 'M12 3 2 8l10 5 10-5-10-5zM6 10.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.5' },
-  { titel: 'Wohnungstausch', text: '2 Zimmer an der U8 gegen 3 Zimmer an der S41: Wir finden passende Tauschpartner entlang deiner Linien.', symbol: 'M7 7h13l-4-4M17 17H4l4 4' },
+  { titel: 'Wohnungstausch', text: '2 Zimmer an der U8 gegen 3 Zimmer an der S41: Inseriere deine Wohnung zum Tausch, wir zeigen passende Tauschpartner entlang deiner Linien.', symbol: 'M7 7h13l-4-4M17 17H4l4 4', link: '/inserieren/' },
   { titel: 'Standort- und Anbindungsanalyse', text: 'Für Neubauprojekte, Bauträger und Privatpersonen: Welche Linien, Haltestellen und Einrichtungen liegen im Umkreis, als fertiger Bericht für jeden Standort.', symbol: 'M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z' },
 ];
 
@@ -82,9 +83,9 @@ export default function Startseite() {
 
           <div className="w-full max-w-5xl mt-2 bg-white border border-zinc-200 rounded-[28px] shadow-[0_12px_40px_rgba(0,0,0,0.10)] p-2 flex flex-col lg:flex-row lg:items-center gap-2 text-left">
             <div className="flex shrink-0 bg-zinc-100 rounded-full p-1 h-12 self-stretch lg:self-auto">
-              {(['mieten', 'kaufen'] as const).map(t => (
+              {(['mieten', 'kaufen', 'tauschen'] as const).map(t => (
                 <button key={t} onClick={() => setTransaktion(t)} aria-pressed={transaktion === t} className={`flex-1 lg:flex-none px-5 rounded-full text-sm font-semibold transition ${transaktion === t ? 'bg-white shadow-sm' : 'text-zinc-600 hover:text-black'}`}>
-                  {t === 'mieten' ? 'Mieten' : 'Kaufen'}
+                  {{ mieten: 'Mieten', kaufen: 'Kaufen', tauschen: 'Tauschen' }[t]}
                 </button>
               ))}
             </div>
@@ -174,7 +175,7 @@ export default function Startseite() {
       <section className="bg-white border-y border-zinc-200">
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-14 md:py-20">
           <div className="flex flex-col gap-2 mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Bald bei IMMOBIL</h2>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Neu und bald bei IMMOBIL</h2>
             <p className="text-zinc-600">Daran arbeiten wir gerade. Alles bleibt bei dem, was IMMOBIL ausmacht: der Suche entlang deiner Linien.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-4">
@@ -182,9 +183,11 @@ export default function Startseite() {
               <div key={b.titel} className="rounded-2xl border border-zinc-200 p-6 flex flex-col gap-3 bg-zinc-50/60">
                 <div className="flex items-center justify-between">
                   <span className="w-11 h-11 rounded-xl bg-white border border-zinc-200 flex items-center justify-center"><Symbol d={b.symbol} /></span>
-                  <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-[11px] font-semibold">Bald verfügbar</span>
+                  {b.link
+                    ? <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-semibold">Neu</span>
+                    : <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 text-[11px] font-semibold">Bald verfügbar</span>}
                 </div>
-                <h3 className="font-semibold text-lg">{b.titel}</h3>
+                <h3 className="font-semibold text-lg">{b.link ? <Link href={b.link} className="hover:underline underline-offset-2">{b.titel}</Link> : b.titel}</h3>
                 <p className="text-sm text-zinc-600 leading-relaxed">{b.text}</p>
               </div>
             ))}

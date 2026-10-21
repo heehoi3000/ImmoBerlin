@@ -1,6 +1,7 @@
 "use client";
 // Inserat aufgeben oder bearbeiten (?id=...). Pflichtangaben nach § 87 GEG (Energieausweis),
 // § 5a UWG (privat/gewerblich) und §§ 656c, 656d BGB (Provision bei Kauf) werden abgefragt.
+// Tauschinserate (Mieter tauschen ihre Wohnungen) haben statt Energieausweis und Anbieter einen Tauschwunsch.
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
@@ -9,11 +10,14 @@ import { Adresse, adressenSuchen } from '../../lib/adresse';
 import { AUSSTATTUNG, ENERGIEKLASSEN, OBJEKTARTEN } from '../../lib/filter';
 import { MAX_EINGANG_MB, bildVorbereiten } from '../../lib/bilder';
 import { FOTO_BUCKET, fotoFallback, fotoUrl, kleinPfad } from '../../lib/fotos';
+import { Linie } from '../../lib/oepnv';
+import { MAX_WUNSCH_LINIEN, wunschLaden, wunschLinie, wunschLinienAufloesen, wunschLoeschen, wunschSpeichern } from '../../lib/tausch';
+import LinienFeld from '../LinienFeld';
 
 const MAX_BILDER = 15;
 
 interface Formular {
-  transaktions_typ: 'mieten' | 'kaufen';
+  transaktions_typ: 'mieten' | 'kaufen' | 'tauschen';
   immobilien_typ: 'wohnung' | 'haus';
   objektart: string;
   titel: string;
@@ -28,6 +32,10 @@ interface Formular {
   anbieter_name: string;
   bilder: string[];
 }
+
+// Tauschwunsch als Eingabefelder
+interface Wunsch { linien: Linie[]; umkreis: string; ort: string; maxWarm: string; minZimmer: string; minQm: string }
+const LEERER_WUNSCH: Wunsch = { linien: [], umkreis: '600', ort: '', maxWarm: '', minZimmer: '', minQm: '' };
 
 const LEER: Formular = {
   transaktions_typ: 'mieten', immobilien_typ: 'wohnung', objektart: '', titel: '', beschreibung: '',
@@ -91,9 +99,13 @@ export default function Inserieren() {
   const [fehler, setFehler] = useState<string | null>(null);
   const [gespeichert, setGespeichert] = useState<string | null>(null);
   const adressAnfrage = useRef(0);
+  const [wunsch, setWunsch] = useState<Wunsch>(LEERER_WUNSCH);
+  const [warTausch, setWarTausch] = useState(false);
 
   const setze = (teil: Partial<Formular>) => setF(alt => ({ ...alt, ...teil }));
-  const miete = f.transaktions_typ === 'mieten';
+  const setzeWunsch = (teil: Partial<Wunsch>) => setWunsch(alt => ({ ...alt, ...teil }));
+  const tausch = f.transaktions_typ === 'tauschen';
+  const miete = f.transaktions_typ !== 'kaufen';
 
   // Bearbeiten: vorhandenes Inserat laden
   useEffect(() => {
@@ -107,6 +119,14 @@ export default function Inserieren() {
         ...Object.fromEntries(Object.keys(LEER).map(k => [k, typeof LEER[k as keyof Formular] === 'string' ? text(data[k]) : data[k] ?? LEER[k as keyof Formular]])),
         ausstattung: AUSSTATTUNG.filter(a => data[a.wert]).map(a => a.wert),
       } as Formular);
+      if (data.transaktions_typ === 'tauschen') {
+        setWarTausch(true);
+        wunschLaden(vorhandeneId).then(async w => {
+          if (!w) return;
+          setWunsch({ linien: await wunschLinienAufloesen(w.linien), umkreis: String(w.umkreis_m), ort: w.ort ?? '',
+            maxWarm: text(w.max_warmmiete), minZimmer: text(w.min_zimmer), minQm: text(w.min_qm) });
+        }).catch(err => console.error('Tauschwunsch:', err));
+      }
       setAdresse({ text: [data.adresse, [data.plz, data.ort].filter(Boolean).join(' ')].filter(Boolean).join(', '), strasse: data.adresse ?? '', plz: data.plz ?? '', ort: data.ort ?? '', bezirk: data.bezirk ?? '', lat: data.koordinate_lat, lon: data.koordinate_lon });
     });
   }, [nutzer]);
@@ -151,6 +171,7 @@ export default function Inserieren() {
     if (!adresse) return 'Bitte wähle die Adresse aus den Vorschlägen aus, damit wir die Lage auf der Karte kennen.';
     if (!zahl(f.preis)) return miete ? 'Bitte gib die Kaltmiete an.' : 'Bitte gib den Kaufpreis an.';
     if (!miete && !f.provision.trim()) return 'Bei Kaufobjekten ist die Angabe zur Provision Pflicht (auch „provisionsfrei“).';
+    if (tausch) return wunsch.linien.length || wunsch.ort.trim() ? null : 'Bitte gib bei deinem Tauschwunsch an, wo du hinziehen möchtest: eine Linie oder einen Ort.';
     if (!f.energieausweis_art) return 'Bitte mache die Angaben zum Energieausweis.';
     if (f.energieausweis_art !== 'nicht_erforderlich' && (!zahl(f.energiekennwert) || !f.energietraeger || !f.energieeffizienzklasse || !zahl(f.baujahr)))
       return 'Für den Energieausweis brauchen wir Energiekennwert, Energieträger, Effizienzklasse und Baujahr.';
@@ -170,28 +191,45 @@ export default function Inserieren() {
       koordinate_lat: adresse!.lat, koordinate_lon: adresse!.lon,
       preis: zahl(f.preis), nebenkosten: miete ? zahl(f.nebenkosten) : null,
       warmmiete: miete ? (zahl(f.warmmiete) ?? ((zahl(f.preis) ?? 0) + (zahl(f.nebenkosten) ?? 0) || null)) : null,
-      kaution: miete ? zahl(f.kaution) : null, provision: miete ? null : f.provision.trim(),
+      kaution: miete && !tausch ? zahl(f.kaution) : null, provision: miete ? null : f.provision.trim(),
       quadratmeter: zahl(f.quadratmeter), zimmer: zahl(f.zimmer),
       etage: f.immobilien_typ === 'wohnung' ? zahl(f.etage) : null, baujahr: zahl(f.baujahr),
       verfuegbar_ab: f.verfuegbar_ab || null,
       ...Object.fromEntries(AUSSTATTUNG.map(a => [a.wert, f.ausstattung.includes(a.wert)])),
       wbs_erforderlich: miete && f.wbs_erforderlich,
-      energieausweis_art: f.energieausweis_art,
-      energiekennwert: f.energieausweis_art === 'nicht_erforderlich' ? null : zahl(f.energiekennwert),
-      energietraeger: f.energieausweis_art === 'nicht_erforderlich' ? null : f.energietraeger,
-      energieeffizienzklasse: f.energieausweis_art === 'nicht_erforderlich' ? null : f.energieeffizienzklasse,
-      anbieter_typ: f.anbieter_typ, anbieter_name: f.anbieter_typ === 'gewerblich' ? f.anbieter_name.trim() : null,
+      // Beim Tausch inseriert der Mieter: kein Energieausweis (Pflicht des Vermieters), immer privat
+      energieausweis_art: tausch ? null : f.energieausweis_art,
+      energiekennwert: tausch || f.energieausweis_art === 'nicht_erforderlich' ? null : zahl(f.energiekennwert),
+      energietraeger: tausch || f.energieausweis_art === 'nicht_erforderlich' ? null : f.energietraeger,
+      energieeffizienzklasse: tausch || f.energieausweis_art === 'nicht_erforderlich' ? null : f.energieeffizienzklasse,
+      anbieter_typ: tausch ? 'privat' : f.anbieter_typ, anbieter_name: !tausch && f.anbieter_typ === 'gewerblich' ? f.anbieter_name.trim() : null,
       bilder: f.bilder,
     };
     const { data, error } = id
       ? await supabase.from('anzeigen').update(zeile).eq('id', id).select('id').single()
       : await supabase.from('anzeigen').insert({ ...zeile, status: 'aktiv' }).select('id').single();
-    setLaedt(false);
     if (error) {
+      setLaedt(false);
       console.error(error);
       setFehler(error.message.includes('Zu viele') ? 'Du hast heute schon 10 Inserate aufgegeben. Weitere sind ab morgen möglich.' : 'Das Inserat konnte nicht gespeichert werden. Bitte prüfe deine Angaben und versuche es noch einmal.');
       return;
     }
+    try {
+      if (tausch) {
+        await wunschSpeichern(data.id, {
+          linien: wunsch.linien.map(wunschLinie), umkreis_m: parseInt(wunsch.umkreis) || 600, ort: wunsch.ort.trim() || null,
+          max_warmmiete: zahl(wunsch.maxWarm), min_zimmer: zahl(wunsch.minZimmer), min_qm: zahl(wunsch.minQm),
+        });
+      } else if (warTausch) await wunschLoeschen(data.id);
+    } catch (err) {
+      console.error(err);
+      setLaedt(false);
+      if (!id) setId(data.id);
+      setFehler('Das Inserat ist gespeichert, der Tauschwunsch aber nicht. Bitte speichere noch einmal.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    setLaedt(false);
     setGespeichert(data.id);
     window.scrollTo({ top: 0 });
   }
@@ -233,7 +271,7 @@ export default function Inserieren() {
 
       <Karte titel="Was bietest du an?">
         <div className="flex flex-wrap gap-6">
-          <Auswahl werte={[{ wert: 'mieten', name: 'Vermieten' }, { wert: 'kaufen', name: 'Verkaufen' }]} wert={f.transaktions_typ} onChange={(w) => setze({ transaktions_typ: w })} />
+          <Auswahl werte={[{ wert: 'mieten', name: 'Vermieten' }, { wert: 'kaufen', name: 'Verkaufen' }, { wert: 'tauschen', name: 'Tauschen' }]} wert={f.transaktions_typ} onChange={(w) => setze({ transaktions_typ: w })} />
           <Auswahl werte={[{ wert: 'wohnung', name: 'Wohnung' }, { wert: 'haus', name: 'Haus' }]} wert={f.immobilien_typ} onChange={(w) => setze({ immobilien_typ: w, objektart: '' })} />
         </div>
         <div className="grid md:grid-cols-2 gap-4">
@@ -274,7 +312,32 @@ export default function Inserieren() {
         {adresse && <p className="text-xs text-green-700">Lage gefunden: {adresse.text}{adresse.bezirk ? ` (${adresse.bezirk})` : ''}</p>}
       </Karte>
 
-      <Karte titel={miete ? 'Miete' : 'Preis'}>
+      {tausch && (
+        <Karte titel="Dein Tauschwunsch" beschreibung="Danach suchen wir passende Tauschpartner. Leere Felder schränken nicht ein.">
+          <div className="text-xs text-zinc-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 flex flex-col gap-1">
+            <p>Ein Tausch klappt nur, wenn beide Vermieter zustimmen. Sprich vorher mit deinem Vermieter.</p>
+            <p>Geld nur dafür zu verlangen, dass du ausziehst, ist unwirksam (§ 4a Wohnungsvermittlungsgesetz). Möbel oder Einbauten darfst du zu einem angemessenen Preis verkaufen.</p>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-bold text-zinc-700">An welcher Linie möchtest du wohnen?</span>
+            <div className="border border-zinc-200 rounded-lg px-3 focus-within:border-black">
+              <LinienFeld bezug={adresse} ausgewaehlt={wunsch.linien} umkreis={wunsch.umkreis} onUmkreis={(u) => setzeWunsch({ umkreis: u })}
+                onChange={(l) => setzeWunsch({ linien: l.slice(0, MAX_WUNSCH_LINIEN) })} />
+            </div>
+            <span className="text-[11px] text-zinc-500">Bis zu {MAX_WUNSCH_LINIEN} Linien. Die Auswahl rechts legt fest, wie weit die Haltestelle höchstens entfernt sein darf.</span>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <Feld titel="Ort" hinweis="z.B. Berlin; leer lassen, wenn nur die Linie zählt">
+              <input maxLength={100} value={wunsch.ort} onChange={(e) => setzeWunsch({ ort: e.target.value })} className={feld} />
+            </Feld>
+            <Feld titel="Warmmiete höchstens (€)"><input inputMode="decimal" value={wunsch.maxWarm} onChange={(e) => setzeWunsch({ maxWarm: e.target.value })} className={feld} /></Feld>
+            <Feld titel="Zimmer mindestens"><input inputMode="decimal" value={wunsch.minZimmer} onChange={(e) => setzeWunsch({ minZimmer: e.target.value })} className={feld} /></Feld>
+            <Feld titel="Wohnfläche mindestens (m²)"><input inputMode="decimal" value={wunsch.minQm} onChange={(e) => setzeWunsch({ minQm: e.target.value })} className={feld} /></Feld>
+          </div>
+        </Karte>
+      )}
+
+      <Karte titel={tausch ? 'Deine Miete' : miete ? 'Miete' : 'Preis'}>
         <div className="grid md:grid-cols-2 gap-4">
           <Feld titel={miete ? 'Kaltmiete (€ pro Monat)' : 'Kaufpreis (€)'} pflicht>
             <input inputMode="decimal" required value={f.preis} onChange={(e) => setze({ preis: e.target.value })} className={feld} />
@@ -283,7 +346,7 @@ export default function Inserieren() {
             <>
               <Feld titel="Nebenkosten (€ pro Monat)"><input inputMode="decimal" value={f.nebenkosten} onChange={(e) => setze({ nebenkosten: e.target.value })} className={feld} /></Feld>
               <Feld titel="Warmmiete (€ pro Monat)" hinweis="Leer lassen, dann rechnen wir Kaltmiete plus Nebenkosten"><input inputMode="decimal" value={f.warmmiete} onChange={(e) => setze({ warmmiete: e.target.value })} className={feld} /></Feld>
-              <Feld titel="Kaution (€)"><input inputMode="decimal" value={f.kaution} onChange={(e) => setze({ kaution: e.target.value })} className={feld} /></Feld>
+              {!tausch && <Feld titel="Kaution (€)"><input inputMode="decimal" value={f.kaution} onChange={(e) => setze({ kaution: e.target.value })} className={feld} /></Feld>}
             </>
           ) : (
             <Feld titel="Käuferprovision" pflicht hinweis="In Prozent inkl. MwSt., z.B. „3,57 % inkl. MwSt.“, oder „provisionsfrei“">
@@ -304,7 +367,7 @@ export default function Inserieren() {
           <Feld titel="Wohnfläche (m²)" pflicht><input inputMode="decimal" required value={f.quadratmeter} onChange={(e) => setze({ quadratmeter: e.target.value })} className={feld} /></Feld>
           <Feld titel="Zimmer" pflicht><input inputMode="decimal" required value={f.zimmer} onChange={(e) => setze({ zimmer: e.target.value })} className={feld} /></Feld>
           {f.immobilien_typ === 'wohnung' && <Feld titel="Etage" hinweis="0 = Erdgeschoss"><input inputMode="numeric" value={f.etage} onChange={(e) => setze({ etage: e.target.value })} className={feld} /></Feld>}
-          <Feld titel="Baujahr" pflicht={f.energieausweis_art !== 'nicht_erforderlich'}><input inputMode="numeric" value={f.baujahr} onChange={(e) => setze({ baujahr: e.target.value })} className={feld} /></Feld>
+          <Feld titel="Baujahr" pflicht={!tausch && f.energieausweis_art !== 'nicht_erforderlich'}><input inputMode="numeric" value={f.baujahr} onChange={(e) => setze({ baujahr: e.target.value })} className={feld} /></Feld>
         </div>
         <div>
           <span className="text-xs font-bold text-zinc-700">Ausstattung</span>
@@ -322,7 +385,7 @@ export default function Inserieren() {
         </div>
       </Karte>
 
-      <Karte titel="Energieausweis" beschreibung="Pflichtangaben nach § 87 Gebäudeenergiegesetz.">
+      {!tausch && <Karte titel="Energieausweis" beschreibung="Pflichtangaben nach § 87 Gebäudeenergiegesetz.">
         <Auswahl werte={[{ wert: 'verbrauch', name: 'Verbrauchsausweis' }, { wert: 'bedarf', name: 'Bedarfsausweis' }, { wert: 'nicht_erforderlich', name: 'Nicht erforderlich (z.B. Denkmal)' }]}
           wert={f.energieausweis_art as 'verbrauch'} onChange={(w) => setze({ energieausweis_art: w })} />
         {f.energieausweis_art && f.energieausweis_art !== 'nicht_erforderlich' && (
@@ -342,7 +405,7 @@ export default function Inserieren() {
             </Feld>
           </div>
         )}
-      </Karte>
+      </Karte>}
 
       <Karte titel="Fotos" beschreibung={`Bis zu ${MAX_BILDER} Bilder, je höchstens ${MAX_EINGANG_MB} MB (JPG, PNG, WebP). Wir verkleinern sie und entfernen versteckte Angaben wie den Aufnahmeort. Das erste Bild ist das Titelbild.`}>
         <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
@@ -370,12 +433,12 @@ export default function Inserieren() {
         <p className="text-[11px] text-zinc-500">Lade nur Fotos hoch, an denen du die Rechte hast.</p>
       </Karte>
 
-      <Karte titel="Anbieter" beschreibung="Gewerbliche Anbieter wie Makler oder Hausverwaltungen werden im Inserat gekennzeichnet.">
+      {!tausch && <Karte titel="Anbieter" beschreibung="Gewerbliche Anbieter wie Makler oder Hausverwaltungen werden im Inserat gekennzeichnet.">
         <Auswahl werte={[{ wert: 'privat', name: 'Privat' }, { wert: 'gewerblich', name: 'Gewerblich' }]} wert={f.anbieter_typ} onChange={(w) => setze({ anbieter_typ: w })} />
         {f.anbieter_typ === 'gewerblich' && (
           <Feld titel="Firmenname" pflicht><input maxLength={200} value={f.anbieter_name} onChange={(e) => setze({ anbieter_name: e.target.value })} className={feld} /></Feld>
         )}
-      </Karte>
+      </Karte>}
 
       <div className="sticky bottom-0 -mx-4 px-4 py-3 bg-zinc-50/90 backdrop-blur border-t border-zinc-200 flex items-center justify-end gap-3">
         <Link href="/meine-inserate/" className="h-11 px-4 rounded-lg text-sm font-semibold text-zinc-600 hover:bg-zinc-100 flex items-center">Abbrechen</Link>

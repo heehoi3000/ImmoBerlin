@@ -15,6 +15,7 @@ import { KeinFoto } from '../Ergebnisliste';
 import { useModerator } from '../../lib/moderation';
 import Sperrdialog from '../Sperrdialog';
 import OepnvNaehe from '../OepnvNaehe';
+import { TauschPartnerListe, TauschWunschAnzeige } from '../Tausch';
 import Grundversorgung from '../Grundversorgung';
 import { Ort, grundversorgungLaden } from '../../lib/grundversorgung';
 import { Station, nurMitNeuenLinien, stationenDerLinien, stationenLaden } from '../../lib/oepnvNaehe';
@@ -106,7 +107,8 @@ export default function AnzeigeSeite() {
     );
   }
 
-  const miete = a.transaktions_typ === 'mieten';
+  const miete = a.transaktions_typ !== 'kaufen';
+  const tausch = a.transaktions_typ === 'tauschen';
   const bilder: string[] = (a.bilder ?? []).map((b: string) => fotoUrl(b));
   const ausstattung = AUSSTATTUNG.filter(x => a[x.wert]);
   const eigenes = nutzer && a.inserent_id === nutzer.id;
@@ -147,7 +149,7 @@ export default function AnzeigeSeite() {
         <div className="flex flex-col gap-6">
           <div>
             <div className="flex flex-wrap gap-2 mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-black text-white">{miete ? 'Miete' : 'Kauf'}</span>
+              <span className="text-[11px] font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-black text-white">{tausch ? 'Tausch' : miete ? 'Miete' : 'Kauf'}</span>
               {a.objektart && <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">{objektartName[a.objektart]}</span>}
               {a.anbieter_typ && <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">{a.anbieter_typ === 'gewerblich' ? `Gewerblich${a.anbieter_name ? `: ${a.anbieter_name}` : ''}` : 'Privatanbieter'}</span>}
               {a.status !== 'aktiv' && <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-800">Nicht öffentlich ({a.status})</span>}
@@ -168,6 +170,9 @@ export default function AnzeigeSeite() {
               </div>
             ))}
           </div>
+
+          {tausch && <TauschWunschAnzeige anzeigeId={a.id} eigenes={!!eigenes} />}
+          {tausch && eigenes && <TauschPartnerListe anzeigeId={a.id} />}
 
           {a.beschreibung && (
             <section className="bg-white border border-zinc-200 rounded-2xl p-5">

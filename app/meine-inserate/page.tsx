@@ -82,11 +82,12 @@ export default function MeineInserate() {
               <div className="flex-1 min-w-0 flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${s.farbe}`}>{s.text}</span>
-                  <span className="text-[11px] text-zinc-500">{a.transaktions_typ === 'mieten' ? 'Miete' : 'Kauf'} · seit {new Date(a.erstellt_am).toLocaleDateString('de-DE')}</span>
+                  <span className="text-[11px] text-zinc-500">{{ mieten: 'Miete', kaufen: 'Kauf', tauschen: 'Tausch' }[a.transaktions_typ as string] ?? 'Miete'} · seit {new Date(a.erstellt_am).toLocaleDateString('de-DE')}</span>
                 </div>
                 <h2 className="font-bold truncate">{a.titel}</h2>
                 <p className="text-xs text-zinc-500 truncate">{[a.adresse, a.ort].filter(Boolean).join(', ')}</p>
                 <p className="text-sm font-semibold">{euro.format(Number(a.preis))} · {a.quadratmeter} m² · {a.zimmer} Zi.</p>
+                {a.transaktions_typ === 'tauschen' && <Link href={`/anzeige/?id=${a.id}`} className="text-xs font-semibold text-violet-700 underline underline-offset-2 self-start">Passende Tauschpartner ansehen</Link>}
                 {a.status === 'gesperrt' && <Sperrhinweis a={a} onEinspruch={(text) => setInserate(liste => liste!.map(x => x.id === a.id ? { ...x, einspruch: text, einspruch_am: new Date().toISOString() } : x))} />}
               </div>
               <div className="flex sm:flex-col gap-2 sm:w-36 shrink-0 text-sm font-semibold">

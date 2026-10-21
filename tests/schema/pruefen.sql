@@ -7,7 +7,7 @@ declare
 begin
   select string_agg(t, ', ') into fehlt
     from unnest(array['public.anzeigen', 'public.meldungen', 'public.nachrichten', 'public.oepnv_haltestellen',
-                      'public.oepnv_linien', 'public.oepnv_linie_haltestelle', 'public.grundversorgung', 'privat.moderatoren', 'privat.drossel']) t
+                      'public.oepnv_linien', 'public.oepnv_linie_haltestelle', 'public.grundversorgung', 'public.tausch_wuensche', 'privat.moderatoren', 'privat.drossel']) t
    where to_regclass(t) is null;
   if fehlt is not null then raise exception 'Tabellen fehlen: %', fehlt; end if;
 
@@ -79,5 +79,48 @@ begin
   select count(*), max(name) into n, naechster from public.grundversorgung_in_der_naehe(52.53, 13.40, 1500);
   if n <> 1 or naechster <> 'Nah' then raise exception 'grundversorgung_in_der_naehe liefert % Orte, nächster %', n, naechster; end if;
   raise notice 'Grundversorgung in der Nähe funktioniert';
+end $$;
+rollback;
+
+-- Tauschpartner (supabase/migrations/0006_tausch.sql): A sucht an Linie T9 höchstens 500 m entfernt; B liegt
+-- 200 m von deren Haltestelle, C 3 km. B sucht mindestens 3 Zimmer, A hat 3 → gegenseitig.
+begin;
+do $$
+declare
+  a uuid := '00000000-0000-4000-8000-00000000000a';
+  b uuid := '00000000-0000-4000-8000-00000000000b';
+  ergebnis text;
+begin
+  insert into auth.users (id, email) values (a, 'a@example.org'), (b, 'b@example.org');
+  insert into public.oepnv_linien (linie_id, typ, nummer, betreiber, endpunkte, mitte)
+    values (999999, 'ubahn', 'T9', 'Testbetrieb', 'A – B', 'SRID=4326;POINT(13.40 52.50)');
+  insert into public.oepnv_haltestellen (stop_id, name, geom) values ('t9-halt', 'Testplatz', 'SRID=4326;POINT(13.40 52.50)');
+  insert into public.oepnv_linie_haltestelle (linie_id, stop_id) values (999999, 't9-halt');
+  insert into public.anzeigen (id, titel, transaktions_typ, preis, warmmiete, zimmer, quadratmeter, koordinate_lat, koordinate_lon, inserent_id, ort) values
+    ('00000000-0000-4000-8000-0000000000a1', 'A', 'tauschen', 700, 900, 3, 80, 52.60, 13.40, a, 'Berlin'),
+    ('00000000-0000-4000-8000-0000000000b1', 'B', 'tauschen', 500, 650, 2, 55, 52.5018, 13.40, b, 'Berlin'),
+    ('00000000-0000-4000-8000-0000000000c1', 'C', 'tauschen', 500, 650, 2, 55, 52.527, 13.40, b, 'Berlin'),
+    ('00000000-0000-4000-8000-0000000000d1', 'D', 'mieten', 500, 650, 2, 55, 52.5018, 13.40, b, 'Berlin');
+  insert into public.tausch_wuensche (anzeige_id, linien, umkreis_m, max_warmmiete) values
+    ('00000000-0000-4000-8000-0000000000a1', '[{"typ":"ubahn","nummer":"T9","betreiber":"Testbetrieb"}]', 500, 800);
+  insert into public.tausch_wuensche (anzeige_id, min_zimmer) values ('00000000-0000-4000-8000-0000000000b1', 3);
+  perform set_config('request.jwt.claim.sub', a::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', a)::text, true);
+  select string_agg(an.titel || ':' || t.gegenseitig, ',') into ergebnis
+    from public.tausch_partner('00000000-0000-4000-8000-0000000000a1') t join public.anzeigen an on an.id = t.id;
+  if ergebnis is distinct from 'B:true' then raise exception 'tausch_partner liefert %', ergebnis; end if;
+  -- Fremde Inserate: kein Ergebnis
+  select count(*)::text into ergebnis from public.tausch_partner('00000000-0000-4000-8000-0000000000b1');
+  if ergebnis <> '0' then raise exception 'tausch_partner zeigt Partner fremder Inserate'; end if;
+  -- Fremden Tauschwunsch ändern darf niemand
+  perform set_config('request.jwt.claim.sub', b::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  update public.tausch_wuensche set umkreis_m = 2000 where anzeige_id = '00000000-0000-4000-8000-0000000000a1';
+  reset role;
+  if (select umkreis_m from public.tausch_wuensche where anzeige_id = '00000000-0000-4000-8000-0000000000a1') <> 500 then
+    raise exception 'Fremder Tauschwunsch ließ sich ändern';
+  end if;
+  raise notice 'Tauschpartner werden richtig gefunden';
 end $$;
 rollback;

@@ -20,7 +20,7 @@ export interface Bezirk {
 }
 
 export interface Filter {
-  transaktion: 'mieten' | 'kaufen';
+  transaktion: 'mieten' | 'kaufen' | 'tauschen';
   immobilientyp: 'wohnung' | 'haus';
   objektarten: string[];
   ort: Ort | null;

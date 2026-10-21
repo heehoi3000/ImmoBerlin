@@ -172,13 +172,13 @@ export default function Suche() {
   // Knopf, der den Aufklappbereich geöffnet hat: Escape schließt den Bereich und springt dorthin zurück
   const panelKnopf = useRef<HTMLElement | null>(null);
   const oeffne = (p: Panel) => { panelKnopf.current = document.activeElement as HTMLElement | null; setPanel(panel === p ? null : p); };
-  const istMiete = filter.transaktion === 'mieten';
+  const istMiete = filter.transaktion !== 'kaufen';
   const weitere = weitereFilterAnzahl(filter);
   const sortierungen = SORTIERUNGEN.filter(s => !s.nurMitLinien || angewendet.linien.length > 0);
 
   const einzeln = ergebnis.anzeigen.length === 1;
   const typName = angewendet.immobilientyp === 'wohnung' ? (einzeln ? 'Wohnung' : 'Wohnungen') : (einzeln ? 'Haus' : 'Häuser');
-  const transaktionName = angewendet.transaktion === 'mieten' ? 'zur Miete' : 'zum Kauf';
+  const transaktionName = { mieten: 'zur Miete', kaufen: 'zum Kauf', tauschen: 'zum Tausch' }[angewendet.transaktion];
   const grenzen = angewendet.bezirke.length ? angewendet.bezirke : ergebnis.ortGrenze ? [ergebnis.ortGrenze] : [];
   const ortKreis = angewendet.ort && grenzen.length === 0
     ? { lat: angewendet.ort.lat, lon: angewendet.ort.lon, m: angewendet.umkreisKm * 1000, ausdehnung: angewendet.ort.ausdehnung }
@@ -193,7 +193,7 @@ export default function Suche() {
 
   const artWahl = (
     <>
-      <Umschalter werte={[{ wert: 'mieten', name: 'Mieten' }, { wert: 'kaufen', name: 'Kaufen' }]} wert={filter.transaktion}
+      <Umschalter werte={[{ wert: 'mieten', name: 'Mieten' }, { wert: 'kaufen', name: 'Kaufen' }, { wert: 'tauschen', name: 'Tauschen' }]} wert={filter.transaktion}
         onChange={(t) => setze({ transaktion: t, preisMin: '', preisMax: '', wbs: 'egal' })} />
       <Umschalter werte={[{ wert: 'wohnung', name: 'Wohnung' }, { wert: 'haus', name: 'Haus' }]} wert={filter.immobilientyp}
         onChange={(t) => setze({ immobilientyp: t, objektarten: [], etageMin: '', etageMax: '' })} />

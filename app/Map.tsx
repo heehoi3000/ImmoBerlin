@@ -188,7 +188,7 @@ function OrteAnzeige({ orte, von }: { orte: Ort[]; von: { lat: number; lon: numb
 
 // Preis kurz für den Pin: 1.160 €, 485 Tsd. €, 1,2 Mio. €
 function kurzPreis(a: Anzeige) {
-  const n = Number(a.transaktions_typ === 'mieten' && a.warmmiete ? a.warmmiete : a.preis);
+  const n = Number(a.transaktions_typ !== 'kaufen' && a.warmmiete ? a.warmmiete : a.preis);
   if (n >= 1e6) return `${(n / 1e6).toLocaleString('de-DE', { maximumFractionDigits: 1 })} Mio. €`;
   if (n >= 1e4) return `${Math.round(n / 1e3).toLocaleString('de-DE')} Tsd. €`;
   return `${n.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €`;

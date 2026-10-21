@@ -9,7 +9,7 @@ create temp table t_haltestellen (stop_id text, name text, lat double precision,
 create temp table t_linien (linie_id integer, typ text, nummer text, betreiber text, endpunkte text,
                             lat double precision, lon double precision);
 create temp table t_linie_route (linie_id integer, route_id text);
-create temp table t_linie_haltestelle (linie_id integer, stop_id text);
+create temp table t_linie_haltestelle (linie_id integer, stop_id text, fahrten smallint);
 
 \copy t_haltestellen from 'haltestellen.csv' csv header
 \copy t_linien from 'linien.csv' csv header
@@ -32,7 +32,8 @@ select linie_id, typ, nummer, betreiber, coalesce(endpunkte, ''),
 from t_linien;
 
 insert into oepnv_linie_route select * from t_linie_route;
-insert into oepnv_linie_haltestelle select * from t_linie_haltestelle;
+insert into oepnv_linie_haltestelle (linie_id, stop_id, fahrten)
+select linie_id, stop_id, coalesce(fahrten, 0) from t_linie_haltestelle;
 
 commit;
 

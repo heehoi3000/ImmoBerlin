@@ -36,6 +36,28 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     await expect(page.getByRole('button', { name: 'Anfrage senden' })).toHaveCount(0);
   });
 
+  test('ÖPNV in der Nähe mit Takt und Barrierefreiheit', async ({ page }) => {
+    const auf = await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('anzeige/?id=a1');
+    const bereich = page.getByRole('region', { name: 'ÖPNV in der Nähe' });
+    const stationen = bereich.getByRole('listitem');
+    await expect(stationen).toHaveCount(3);
+    // nächste zuerst und vorausgewählt; Nachtbus N8 fehlt
+    await expect(stationen.nth(0)).toContainText('Wolliner Str.');
+    await expect(stationen.nth(0)).toContainText('alle 30 min');
+    await expect(stationen.nth(0)).not.toContainText('N8');
+    await expect(stationen.nth(0)).toContainText('Nicht barrierefrei');
+    await expect(stationen.nth(0).getByRole('button')).toHaveAttribute('aria-pressed', 'true');
+    await expect(stationen.nth(1)).toContainText('Barrierefreiheit: keine Angabe');
+    // beide U8-Bahnsteige sind eine Station
+    await expect(stationen.nth(2)).toContainText('U Bernauer Str.');
+    await expect(stationen.nth(2)).toContainText('alle 5 min');
+    await expect(stationen.nth(2)).toContainText('Barrierefrei');
+    await stationen.nth(2).getByRole('button').click();
+    await expect(stationen.nth(2).getByRole('button')).toHaveAttribute('aria-pressed', 'true');
+    expect(auf.rpc.find(r => r.name === 'haltestellen_in_der_naehe')?.body).toMatchObject({ p_lat: 52.53, p_lon: 13.40 });
+  });
+
   test('unbekanntes Inserat', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=gibt-es-nicht');

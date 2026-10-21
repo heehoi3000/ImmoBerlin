@@ -1,0 +1,71 @@
+name: Barrierefreiheit der Haltestellen aktualisieren
+
+# Lädt einmal im Monat den OSM-Auszug Deutschland (Geofabrik), sucht Bahnhöfe, Bahnsteige und
+# Bushaltestellen mit wheelchair-Angabe heraus und ersetzt die Tabelle oepnv_barrierefrei in Supabase
+# (scripts/oepnv/barrierefrei_osm.py, supabase/barrierefrei_laden.sql). Die Fahrplandaten haben
+# dazu fast keine Angaben. Ohne das Secret SUPABASE_DB_URL, mit probe=true oder bei einem Push auf einen
+# claude/-Branch (Probelauf nach Änderungen an diesem Workflow) bleibt die Datenbank unverändert.
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/barrierefrei.yml', 'scripts/oepnv/barrierefrei_osm.py']
+  workflow_dispatch:
+    inputs:
+      probe:
+        description: 'Nur Probelauf, Datenbank bleibt unverändert'
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 4 3 * *'   # am 3. jedes Monats
+
+permissions:
+  contents: read
+
+concurrency:
+  group: barrierefrei
+  cancel-in-progress: false
+
+jobs:
+  laden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Werkzeuge bereitstellen
+        # auf GitHub fehlt nur osmium; in Forgejo-Runnern (Debian/Ubuntu-Container) auch psql
+        run: |
+          als_root() { if command -v sudo >/dev/null; then sudo "$@"; else "$@"; fi; }
+          fehlt=""
+          command -v osmium >/dev/null || fehlt="$fehlt osmium-tool"
+          command -v psql >/dev/null || fehlt="$fehlt postgresql-client"
+          [ -z "$fehlt" ] || { als_root apt-get update -q && als_root apt-get install -y -q $fehlt; }
+
+      - name: OSM-Auszug herunterladen
+        run: curl -sSfL --retry 3 -o deutschland.osm.pbf https://download.geofabrik.de/europe/germany-latest.osm.pbf
+
+      - name: Haltestellen mit Angabe heraussuchen
+        run: |
+          osmium tags-filter -o oev.osm.pbf deutschland.osm.pbf \
+            nw/public_transport=platform,station nw/railway=station,halt,platform nw/highway=bus_stop
+          rm deutschland.osm.pbf
+          osmium export -f geojsonseq -a type,id -o oev.geojsonseq oev.osm.pbf
+          python3 scripts/oepnv/barrierefrei_osm.py oev.geojsonseq barrierefrei.csv
+          n=$(($(wc -l < barrierefrei.csv) - 1))
+          echo "Haltestellen mit Angabe: $n" | tee -a "$GITHUB_STEP_SUMMARY"
+          cut -d, -f2,3 barrierefrei.csv | tail -n +2 | sort | uniq -c | tee -a "$GITHUB_STEP_SUMMARY"
+          # Schutz vor einem kaputten Auszug (Oktober 2026: Stichproben lassen über 100.000 erwarten)
+          if [ "$n" -lt 50000 ]; then echo "Zu wenige Daten, Abbruch ohne Änderung an der Datenbank" >&2; exit 1; fi
+
+      - name: In Supabase laden
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PROBE: ${{ inputs.probe }}
+          EREIGNIS: ${{ github.event_name }}
+        run: |
+          if [ "$PROBE" = "true" ] || [ "$EREIGNIS" = "push" ] || [ -z "$SUPABASE_DB_URL" ]; then
+            echo "Probelauf, Datenbank bleibt unverändert" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          cp supabase/barrierefrei_laden.sql .
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f barrierefrei_laden.sql

@@ -2,7 +2,8 @@
 
 Die U8 fährt täglich A–B–C–D. Dazu kommen eine Umleitung über X an drei Bautagen,
 eine einzelne tägliche Fahrt über Y (wie eine Depotfahrt) und ein Ersatzbus "U8".
-Zur Linie dürfen nur A, B, C und D gehören.
+Zur Linie dürfen nur A, B, C und D gehören. Die zehn Fahrten der U8 beginnen stündlich ab 5 Uhr,
+neun davon liegen im Takt-Zeitfenster 6 bis 20 Uhr.
 """
 import csv
 import io
@@ -29,15 +30,17 @@ def feed_bauen(pfad, mit_kalender=True):
         stops.append([s, f'Halt {s}', f'{52.5 + i / 100:.3f}', f'{13.4 + i / 100:.3f}'])
 
     trips = [['route_id', 'service_id', 'trip_id']]
-    stop_times = [['trip_id', 'stop_id', 'stop_sequence']]
+    stop_times = [['trip_id', 'stop_id', 'stop_sequence', 'departure_time']]
 
-    def fahrt(trip, route, service, halte):
+    def fahrt(trip, route, service, halte, stunde=None):
         trips.append([route, service, trip])
         for seq, s in enumerate(halte, 1):
-            stop_times.append([trip, s, seq])
+            # nur die erste Haltestelle mit Zeit: die übrigen übernehmen sie (wie bei Feeds ohne Zwischenzeiten)
+            zeit = f'{stunde:02d}:00:00' if stunde is not None and seq == 1 else ''
+            stop_times.append([trip, s, seq, zeit])
 
     for n in range(10):
-        fahrt(f'u8_{n}', 'u8', 'taeglich', ['A', 'B', 'C', 'D'])
+        fahrt(f'u8_{n}', 'u8', 'taeglich', ['A', 'B', 'C', 'D'], stunde=5 + n)
     fahrt('u8_kurz', 'u8_b', 'taeglich', ['A', 'B', 'C'])          # zweite GTFS-Route derselben Linie
     fahrt('u8_umleitung', 'u8', 'bau', ['A', 'X', 'D'])             # nur an drei Bautagen
     fahrt('u8_depot', 'u8', 'taeglich', ['D', 'Y'])                 # täglich, aber nur eine Fahrt
@@ -89,6 +92,7 @@ class GtfsExport(unittest.TestCase):
         halte = {}
         for z in zuordnung:
             halte.setdefault(z['linie_id'], set()).add(z['stop_id'])
+        self.fahrten = {(z['linie_id'], z['stop_id']): int(z['fahrten']) for z in zuordnung}
         return linien, halte, lesen(ordner / 'csv' / 'haltestellen.csv')
 
     def linie(self, linien, nummer, typ):
@@ -131,6 +135,22 @@ class GtfsExport(unittest.TestCase):
         linien, _, _ = self.ausfuehren()
         (u8,) = self.linie(linien, 'U8', 'ubahn')
         self.assertEqual(u8['endpunkte'], 'Halt A – Halt D')
+
+
+    def test_fahrten_fuer_den_takt(self):
+        linien, _, _ = self.ausfuehren()
+        (u8,) = self.linie(linien, 'U8', 'ubahn')
+        f = {s: self.fahrten[(u8['linie_id'], s)] for s in 'ABCD'}
+        # A, B: neun Fahrten im Zeitfenster plus die kurze Fahrt ohne Zeitangabe; C: Endpunkt der kurzen Fahrt;
+        # D: Endpunkt, nur die Depotfahrt fährt dort weiter
+        self.assertEqual(f, {'A': 10, 'B': 10, 'C': 9, 'D': 1})
+
+    def test_referenztag_ist_werktag_mit_den_meisten_fahrten(self):
+        import datetime
+        start = datetime.date(2026, 1, 1)                       # Donnerstag
+        trips = {'a': 0b1111111, 'b': 1 << 6}                   # b fährt nur am 7.1. (Mittwoch)
+        self.assertEqual(export.referenztag(start, trips, heute=datetime.date(2026, 1, 1)), 6)
+        self.assertIsNone(export.referenztag(None, trips))
 
 
 class Linientyp(unittest.TestCase):

@@ -39,9 +39,12 @@ export function punktAusEwkb(hex: string | null | undefined): { lat: number; lon
 }
 
 // Haltestellennamen für die Anzeige kürzen: Bahnsteig-, Gleis- und Mastangaben entfernen,
-// z. B. "U Pankstr. Bstggl.2" → "U Pankstr.", "Lübbenau, Bahnhof, Mast 3" → "Lübbenau, Bahnhof"
+// z. B. "U Pankstr. Bstggl.2" → "U Pankstr.", "Lübbenau, Bahnhof, Mast 3" → "Lübbenau, Bahnhof",
+// Richtungszusätze "Brunnenstr./Invalidenstr., M8+12 -> Land" → "Brunnenstr./Invalidenstr."
 export function haltestelleKurz(name: string): string {
   return name
+    .replace(/,[^,]*\s->\s.*$/, '')
+    .replace(/\s+->\s+\S+$/, '')
     .replace(/\s*\[[^\]]*\]/g, '')
     .replace(/\s*\((?:Steig|Bstg\.?|Gleis)\s*[A-Z0-9]+\)/gi, '')
     .replace(/[,\s]+(?:Bstggl\.?|Bstg\.?|Bstgl\.?|Gleis|Gl\.|Steig|Mast)\s*\d+[a-z]?\b.*$/i, '')

@@ -7,7 +7,7 @@ die mit supabase/oepnv_laden.sql in die Datenbank geladen werden:
   haltestellen.csv        stop_id, name, lat, lon        (nur bediente Haltestellen)
   linien.csv              linie_id, typ, nummer, betreiber, endpunkte, lat, lon
   linie_route.csv         linie_id, route_id
-  linie_haltestelle.csv   linie_id, stop_id
+  linie_haltestelle.csv   linie_id, stop_id, fahrten
 
 Eine "Linie" fasst alle GTFS-Routen zusammen, die denselben Betreiber, dieselbe
 Nummer und denselben Typ haben UND sich mindestens eine Haltestelle teilen.
@@ -17,6 +17,10 @@ die S1 im Ruhrgebiet (beide DB Regio) bleiben getrennt.
 Zu einer Linie gehören nur Haltestellen, die an mindestens der Hälfte ihrer Betriebstage
 und von mindestens einem Zehntel der Fahrten der meistbedienten Haltestelle angefahren werden.
 Umleitungen und Ersatzverkehr bei Bauarbeiten sowie Fahrten ins Depot fallen so heraus.
+
+"fahrten" ist die Zahl der Abfahrten einer Linie an einer Haltestelle an einem normalen Werktag
+(Dienstag bis Donnerstag) zwischen 6 und 20 Uhr in der meistbedienten Richtung. Die Richtung ist
+die nächste Haltestelle der Fahrt. Daraus berechnet die Website den Takt (840 Minuten / fahrten).
 
 Nur Python-Standardbibliothek. Aufruf:
   python3 gtfs_linien_export.py feed.zip ausgabe_ordner/
@@ -39,6 +43,8 @@ MIN_ANTEIL_TAGE = 0.5
 MIN_ANTEIL_FAHRTEN = 0.1
 # Zum Nachvollziehen: Linien dieser Nummern der S-Bahn Berlin mit allen Anteilen ausgeben
 PRUEF_LINIEN = {"S41", "S42"}
+# Zeitfenster für den Takt (Stunden der Abfahrt, Ende ausschließlich)
+TAKT_VON, TAKT_BIS = 6, 20
 
 
 def gtfs_rows(zf, name):
@@ -95,13 +101,15 @@ def datum(text):
 
 
 def betriebstage(zf):
-    """Je service_id die Verkehrstage als Bitmaske (Bit n = n-ter Tag ab dem frühesten Datum)."""
+    """Je service_id die Verkehrstage als Bitmaske (Bit n = n-ter Tag ab dem frühesten Datum).
+
+    Liefert (frühestes Datum, {service_id: Bitmaske}); ohne Kalender (None, {})."""
     namen = set(zf.namelist())
     kalender = list(gtfs_rows(zf, "calendar.txt")) if "calendar.txt" in namen else []
     ausnahmen = list(gtfs_rows(zf, "calendar_dates.txt")) if "calendar_dates.txt" in namen else []
     alle = [datum(r["start_date"]) for r in kalender] + [datum(r["date"]) for r in ausnahmen]
     if not alle:
-        return {}
+        return None, {}
     start = min(alle)
     wochentage = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
     tage = defaultdict(int)
@@ -119,7 +127,35 @@ def betriebstage(zf):
             tage[r["service_id"]] |= bit
         else:
             tage[r["service_id"]] &= ~bit
-    return dict(tage)
+    return start, dict(tage)
+
+
+def referenztag(start, trip_tage, heute=None):
+    """Bit des Werktags (Di bis Do) mit den meisten Fahrten in den vier Wochen ab heute.
+
+    Liegt heute außerhalb des Fahrplans, zählen die ersten vier Wochen des Fahrplans. Ohne Kalender None."""
+    if start is None:
+        return None
+    heute = (heute or datetime.date.today())
+    for erster in (max(0, (heute - start).days), 0):
+        kandidaten = [n for n in range(erster, erster + 28)
+                      if (start + datetime.timedelta(days=n)).weekday() in (1, 2, 3)]
+        zahl = Counter()
+        for maske in trip_tage.values():
+            for n in kandidaten:
+                if maske >> n & 1:
+                    zahl[n] += 1
+        if zahl:
+            return zahl.most_common(1)[0][0]
+    return None
+
+
+def stunde(zeit):
+    """Stunde aus einer GTFS-Zeit (HH:MM:SS, auch über 24 Uhr), sonst None."""
+    try:
+        return int(zeit.split(":", 1)[0])
+    except (AttributeError, ValueError):
+        return None
 
 
 def main(feed_pfad, ziel_pfad):
@@ -147,7 +183,7 @@ def main(feed_pfad, ziel_pfad):
         if i["typ"] == "bus" and (i["betreiber"], i["nummer"].upper()) in schiene:
             i["typ"] = "ersatzverkehr"
 
-    tage_je_service = betriebstage(zf)
+    kalender_start, tage_je_service = betriebstage(zf)
     # Ohne Kalender zählt jede Fahrt wie ein einziger gemeinsamer Tag, dann gilt nur der Anteil der Fahrten
     ohne_kalender = 0 if tage_je_service else 1
     trip_route, trip_tage, trip_tage_anzahl = {}, {}, {}
@@ -157,22 +193,48 @@ def main(feed_pfad, ziel_pfad):
         trip_tage_anzahl[r["trip_id"]] = trip_tage[r["trip_id"]].bit_count()
     print(f"{len(routen)} Routen, {len(trip_route)} Fahrten, {len(tage_je_service)} Verkehrstage-Kalender",
           file=sys.stderr)
+    ref = referenztag(kalender_start, trip_tage)
+    if ref is not None:
+        print(f"Takt gezählt am {kalender_start + datetime.timedelta(days=ref)}", file=sys.stderr)
+    # Ohne Kalender zählt jede Fahrt für den Takt
+    takt_trips = {t for t, m in trip_tage.items() if ref is None or m >> ref & 1}
 
     # stop_times ist die mit Abstand größte Datei: einmal streamen und dabei je (route, stop)
     # die Verkehrstage sowie Start- und Endhaltestelle jeder Fahrt merken.
     route_stops = defaultdict(dict)  # route_id -> {stop_id: Bitmaske der Verkehrstage}
     route_fahrten = defaultdict(Counter)  # route_id -> {stop_id: Fahrten mal Verkehrstage}
     trip_enden = {}  # trip_id -> [min_seq, start_stop, max_seq, end_stop]
+    # Abfahrten am Referenztag im Zeitfenster: (route_id, stop_id, nächste stop_id) -> Anzahl.
+    # stop_times ist in GTFS üblicherweise nach Fahrt und Reihenfolge sortiert; die vorige Zeile
+    # derselben Fahrt ist dann die Abfahrt, die aktuelle ihre Richtung.
+    abfahrten = Counter()
+    vorige = None  # (trip_id, seq, stop_id, zählt)
+    letzte_stunde = None
+    unsortiert = 0
     for n, r in enumerate(gtfs_rows(zf, "stop_times.txt"), 1):
         trip_id = r["trip_id"]
         route_id = trip_route.get(trip_id)
         if route_id is None:
             continue
         stop_id = r["stop_id"]
+        seq = int(r["stop_sequence"])
+        if vorige is None or vorige[0] != trip_id:
+            letzte_stunde = None
+        elif seq > vorige[1]:
+            if vorige[3]:
+                abfahrten[(route_id, vorige[2], stop_id)] += 1
+        else:
+            unsortiert += 1
+        # Haltestellen ohne Zeit (nicht alle Feeds füllen sie) übernehmen die letzte bekannte Zeit der Fahrt
+        h = stunde(r.get("departure_time") or r.get("arrival_time"))
+        if h is None:
+            h = letzte_stunde
+        letzte_stunde = h
+        zaehlt = trip_id in takt_trips and (h is None or TAKT_VON <= h < TAKT_BIS)
+        vorige = (trip_id, seq, stop_id, zaehlt)
         stops_der_route = route_stops[route_id]
         stops_der_route[stop_id] = stops_der_route.get(stop_id, 0) | trip_tage[trip_id]
         route_fahrten[route_id][stop_id] += trip_tage_anzahl[trip_id]
-        seq = int(r["stop_sequence"])
         e = trip_enden.get(r["trip_id"])
         if e is None:
             trip_enden[r["trip_id"]] = [seq, stop_id, seq, stop_id]
@@ -183,6 +245,14 @@ def main(feed_pfad, ziel_pfad):
                 e[2], e[3] = seq, stop_id
         if n % 10_000_000 == 0:
             print(f"  {n:,} stop_times gelesen", file=sys.stderr)
+    if unsortiert:
+        print(f"  Warnung: {unsortiert:,} stop_times nicht nach Fahrt sortiert, Takt dort ungenau", file=sys.stderr)
+
+    # Je (route, stop) die Abfahrten nach Richtung
+    richtungen = defaultdict(Counter)  # (route_id, stop_id) -> {nächste stop_id: Anzahl}
+    for (route_id, stop_id, naechste), anzahl in abfahrten.items():
+        richtungen[(route_id, stop_id)][naechste] += anzahl
+    del abfahrten
 
     haltestellen = {}
     for r in gtfs_rows(zf, "stops.txt"):
@@ -223,7 +293,7 @@ def main(feed_pfad, ziel_pfad):
         w_l, w_lr, w_lh = csv.writer(f_l), csv.writer(f_lr), csv.writer(f_lh)
         w_l.writerow(["linie_id", "typ", "nummer", "betreiber", "endpunkte", "lat", "lon"])
         w_lr.writerow(["linie_id", "route_id"])
-        w_lh.writerow(["linie_id", "stop_id"])
+        w_lh.writerow(["linie_id", "stop_id", "fahrten"])
 
         weggelassen = 0
         for linie_id, route_ids in enumerate(sorted(gruppen.values(), key=lambda g: sorted(g)), 1):
@@ -268,7 +338,10 @@ def main(feed_pfad, ziel_pfad):
             for r in sorted(route_ids):
                 w_lr.writerow([linie_id, r])
             for s in sorted(stops):
-                w_lh.writerow([linie_id, s])
+                je_richtung = Counter()
+                for r in route_ids:
+                    je_richtung.update(richtungen.get((r, s), {}))
+                w_lh.writerow([linie_id, s, max(je_richtung.values(), default=0)])
 
     with open(ziel / "haltestellen.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)

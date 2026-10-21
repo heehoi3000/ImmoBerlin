@@ -9,6 +9,8 @@ describe('haltestelleKurz', () => {
     ['Hauptbahnhof (Steig B)', 'Hauptbahnhof'],
     ['Rathaus Spandau [Bus]', 'Rathaus Spandau'],
     ['U Bernauer Str.', 'U Bernauer Str.'],
+    ['Brunnenstr./Invalidenstr., M8+12 -> Land', 'Brunnenstr./Invalidenstr.'],
+    ['Am Steinberg -> Stadt', 'Am Steinberg'],
   ])('%s → %s', (name, erwartet) => {
     expect(haltestelleKurz(name)).toBe(erwartet);
   });

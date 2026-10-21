@@ -14,6 +14,8 @@ import Kontaktformular from '../Kontaktformular';
 import { KeinFoto } from '../Ergebnisliste';
 import { useModerator } from '../../lib/moderation';
 import Sperrdialog from '../Sperrdialog';
+import OepnvNaehe from '../OepnvNaehe';
+import { Station, stationenLaden } from '../../lib/oepnvNaehe';
 
 const Map = dynamic(() => import('../Map'), { ssr: false, loading: () => <div className="h-full w-full bg-zinc-100" /> });
 
@@ -39,12 +41,26 @@ export default function AnzeigeSeite() {
   const melden = useMelden();
   const moderator = useModerator(nutzer?.id);
   const [sperren, setSperren] = useState(false);
+  const [stationen, setStationen] = useState<Station[] | null>(null);
+  const [stationenFehler, setStationenFehler] = useState(false);
+  const [station, setStation] = useState(0);
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('id');
     if (!id) { setA(null); return; } // eslint-disable-line react-hooks/set-state-in-effect
     supabase.from('anzeigen').select('*').eq('id', id).maybeSingle().then(({ data }) => setA((data as Anzeige) ?? null));
   }, [nutzer]);
+
+  // Haltestellen in der Nähe, sobald die Koordinaten des Inserats bekannt sind
+  const lat = a?.koordinate_lat, lon = a?.koordinate_lon;
+  useEffect(() => {
+    if (lat == null || lon == null) return;
+    let aktuell = true;
+    stationenLaden(lat, lon)
+      .then(s => { if (aktuell) { setStationen(s.slice(0, 6)); setStation(0); } })
+      .catch(e => { console.error('Haltestellen in der Nähe:', e); if (aktuell) setStationenFehler(true); });
+    return () => { aktuell = false; };
+  }, [lat, lon]);
 
   // Titel im Browser-Tab und für Suchmaschinen, die die Seite ausführen (geteilte Links zeigen die allgemeine Vorschau)
   useEffect(() => {
@@ -164,9 +180,12 @@ export default function AnzeigeSeite() {
             </div>
           </section>
 
-          <section className="h-72 rounded-2xl overflow-hidden border border-zinc-200 relative z-0">
+          <OepnvNaehe stationen={stationen} auswahl={station} onAuswahl={setStation} fehler={stationenFehler} />
+
+          <section className="h-80 rounded-2xl overflow-hidden border border-zinc-200 relative z-0" aria-label="Karte mit Lage und Haltestellen">
             <Map anzeigen={[a]} haltestellen={[]} naechste={{}} linienUmkreisM={0}
-              ortKreis={{ lat: a.koordinate_lat, lon: a.koordinate_lon, m: 0 }} bezirke={[]} fokus={null} />
+              ortKreis={stationen?.length ? null : { lat: a.koordinate_lat, lon: a.koordinate_lon, m: 0 }} bezirke={[]} fokus={null}
+              stationen={stationen ?? undefined} stationAuswahl={station} />
           </section>
         </div>
 

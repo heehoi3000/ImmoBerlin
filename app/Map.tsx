@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
-import { MapContainer, Popup, Circle, CircleMarker, Rectangle, GeoJSON, Polygon, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Popup, Circle, CircleMarker, Rectangle, GeoJSON, Polygon, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import '@maplibre/maplibre-gl-leaflet';
 import 'leaflet.markercluster';
@@ -13,6 +13,7 @@ import { Bezirk } from '../lib/filter';
 import { bezirkeAusdehnung } from '../lib/bezirke';
 import { Anzeige, Haltestelle, NaechsteHaltestelle } from '../lib/suche';
 import { BASIS } from '../lib/basis';
+import { Station } from '../lib/oepnvNaehe';
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -128,6 +129,43 @@ function Linienkorridore({ haltestellen, linien, umkreisM }: { haltestellen: Hal
   );
 }
 
+// Inseratsseite: Haltestellen in der Nähe, die gewählte (anfangs die nächste) hervorgehoben und mit
+// gestrichelter Luftlinie zum Inserat. Die Karte zeigt Inserat und gewählte Haltestelle zusammen.
+function StationenAnzeige({ stationen, auswahl, von }: { stationen: Station[]; auswahl: number; von: { lat: number; lon: number } }) {
+  const map = useMap();
+  const ziel = stationen[auswahl];
+  useEffect(() => {
+    if (!ziel) return;
+    // Die Karte kann beim ersten Zeichnen noch ohne Größe sein; dann erst nach dem nächsten Frame ausrichten
+    const ausrichten = () => {
+      map.invalidateSize();
+      map.fitBounds([[von.lat, von.lon], [ziel.lat, ziel.lon]], { padding: [50, 50], maxZoom: 16, animate: false });
+    };
+    ausrichten();
+    const f = requestAnimationFrame(ausrichten);
+    return () => cancelAnimationFrame(f);
+  }, [map, ziel, von.lat, von.lon]);
+  return (
+    <>
+      {stationen.map((s, i) => i !== auswahl && (
+        <CircleMarker key={`station-${i}`} center={[s.lat, s.lon]} radius={5}
+          pathOptions={{ color: '#3f3f46', weight: 2, fillColor: '#fff', fillOpacity: 1 }}>
+          <Tooltip>{s.name} · {s.entfernung_m} m</Tooltip>
+        </CircleMarker>
+      ))}
+      {ziel && (
+        <>
+          <Polyline positions={[[von.lat, von.lon], [ziel.lat, ziel.lon]]} interactive={false}
+            pathOptions={{ color: '#000', weight: 3, opacity: 0.7, dashArray: '2 8', lineCap: 'round' }} />
+          <CircleMarker center={[ziel.lat, ziel.lon]} radius={8} pathOptions={{ color: '#fff', weight: 3, fillColor: '#000', fillOpacity: 1 }}>
+            <Tooltip permanent direction="right" offset={[10, 0]}>{ziel.name} · {ziel.entfernung_m} m</Tooltip>
+          </CircleMarker>
+        </>
+      )}
+    </>
+  );
+}
+
 // Preis kurz für den Pin: 1.160 €, 485 Tsd. €, 1,2 Mio. €
 function kurzPreis(a: Anzeige) {
   const n = Number(a.transaktions_typ === 'mieten' && a.warmmiete ? a.warmmiete : a.preis);
@@ -218,9 +256,12 @@ interface MapProps {
   onAuswahl?: (id: string | null) => void;
   linien?: Linie[];
   onAusschnittChange?: (a: Kartenausschnitt) => void;
+  // Inseratsseite: Haltestellen in der Nähe der ersten Anzeige und die gewählte davon
+  stationen?: Station[];
+  stationAuswahl?: number;
 }
 
-export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreisM, ortKreis, bezirke, fokus = null, aktivId = null, onAuswahl, onAusschnittChange }: MapProps) {
+export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreisM, ortKreis, bezirke, fokus = null, aktivId = null, onAuswahl, onAusschnittChange, stationen, stationAuswahl = 0 }: MapProps) {
   const berlinPosition: [number, number] = [52.516, 13.42];
 
   return (
@@ -236,6 +277,10 @@ export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreis
         <KlickLeer onKlick={() => onAuswahl?.(null)} />
 
         <Linienkorridore haltestellen={haltestellen} linien={linien} umkreisM={linienUmkreisM} />
+        {stationen && anzeigen[0] && (
+          <StationenAnzeige stationen={stationen} auswahl={stationAuswahl}
+            von={{ lat: anzeigen[0].koordinate_lat, lon: anzeigen[0].koordinate_lon }} />
+        )}
 
         <PreisPins anzeigen={anzeigen} aktivId={aktivId} onAuswahl={(id) => onAuswahl?.(id)} />
       </MapContainer>

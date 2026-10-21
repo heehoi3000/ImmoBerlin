@@ -97,7 +97,7 @@ def main():
     laden("oepnv_linie_route", pfad("linie_route.csv"),
           lambda z: {"linie_id": int(z["linie_id"]), "route_id": z["route_id"]})
     laden("oepnv_linie_haltestelle", pfad("linie_haltestelle.csv"),
-          lambda z: {"linie_id": int(z["linie_id"]), "stop_id": z["stop_id"]})
+          lambda z: {"linie_id": int(z["linie_id"]), "stop_id": z["stop_id"], "fahrten": int(z.get("fahrten") or 0)})
 
 
 if __name__ == "__main__":

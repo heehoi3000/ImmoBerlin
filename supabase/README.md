@@ -8,8 +8,11 @@
   - `0002_fotos_als_pfad.sql` wandelt alte volle Foto-Adressen in Pfade um (am Umzugstag nach dem Daten-Import).
   - `0003_meldungen_erledigt_am.sql` merkt, wann eine Meldung erledigt wurde (für die Löschung nach einem Jahr
     in `aufraeumen.yml`).
-  - Neue Änderungen kommen als `0004_….sql` usw. dazu.
+  - `0004_oepnv_takt_barrierefrei.sql` ergänzt den Takt (`oepnv_linie_haltestelle.fahrten`), die Tabelle
+    `oepnv_barrierefrei` und die Funktion `haltestellen_in_der_naehe` für die Inseratsseite.
+  - Neue Änderungen kommen als `0005_….sql` usw. dazu.
 - `oepnv_laden.sql` – lädt die ÖPNV-Daten (Workflow `oepnv.yml`).
+- `barrierefrei_laden.sql` – lädt die Barrierefreiheit der Haltestellen aus OpenStreetMap (Workflow `barrierefrei.yml`).
 - `functions/` – Edge Functions (`konto-loeschen`).
 - `verlauf/` – die SQL-Dateien, mit denen die Datenbank Schritt für Schritt entstanden ist. Nur zum Nachlesen;
   ihr Stand steckt vollständig in `migrations/0001_ausgangsstand.sql`.

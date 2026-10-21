@@ -44,7 +44,7 @@ export default function AnzeigeSeite() {
   const [stationen, setStationen] = useState<Station[] | null>(null);
   const [stationenFehler, setStationenFehler] = useState(false);
   const [station, setStation] = useState(0);
-  // Linien aus dem Filter der Suche (…&linien=5897,12): deren nächste Haltestelle steht vorn
+  // Linien aus dem Filter der Suche (…&linien=5897,12): dann nur deren nächste Haltestelle
   const [linienIds, setLinienIds] = useState<number[]>([]);
   useEffect(() => {
     const roh = new URLSearchParams(window.location.search).get('linien') ?? '';
@@ -65,9 +65,10 @@ export default function AnzeigeSeite() {
     let aktuell = true;
     setStationen(null); setStationenFehler(false); // eslint-disable-line react-hooks/set-state-in-effect
     const ids = linienSchluessel ? linienSchluessel.split(',').map(Number) : [];
-    // Danach nur Haltestellen, an denen eine weitere Linie fährt (nicht fünfmal derselbe Bus)
-    Promise.all([ids.length ? stationenDerLinien(lat, lon, ids) : Promise.resolve([]), stationenLaden(lat, lon)])
-      .then(([gefiltert, nahe]) => { if (aktuell) { setStationen(nurMitNeuenLinien(nahe, gefiltert).slice(0, 6)); setStation(0); } })
+    // Mit Linienfilter nur die nächste Haltestelle der Linie (mit allen Linien dort); ohne Filter die nächsten
+    // Haltestellen, jede mit einer weiteren Linie (nicht fünfmal derselbe Bus)
+    (ids.length ? stationenDerLinien(lat, lon, ids) : stationenLaden(lat, lon).then(s => nurMitNeuenLinien(s)))
+      .then(s => { if (aktuell) { setStationen(s.slice(0, 6)); setStation(0); } })
       .catch(e => { console.error('Haltestellen in der Nähe:', e); if (aktuell) setStationenFehler(true); });
     return () => { aktuell = false; };
   }, [lat, lon, linienSchluessel]);

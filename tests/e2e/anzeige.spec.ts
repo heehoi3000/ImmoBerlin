@@ -58,7 +58,7 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     expect(auf.rpc.find(r => r.name === 'haltestellen_in_der_naehe')?.body).toMatchObject({ p_lat: 52.53, p_lon: 13.40 });
   });
 
-  test('nach dem Linienfilter zuerst die nächste Haltestelle dieser Linie', async ({ page }) => {
+  test('nach dem Linienfilter nur die nächste Haltestelle dieser Linie', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('suche/');
     await page.getByRole('button', { name: 'ÖPNV-Linien' }).click();
@@ -71,12 +71,10 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
 
     const bereich = page.getByRole('region', { name: 'ÖPNV in der Nähe' });
     const stationen = bereich.getByRole('listitem');
-    // U8 vorn, danach Bus 247 und Tram M10 als weitere Linien
-    await expect(stationen).toHaveCount(3);
+    await expect(stationen).toHaveCount(1);
     await expect(stationen.first()).toContainText('U Bernauer Str.');
     await expect(stationen.first()).toContainText('(deine gewählte Linie)');
-    await expect(stationen.nth(1)).toContainText('Wolliner Str.');
-    await expect(bereich).toContainText('Zuerst die nächste Haltestelle deiner gewählten Linie');
+    await expect(bereich).toContainText('Nächste Haltestelle deiner gewählten Linie');
   });
 
   test('unbekanntes Inserat', async ({ page }) => {

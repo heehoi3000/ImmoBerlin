@@ -17,7 +17,7 @@ function Rollstuhl() {
   );
 }
 
-// gewaehlteLinien: Linien aus dem Suchfilter; deren nächste Haltestelle steht vorn, die Linien sind hervorgehoben
+// gewaehlteLinien: Linien aus dem Suchfilter; die Liste zeigt dann nur deren nächste Haltestelle, die Linien hervorgehoben
 export default function OepnvNaehe({ stationen, auswahl, onAuswahl, fehler, gewaehlteLinien }: {
   stationen: Station[] | null; auswahl: number; onAuswahl: (i: number) => void; fehler?: boolean;
   gewaehlteLinien?: number[];
@@ -27,7 +27,7 @@ export default function OepnvNaehe({ stationen, auswahl, onAuswahl, fehler, gewa
     <section className="bg-white border border-zinc-200 rounded-2xl p-5" aria-labelledby="oepnv-titel">
       <h2 id="oepnv-titel" className="font-bold">ÖPNV in der Nähe</h2>
       <p className="text-xs text-zinc-500 mt-0.5 mb-3">
-        {gefiltert ? 'Zuerst die nächste Haltestelle deiner gewählten Linie, danach Haltestellen mit weiteren Linien. ' : 'Nächste Haltestellen, jede mit mindestens einer weiteren Linie. '}
+        {gefiltert ? 'Nächste Haltestelle deiner gewählten Linie mit allen Linien, die dort fahren. ' : 'Nächste Haltestellen, jede mit mindestens einer weiteren Linie. '}
         Entfernung in Luftlinie, Takt werktags von 6 bis 20 Uhr
       </p>
       {stationen === null && !fehler && <p className="text-sm text-zinc-500" role="status">Haltestellen werden geladen…</p>}

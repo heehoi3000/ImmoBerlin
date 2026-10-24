@@ -81,14 +81,14 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     const auf = await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=a1');
     const bereich = page.getByRole('region', { name: 'Einkaufen und Alltag' });
-    await expect(bereich.getByRole('definition')).toHaveCount(11);
+    await expect(bereich.getByRole('definition')).toHaveCount(10);
     await expect(bereich).toContainText('SupermarktRewe, 180 m');
     await expect(bereich).toContainText('ApothekeLinden-Apotheke, 90 m');
     await expect(bereich).toContainText('Drogerienicht im Umkreis von 1,5 km');
     await expect(bereich.getByRole('heading', { name: 'Kinder und Freizeit' })).toBeVisible();
     await expect(bereich).toContainText('KitaKita Sonnenschein, 140 m');
-    await expect(bereich).toContainText('Spielplatz60 m');
-    await expect(bereich).toContainText('Parknicht im Umkreis von 1,5 km');
+    await expect(bereich).toContainText('ParkWeinbergspark, 60 m');
+    await expect(bereich).toContainText('Schulenicht im Umkreis von 1,5 km');
     const knopf = bereich.getByRole('button', { name: 'Auf der Karte zeigen' });
     await expect(knopf).toHaveAttribute('aria-pressed', 'false');
     await knopf.click();

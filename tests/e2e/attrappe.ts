@@ -186,11 +186,11 @@ export const STANDARD_DATEN: Daten = {
     { stop_id: 'h4', name: 'Arkonaplatz', lat: 52.5350, lon: 13.4020, entfernung_m: 560, barrierefrei: null,
       linien: [{ linie_id: 10, typ: 'tram', nummer: 'M10', endpunkte: 'Hauptbahnhof – Warschauer Str.', fahrten: 84 }] },
   ],
-  // Um a1: Supermarkt, Apotheke, Kita und Spielplatz (ohne Namen), sonst nichts im Umkreis
+  // Um a1: Supermarkt, Apotheke, Kita und Park, sonst nichts im Umkreis
   grundversorgung: [
     { art: 'apotheke', name: 'Linden-Apotheke', lat: 52.5305, lon: 13.4005, entfernung_m: 90 },
     { art: 'supermarkt', name: 'Rewe', lat: 52.5315, lon: 13.4010, entfernung_m: 180 },
     { art: 'kita', name: 'Kita Sonnenschein', lat: 52.5302, lon: 13.4020, entfernung_m: 140 },
-    { art: 'spielplatz', name: '', lat: 52.5298, lon: 13.3995, entfernung_m: 60 },
+    { art: 'park', name: 'Weinbergspark', lat: 52.5298, lon: 13.3995, entfernung_m: 60 },
   ],
 };

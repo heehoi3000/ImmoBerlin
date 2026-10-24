@@ -25,7 +25,6 @@ export const ARTEN: { art: Art; name: string; farbe: string; gruppe: Gruppe }[] 
   { art: 'geldautomat', name: 'Geldautomat', farbe: '#4338ca', gruppe: 'alltag' },
   { art: 'kita', name: 'Kita', farbe: '#c2410c', gruppe: 'familie' },
   { art: 'schule', name: 'Schule', farbe: '#7e22ce', gruppe: 'familie' },
-  { art: 'spielplatz', name: 'Spielplatz', farbe: '#a16207', gruppe: 'familie' },
   { art: 'park', name: 'Park', farbe: '#166534', gruppe: 'familie' },
 ];
 

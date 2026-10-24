@@ -18,6 +18,7 @@ import OepnvNaehe from '../OepnvNaehe';
 import { TauschPartnerListe, TauschWunschAnzeige } from '../Tausch';
 import Grundversorgung from '../Grundversorgung';
 import Routenplanung from '../Routenplanung';
+import LinksDokumente from '../LinksDokumente';
 import { Art, Ort, grundversorgungLaden } from '../../lib/grundversorgung';
 import { Station, nurMitNeuenLinien, stationenDerLinien, stationenLaden } from '../../lib/oepnvNaehe';
 
@@ -246,6 +247,8 @@ export default function AnzeigeSeite() {
               );
             })()}
           </section>
+
+          <LinksDokumente dokumente={a.dokumente} links={a.links} />
 
           <OepnvNaehe stationen={stationen} auswahl={station} onAuswahl={setStation} fehler={stationenFehler}
             gewaehlteLinien={linienIds.length ? linienIds : undefined} />

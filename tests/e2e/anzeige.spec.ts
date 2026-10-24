@@ -166,6 +166,24 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     await expect(page.getByText('Warmmiete pro Monat')).toHaveCount(0);
   });
 
+  test('Links und Dokumente unter Gebäude und Energie', async ({ page }) => {
+    await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('anzeige/?id=a1');
+    const bereich = page.locator('section', { has: page.getByRole('heading', { name: 'Links und Dokumente' }) });
+    const grundriss = bereich.getByRole('link', { name: /Grundriss 3\. OG/ });
+    await expect(grundriss).toHaveAttribute('href', 'http://supabase.test/storage/v1/object/public/inserat-bilder/00000000-0000-4000-8000-000000000001/1729000000000-ab12cd34.pdf');
+    await expect(grundriss).toContainText('Grundriss · PDF');
+    await expect(bereich.getByRole('link', { name: /360°-Rundgang/ })).toHaveAttribute('href', 'https://example.org/rundgang');
+    await expect(bereich.getByRole('link', { name: /360°-Rundgang/ })).toHaveAttribute('rel', /nofollow/);
+    // direkt unter Gebäude und Energie
+    const ueberschriften = await page.getByRole('heading', { level: 2 }).allTextContents();
+    expect(ueberschriften[ueberschriften.indexOf('Gebäude und Energie') + 1]).toBe('Links und Dokumente');
+    // ohne Links und Dokumente kein Abschnitt
+    await page.goto('anzeige/?id=a2');
+    await expect(page.getByRole('heading', { name: 'Gebäude und Energie' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Links und Dokumente' })).toHaveCount(0);
+  });
+
   test('Haltestellen auf der Karte als Verkehrssymbol, Name beim Überfahren', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=a1');

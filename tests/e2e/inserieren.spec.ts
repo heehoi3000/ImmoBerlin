@@ -53,6 +53,44 @@ test.describe('Inserieren', () => {
     expect(NUTZER.id).toBeTruthy();
   });
 
+  test('PDF-Dokumente und Links werden mit dem Inserat gespeichert', async ({ page }) => {
+    await anmelden(page);
+    const auf = await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('inserieren/');
+    await page.getByLabel(/^Titel/).fill('Wohnung mit Grundriss');
+    await page.getByPlaceholder('Straße und Hausnummer, Ort').fill('Torstr 1');
+    await page.getByRole('button', { name: 'Torstraße 1, 10119 Berlin' }).click();
+    await page.getByLabel(/^Kaltmiete/).fill('900');
+    await page.getByLabel(/^Wohnfläche/).fill('60');
+    await page.getByLabel(/^Zimmer/).fill('2');
+    await page.getByRole('button', { name: 'Nicht erforderlich (z.B. Denkmal)' }).click();
+
+    // Keine echte PDF: wird abgelehnt
+    await page.getByLabel('Grundriss als PDF hochladen').setInputFiles({ name: 'grundriss.pdf', mimeType: 'application/pdf', buffer: Buffer.from('kein pdf') });
+    await expect(page.locator('p[role="alert"]')).toHaveText('grundriss.pdf ist keine PDF-Datei.');
+    expect(auf.hochgeladen).toHaveLength(0);
+
+    await page.getByLabel('Grundriss als PDF hochladen').setInputFiles({ name: 'Grundriss EG.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') });
+    await expect(page.getByLabel('Titel von Dokument 1')).toHaveValue('Grundriss EG');
+    expect(auf.hochgeladen).toHaveLength(1);
+    expect(auf.hochgeladen[0]).toMatch(/^00000000-0000-4000-8000-000000000001\/\d+-[a-z0-9]+\.pdf$/);
+
+    await page.getByRole('button', { name: 'Link hinzufügen' }).click();
+    await page.getByLabel('Titel von Link 1').fill('Rundgang');
+    await page.getByLabel('Adresse von Link 1').fill('javascript:alert(1)');
+    await page.getByRole('button', { name: 'Inserat veröffentlichen' }).click();
+    await expect(page.locator('p[role="alert"]')).toHaveText('Der Link „javascript:alert(1)“ ist keine gültige https-Adresse.');
+    expect(auf.neueAnzeigen).toHaveLength(0);
+
+    await page.getByLabel('Adresse von Link 1').fill('example.org/tour');
+    await page.getByRole('button', { name: 'Inserat veröffentlichen' }).click();
+    await expect(page.getByRole('heading', { name: 'Dein Inserat ist online' })).toBeVisible();
+    expect(auf.neueAnzeigen[0]).toMatchObject({
+      dokumente: [{ art: 'grundriss', titel: 'Grundriss EG', pfad: auf.hochgeladen[0] }],
+      links: [{ titel: 'Rundgang', url: 'https://example.org/tour' }],
+    });
+  });
+
   test('beim Verkauf ist die Provision Pflicht', async ({ page }) => {
     await anmelden(page);
     const auf = await attrappeEinrichten(page, STANDARD_DATEN);

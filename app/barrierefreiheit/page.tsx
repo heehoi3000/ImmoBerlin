@@ -51,6 +51,10 @@ export default function Barrierefreiheit() {
             <strong>Fotos in Inseraten:</strong> Die Fotos laden die Anbieter selbst hoch. Sie haben bisher keine Bildbeschreibung, nur eine Nummerierung.
           </li>
           <li>
+            <strong>Dokumente in Inseraten:</strong> PDFs wie Grundrisse oder Energieausweise laden die Anbieter selbst hoch. Sie sind oft nicht barrierefrei.
+            Die wichtigsten Angaben zum Energieausweis stehen deshalb auch als Text im Inserat.
+          </li>
+          <li>
             <strong>Inhalte der Inserate:</strong> Texte der Inserate schreiben die Anbieter. Wir können nicht sicherstellen, dass sie verständlich und vollständig sind.
           </li>
           <li>Es gibt noch keine Inhalte in Leichter Sprache oder Gebärdensprache.</li>

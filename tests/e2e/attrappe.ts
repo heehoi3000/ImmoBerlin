@@ -22,6 +22,7 @@ export interface Aufzeichnung {
   neueAnzeigen: Zeile[];
   rpc: { name: string; body: Zeile }[];
   wuensche: Zeile[];                        // gespeicherte Tauschwünsche (upsert)
+  hochgeladen: string[];                    // Pfade im Speicher (Fotos, PDFs)
 }
 
 export const NUTZER = { id: '00000000-0000-4000-8000-000000000001', email: 'test@example.org' };
@@ -58,7 +59,7 @@ function ergebnis(route: Route, zeilen: Zeile[]) {
 }
 
 export async function attrappeEinrichten(page: Page, daten: Daten): Promise<Aufzeichnung> {
-  const auf: Aufzeichnung = { nachrichten: [], neueAnzeigen: [], rpc: [], wuensche: [] };
+  const auf: Aufzeichnung = { nachrichten: [], neueAnzeigen: [], rpc: [], wuensche: [], hochgeladen: [] };
 
   await page.route(`${SUPABASE}/**`, async route => {
     const req = route.request();
@@ -66,6 +67,11 @@ export async function attrappeEinrichten(page: Page, daten: Daten): Promise<Aufz
     const pfad = url.pathname;
     if (req.method() === 'OPTIONS') {
       return route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' } });
+    }
+    if (pfad.startsWith('/storage/v1/object/') && req.method() === 'POST') {
+      const datei = pfad.replace(/^\/storage\/v1\/object\/[^/]+\//, '');
+      auf.hochgeladen.push(datei);
+      return json(route, { Key: datei, Id: datei });
     }
     const body = req.postData() ? JSON.parse(req.postData()!) : {};
 
@@ -166,7 +172,9 @@ export const STANDARD_DATEN: Daten = {
   anzeigen: [
     anzeige('a1', { titel: 'Altbau an der U8', preis: 750, nebenkosten: 250, kaution: 2250, objektart: 'etagenwohnung',
       wbs_erforderlich: true, wbs_art: 'wbs_160', baujahr: 1905, etage: 3, energieausweis_art: 'verbrauch',
-      energiekennwert: 110, energietraeger: 'Fernwärme', energieeffizienzklasse: 'D' }),
+      energiekennwert: 110, energietraeger: 'Fernwärme', energieeffizienzklasse: 'D',
+      dokumente: [{ art: 'grundriss', titel: 'Grundriss 3. OG', pfad: '00000000-0000-4000-8000-000000000001/1729000000000-ab12cd34.pdf' }],
+      links: [{ titel: '360°-Rundgang', url: 'https://example.org/rundgang' }] }),
     anzeige('a2', { titel: 'Neubau mit Balkon', preis: 1200, koordinate_lat: 52.55 }),
     anzeige('a3', { titel: 'Kleine Wohnung', preis: 500, zimmer: 1, koordinate_lat: 52.50 }),
   ],

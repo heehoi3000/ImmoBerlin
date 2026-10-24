@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { useNutzer } from '../../lib/konto';
 import { Anzeige } from '../../lib/suche';
 import { FOTO_BUCKET, fotoFallback, fotoPfad, fotoUrl, kleinPfad } from '../../lib/fotos';
+import { dokumenteVon } from '../../lib/dokumente';
 import { SPERR_KATEGORIEN, moderationsFehler } from '../../lib/moderation';
 
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -37,7 +38,10 @@ export default function MeineInserate() {
     const { error } = await supabase.from('anzeigen').delete().eq('id', a.id);
     if (error) return;
     // Fotos aus dem Speicher entfernen
-    const pfade = (a.bilder as string[] ?? []).map(fotoPfad).filter(Boolean).flatMap(p => [p, kleinPfad(p)]);
+    const pfade = [
+      ...(a.bilder as string[] ?? []).map(fotoPfad).filter(Boolean).flatMap(p => [p, kleinPfad(p)]),
+      ...dokumenteVon(a.dokumente).map(d => d.pfad),
+    ];
     if (pfade.length) await supabase.storage.from(FOTO_BUCKET).remove(pfade);
     setInserate(liste => liste!.filter(x => x.id !== a.id));
   }

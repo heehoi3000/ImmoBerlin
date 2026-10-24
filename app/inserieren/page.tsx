@@ -10,6 +10,7 @@ import { Adresse, adressenSuchen } from '../../lib/adresse';
 import { AUSSTATTUNG, ENERGIEKLASSEN, OBJEKTARTEN, WBS_ARTEN } from '../../lib/filter';
 import { MAX_EINGANG_MB, bildVorbereiten } from '../../lib/bilder';
 import { FOTO_BUCKET, fotoFallback, fotoUrl, kleinPfad } from '../../lib/fotos';
+import { DOKUMENT_ARTEN, Dokument, DokumentArt, InseratLink, MAX_DOKUMENTE, MAX_DOKUMENT_MB, MAX_LINKS, dokumentPfad, dokumentUrl, dokumenteVon, istPdf, linkPruefen, linksVon } from '../../lib/dokumente';
 import { Linie } from '../../lib/oepnv';
 import { MAX_WUNSCH_LINIEN, wunschLaden, wunschLinie, wunschLinienAufloesen, wunschLoeschen, wunschSpeichern } from '../../lib/tausch';
 import LinienFeld from '../LinienFeld';
@@ -32,6 +33,8 @@ interface Formular {
   anbieter_typ: 'privat' | 'gewerblich';
   anbieter_name: string;
   bilder: string[];
+  dokumente: Dokument[];
+  links: InseratLink[];
 }
 
 // Tauschwunsch als Eingabefelder
@@ -44,7 +47,7 @@ const LEER: Formular = {
   quadratmeter: '', zimmer: '', etage: '', baujahr: '', verfuegbar_ab: '',
   ausstattung: [], wbs_erforderlich: false, wbs_art: '',
   energieausweis_art: '', energiekennwert: '', energietraeger: '', energieeffizienzklasse: '',
-  anbieter_typ: 'privat', anbieter_name: '', bilder: [],
+  anbieter_typ: 'privat', anbieter_name: '', bilder: [], dokumente: [], links: [],
 };
 
 const ENERGIETRAEGER = ['Gas', 'Öl', 'Fernwärme', 'Wärmepumpe', 'Strom', 'Holz/Pellets', 'Solar', 'Blockheizkraftwerk', 'Sonstige'];
@@ -119,6 +122,7 @@ export default function Inserieren() {
         ...LEER,
         ...Object.fromEntries(Object.keys(LEER).map(k => [k, typeof LEER[k as keyof Formular] === 'string' ? text(data[k]) : data[k] ?? LEER[k as keyof Formular]])),
         ausstattung: AUSSTATTUNG.filter(a => data[a.wert]).map(a => a.wert),
+        dokumente: dokumenteVon(data.dokumente), links: linksVon(data.links),
       } as Formular);
       if (data.transaktions_typ === 'tauschen') {
         setWarTausch(true);
@@ -168,9 +172,31 @@ export default function Inserieren() {
     }
   }
 
+  async function dokumenteHochladen(dateien: FileList | null, art: DokumentArt) {
+    if (!dateien || !nutzer) return;
+    const auswahl = Array.from(dateien).slice(0, MAX_DOKUMENTE - f.dokumente.length);
+    setFehler(null);
+    for (const datei of auswahl) {
+      if (datei.size > MAX_DOKUMENT_MB * 1024 * 1024) { setFehler(`${datei.name} ist größer als ${MAX_DOKUMENT_MB} MB.`); continue; }
+      if (!(await istPdf(datei))) { setFehler(`${datei.name} ist keine PDF-Datei.`); continue; }
+      setHochladen(n => n + 1);
+      const pfad = dokumentPfad(nutzer.id);
+      const { error } = await supabase.storage.from(FOTO_BUCKET).upload(pfad, datei, { contentType: 'application/pdf' });
+      setHochladen(n => n - 1);
+      if (error) { console.error(error); setFehler(`${datei.name} konnte nicht hochgeladen werden. Bitte versuche es noch einmal.`); continue; }
+      const titel = datei.name.replace(/\.pdf$/i, '').slice(0, 100);
+      setF(alt => ({ ...alt, dokumente: [...alt.dokumente, { art, titel, pfad }] }));
+    }
+  }
+
+  const setzeDokument = (i: number, teil: Partial<Dokument>) => setze({ dokumente: f.dokumente.map((d, j) => (j === i ? { ...d, ...teil } : d)) });
+  const setzeLink = (i: number, teil: Partial<InseratLink>) => setze({ links: f.links.map((l, j) => (j === i ? { ...l, ...teil } : l)) });
+
   function pruefen(): string | null {
     if (!adresse) return 'Bitte wähle die Adresse aus den Vorschlägen aus, damit wir die Lage auf der Karte kennen.';
     if (!zahl(f.preis)) return miete ? 'Bitte gib die Kaltmiete an.' : 'Bitte gib den Kaufpreis an.';
+    const falscherLink = f.links.find(l => l.url.trim() && !linkPruefen(l.url));
+    if (falscherLink) return `Der Link „${falscherLink.url}“ ist keine gültige https-Adresse.`;
     if (!miete && !f.provision.trim()) return 'Bei Kaufobjekten ist die Angabe zur Provision Pflicht (auch „provisionsfrei“).';
     if (tausch) return wunsch.linien.length || wunsch.ort.trim() ? null : 'Bitte gib bei deinem Tauschwunsch an, wo du hinziehen möchtest: eine Linie oder einen Ort.';
     if (!f.energieausweis_art) return 'Bitte mache die Angaben zum Energieausweis.';
@@ -206,6 +232,8 @@ export default function Inserieren() {
       energieeffizienzklasse: tausch || f.energieausweis_art === 'nicht_erforderlich' ? null : f.energieeffizienzklasse,
       anbieter_typ: tausch ? 'privat' : f.anbieter_typ, anbieter_name: !tausch && f.anbieter_typ === 'gewerblich' ? f.anbieter_name.trim() : null,
       bilder: f.bilder,
+      dokumente: f.dokumente.map(d => ({ ...d, titel: d.titel.trim().slice(0, 100) || DOKUMENT_ARTEN.find(a => a.wert === d.art)!.name })),
+      links: f.links.flatMap(l => { const url = linkPruefen(l.url); return url ? [{ titel: l.titel.trim().slice(0, 100), url }] : []; }),
     };
     const { data, error } = id
       ? await supabase.from('anzeigen').update(zeile).eq('id', id).select('id').single()
@@ -441,6 +469,56 @@ export default function Inserieren() {
           )}
         </div>
         <p className="text-[11px] text-zinc-500">Lade nur Fotos hoch, an denen du die Rechte hast.</p>
+      </Karte>
+
+      <Karte titel="Links und Dokumente" beschreibung={`Zum Beispiel Grundriss oder Energieausweis als PDF (je höchstens ${MAX_DOKUMENT_MB} MB) und Links wie ein virtueller Rundgang.`}>
+        {f.dokumente.length > 0 && (
+          <ul className="flex flex-col gap-2" aria-label="Hochgeladene Dokumente">
+            {f.dokumente.map((d, i) => (
+              <li key={d.pfad} className="grid grid-cols-[1fr_auto] md:grid-cols-[180px_1fr_auto] gap-2 items-center">
+                <select value={d.art} onChange={(e) => setzeDokument(i, { art: e.target.value as DokumentArt })} aria-label={`Art von Dokument ${i + 1}`} className={`${feld} col-span-2 md:col-span-1`}>
+                  {DOKUMENT_ARTEN.map(a => <option key={a.wert} value={a.wert}>{a.name}</option>)}
+                </select>
+                <input maxLength={100} value={d.titel} onChange={(e) => setzeDokument(i, { titel: e.target.value })} aria-label={`Titel von Dokument ${i + 1}`} className={feld} />
+                <div className="flex items-center gap-1">
+                  <a href={dokumentUrl(d.pfad)} target="_blank" rel="noopener noreferrer" className="h-11 px-3 rounded-lg text-xs font-semibold text-zinc-600 hover:bg-zinc-100 flex items-center">Ansehen<span className="sr-only"> (öffnet in neuem Fenster)</span></a>
+                  <button type="button" onClick={() => setze({ dokumente: f.dokumente.filter((_, j) => j !== i) })} aria-label={`Dokument ${i + 1} entfernen`}
+                    className="w-9 h-9 rounded-full hover:bg-zinc-100 text-lg font-bold">×</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {f.dokumente.length < MAX_DOKUMENTE && (
+          <div className="flex flex-wrap gap-2">
+            {DOKUMENT_ARTEN.map(a => (
+              <label key={a.wert} className="h-10 px-4 rounded-full border border-dashed border-zinc-300 text-sm font-semibold text-zinc-700 flex items-center gap-1.5 cursor-pointer hover:border-black focus-within:ring-2 focus-within:ring-black/20">
+                <span aria-hidden="true">+</span> {a.name} (PDF)
+                <input type="file" accept="application/pdf,.pdf" multiple aria-label={`${a.name} als PDF hochladen`} className="sr-only" onChange={(e) => { dokumenteHochladen(e.target.files, a.wert); e.target.value = ''; }} />
+              </label>
+            ))}
+            {hochladen > 0 && <span className="text-xs text-zinc-500 self-center" role="status">Lädt hoch…</span>}
+          </div>
+        )}
+        <p className="text-[11px] text-zinc-500">Die Dokumente sind für alle sichtbar. Schwärze persönliche Angaben wie Namen oder Unterschriften, bevor du sie hochlädst.</p>
+
+        <div className="border-t border-zinc-100 pt-4 flex flex-col gap-2">
+          <span className="text-xs font-bold text-zinc-700">Links</span>
+          {f.links.map((l, i) => (
+            <div key={i} className="grid grid-cols-[1fr_auto] md:grid-cols-[180px_1fr_auto] gap-2 items-center">
+              <input maxLength={100} value={l.titel} onChange={(e) => setzeLink(i, { titel: e.target.value })} placeholder="Titel, z.B. 360°-Rundgang" aria-label={`Titel von Link ${i + 1}`} className={`${feld} col-span-2 md:col-span-1`} />
+              <input type="text" inputMode="url" autoComplete="url" maxLength={500} value={l.url} onChange={(e) => setzeLink(i, { url: e.target.value })} placeholder="https://" aria-label={`Adresse von Link ${i + 1}`} className={feld} />
+              <button type="button" onClick={() => setze({ links: f.links.filter((_, j) => j !== i) })} aria-label={`Link ${i + 1} entfernen`}
+                className="w-9 h-9 rounded-full hover:bg-zinc-100 text-lg font-bold">×</button>
+            </div>
+          ))}
+          {f.links.length < MAX_LINKS && (
+            <button type="button" onClick={() => setze({ links: [...f.links, { titel: '', url: '' }] })}
+              className="self-start h-10 px-4 rounded-full border border-dashed border-zinc-300 text-sm font-semibold text-zinc-700 hover:border-black">
+              <span aria-hidden="true">+</span> Link hinzufügen
+            </button>
+          )}
+        </div>
       </Karte>
 
       {!tausch && <Karte titel="Anbieter" beschreibung="Gewerbliche Anbieter wie Makler oder Hausverwaltungen werden im Inserat gekennzeichnet.">

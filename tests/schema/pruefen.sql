@@ -129,3 +129,30 @@ begin
   raise notice 'Tauschpartner werden richtig gefunden';
 end $$;
 rollback;
+
+-- Links und Dokumente: nur PDFs im eigenen Ordner, nur https-Links (Migration 0011)
+begin;
+do $$
+declare ok boolean;
+begin
+  if not exists (select 1 from storage.buckets where id = 'inserat-bilder' and 'application/pdf' = any(allowed_mime_types)) then
+    raise exception 'Bucket inserat-bilder nimmt keine PDFs an';
+  end if;
+  insert into public.anzeigen (titel, dokumente, links) values ('L',
+    '[{"art":"grundriss","titel":"Grundriss","pfad":"11111111-2222-3333-4444-555555555555/1729-ab12.pdf"}]',
+    '[{"titel":"Rundgang","url":"https://example.org/tour"}]');
+  begin
+    insert into public.anzeigen (titel, links) values ('L2', '[{"titel":"x","url":"javascript:alert(1)"}]');
+    ok := false;
+  exception when check_violation then ok := true;
+  end;
+  if not ok then raise exception 'Link ohne https wurde angenommen'; end if;
+  begin
+    insert into public.anzeigen (titel, dokumente) values ('L3', '[{"art":"grundriss","titel":"x","pfad":"../fremd.exe"}]');
+    ok := false;
+  exception when check_violation then ok := true;
+  end;
+  if not ok then raise exception 'Dokument mit fremdem Pfad wurde angenommen'; end if;
+  raise notice 'Links und Dokumente werden geprüft';
+end $$;
+rollback;

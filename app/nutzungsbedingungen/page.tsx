@@ -50,6 +50,7 @@ export default function Nutzungsbedingungen() {
           <li>die gesetzlichen Pflichtangaben enthalten, insbesondere zum Energieausweis (§ 87 GEG), ob du privat oder gewerblich anbietest und bei Kaufobjekten eine Maklerprovision,</li>
           <li>bei Mietwohnungen das Bestellerprinzip beachten: Mieter dürfen nicht zu einer Provision verpflichtet werden, wenn der Vermieter den Makler beauftragt hat (§ 2 Abs. 1a WoVermittG),</li>
           <li>nur Fotos enthalten, an denen du die Rechte hast und auf denen keine Personen erkennbar sind.</li>
+          <li>nur Dokumente und Links enthalten, die zum Objekt gehören, an denen du die Rechte hast und in denen fremde persönliche Angaben geschwärzt sind.</li>
         </ul>
         <p>Tauschinserate darfst du als Mieter für deine eigene Wohnung aufgeben. Der Tausch braucht die Zustimmung beider Vermieter; IMMOBIL ist daran nicht beteiligt. Ein Entgelt nur dafür, dass du die Wohnung räumst, darfst du nicht verlangen (§ 4a WoVermittG).</p>
         <p>Nicht erlaubt sind insbesondere</p>
@@ -60,7 +61,7 @@ export default function Nutzungsbedingungen() {
         </ul>
         <p>Um Missbrauch zu verhindern, kann ein Konto höchstens 10 neue Inserate pro Tag aufgeben.</p>
         <p>
-          Damit wir dein Inserat zeigen können, räumst du uns ein einfaches, unentgeltliches Recht ein, Texte und Fotos auf IMMOBIL öffentlich zugänglich zu machen und dafür technisch anzupassen, etwa zu verkleinern.
+          Damit wir dein Inserat zeigen können, räumst du uns ein einfaches, unentgeltliches Recht ein, Texte, Fotos und Dokumente auf IMMOBIL öffentlich zugänglich zu machen und dafür technisch anzupassen, etwa zu verkleinern.
           Das Recht endet, wenn du das Inserat oder dein Konto löschst.
         </p>
       </section>

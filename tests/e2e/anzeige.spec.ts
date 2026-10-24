@@ -88,7 +88,7 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     await expect(bereich.getByRole('button', { name: /^Kita/ })).toHaveText(/Kita Sonnenschein, 140 m/);
     // ohne Ort im Umkreis kein Umschalten
     await expect(bereich.getByRole('button', { name: /^Drogerie/ })).toBeDisabled();
-    await expect(bereich.getByRole('button', { name: /^Drogerie/ })).toHaveText(/nicht im Umkreis von 1,5 km/);
+    await expect(bereich.getByRole('button', { name: /^Drogerie/ })).toHaveText(/nicht im Umkreis von 500 m/);
 
     const karte = page.getByRole('region', { name: /^Karte/ });
     await expect(karte.locator('.ort-symbol')).toHaveCount(0);
@@ -97,8 +97,8 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     await expect(supermarkt).toHaveAttribute('aria-pressed', 'true');
     // alle Supermärkte im Umkreis, mit Namen beim Überfahren
     await expect(karte.locator('.ort-symbol')).toHaveCount(2);
-    await karte.getByRole('button', { name: 'Supermarkt: Lidl · 520 m' }).hover();
-    await expect(karte.locator('.leaflet-tooltip', { hasText: 'Lidl · 520 m' })).toBeVisible();
+    await karte.getByRole('button', { name: 'Supermarkt: Lidl · 420 m' }).hover();
+    await expect(karte.locator('.leaflet-tooltip', { hasText: 'Lidl · 420 m' })).toBeVisible();
     await bereich.getByRole('button', { name: /^Park/ }).click();
     await expect(karte.locator('.ort-symbol')).toHaveCount(3);
     // Beschriftung bleibt beim richtigen Symbol, auch wenn sich die Reihenfolge ändert
@@ -106,7 +106,7 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     await expect(karte.getByRole('button', { name: 'Park: Weinbergspark · 60 m' })).toHaveCount(1);
     await supermarkt.click();
     await expect(karte.locator('.ort-symbol')).toHaveCount(1);
-    expect(auf.rpc.find(r => r.name === 'grundversorgung_im_umkreis')?.body).toMatchObject({ p_lat: 52.53, p_lon: 13.40, p_radius_m: 1500 });
+    expect(auf.rpc.find(r => r.name === 'grundversorgung_im_umkreis')?.body).toMatchObject({ p_lat: 52.53, p_lon: 13.40, p_radius_m: 500 });
   });
 
   test('unbekanntes Inserat', async ({ page }) => {

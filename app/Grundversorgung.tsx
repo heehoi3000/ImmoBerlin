@@ -1,17 +1,16 @@
 "use client";
 // Grundversorgung in der Nähe eines Inserats: je Kategorie ein Knopf mit dem nächsten Ort (Luftlinie).
 // Ein Knopf blendet alle Orte der Kategorie im Umkreis auf der Karte darunter ein oder aus.
-import { ARTEN, Art, GRUPPEN, Ort, UMKREIS_M } from '../lib/grundversorgung';
+import { ARTEN, Art, GRUPPEN, Ort, UMKREIS_TEXT } from '../lib/grundversorgung';
 import { symbolSvg } from '../lib/symbole';
 
 export default function Grundversorgung({ orte, fehler, sichtbar, onUmschalten }: {
   orte: Ort[] | null; fehler?: boolean; sichtbar: Set<Art>; onUmschalten: (art: Art) => void;
 }) {
-  const km = (UMKREIS_M / 1000).toLocaleString('de-DE');
   return (
     <section className="bg-white border border-zinc-200 rounded-2xl p-5" aria-labelledby="grundversorgung-titel">
       <h2 id="grundversorgung-titel" className="font-bold">Einkaufen und Alltag</h2>
-      <p className="text-xs text-zinc-500 mt-0.5">Jeweils der nächste Ort in Luftlinie. Tippe auf eine Kategorie, um alle Orte im Umkreis von {km} km auf der Karte zu sehen.</p>
+      <p className="text-xs text-zinc-500 mt-0.5">Jeweils der nächste Ort in Luftlinie. Tippe auf eine Kategorie, um alle Orte im Umkreis von {UMKREIS_TEXT} auf der Karte zu sehen.</p>
       {orte === null && !fehler && <p className="text-sm text-zinc-500 mt-3" role="status">Wird geladen…</p>}
       {fehler && <p className="text-sm text-zinc-500 mt-3" role="status">Die Angaben konnten nicht geladen werden.</p>}
       {orte && GRUPPEN.map(({ gruppe, name: gruppenName }) => (
@@ -39,7 +38,7 @@ export default function Grundversorgung({ orte, fehler, sichtbar, onUmschalten }
                           {o.name && <span className="font-semibold">{o.name}, </span>}
                           <span className="tabular-nums">{o.entfernung_m.toLocaleString('de-DE')} m</span>
                         </>
-                      ) : <span className="text-zinc-600">nicht im Umkreis von {km} km</span>}
+                      ) : <span className="text-zinc-600">nicht im Umkreis von {UMKREIS_TEXT}</span>}
                     </span>
                   </button>
                 </li>

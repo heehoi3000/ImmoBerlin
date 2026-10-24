@@ -192,6 +192,6 @@ export const STANDARD_DATEN: Daten = {
     { art: 'apotheke', name: 'Linden-Apotheke', lat: 52.5305, lon: 13.4005, entfernung_m: 90 },
     { art: 'kita', name: 'Kita Sonnenschein', lat: 52.5302, lon: 13.4020, entfernung_m: 140 },
     { art: 'supermarkt', name: 'Rewe', lat: 52.5315, lon: 13.4010, entfernung_m: 180 },
-    { art: 'supermarkt', name: 'Lidl', lat: 52.5340, lon: 13.3960, entfernung_m: 520 },
+    { art: 'supermarkt', name: 'Lidl', lat: 52.5340, lon: 13.3960, entfernung_m: 420 },
   ],
 };

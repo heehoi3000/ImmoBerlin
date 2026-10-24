@@ -28,7 +28,9 @@ export const ARTEN: { art: Art; name: string; ohneName: string; gruppe: Gruppe }
   { art: 'park', name: 'Park', ohneName: 'Park', gruppe: 'familie' },
 ];
 
-export const UMKREIS_M = 1500;
+export const UMKREIS_M = 500;
+// „500 m“ bzw. „1,5 km“ für Texte
+export const UMKREIS_TEXT = UMKREIS_M < 1000 ? `${UMKREIS_M} m` : `${(UMKREIS_M / 1000).toLocaleString('de-DE')} km`;
 
 export const artName = (art: Art) => ARTEN.find(a => a.art === art)?.name ?? art;
 

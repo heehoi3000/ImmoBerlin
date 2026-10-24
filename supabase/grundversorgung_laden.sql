@@ -3,11 +3,11 @@
 begin;
 create temp table t_grundversorgung (osm_id text, art text, name text, lat double precision, lon double precision);
 \copy t_grundversorgung from 'grundversorgung.csv' csv header
--- delete statt truncate, damit die Website bis zum commit die alten Daten lesen kann
-delete from grundversorgung;
+-- truncate statt delete: die Tabelle wird neu geschrieben und belegt danach nur den Platz der neuen Daten
+-- (bei delete bliebe der alte Platz belegt, die Datenbank wüchse über die 500 MB des kostenlosen Tarifs).
+-- Anfragen der Website warten bis zum commit (etwa eine Minute, einmal im Monat nachts).
+truncate grundversorgung;
 insert into grundversorgung (osm_id, art, name, geom)
 select distinct on (osm_id) osm_id, art, coalesce(name, ''), st_setsrid(st_makepoint(lon, lat), 4326)::geography from t_grundversorgung;
 commit;
-vacuum analyze grundversorgung;
-reindex index concurrently grundversorgung_geom_idx;
-reindex index concurrently grundversorgung_pkey;
+analyze grundversorgung;

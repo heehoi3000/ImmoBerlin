@@ -2,7 +2,7 @@
 // Inserat aufgeben oder bearbeiten (?id=...). Pflichtangaben nach § 87 GEG (Energieausweis),
 // § 5a UWG (privat/gewerblich) und §§ 656c, 656d BGB (Provision bei Kauf) werden abgefragt.
 // Tauschinserate (Mieter tauschen ihre Wohnungen) haben statt Energieausweis und Anbieter einen Tauschwunsch.
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 import { useNutzer } from '../../lib/konto';
@@ -14,6 +14,7 @@ import { DOKUMENT_ARTEN, Dokument, DokumentArt, InseratLink, MAX_DOKUMENTE, MAX_
 import { Linie } from '../../lib/oepnv';
 import { MAX_WUNSCH_LINIEN, wunschLaden, wunschLinie, wunschLinienAufloesen, wunschLoeschen, wunschSpeichern } from '../../lib/tausch';
 import LinienFeld from '../LinienFeld';
+import Ortssuche from '../Ortssuche';
 
 const MAX_BILDER = 15;
 
@@ -108,6 +109,8 @@ export default function Inserieren() {
 
   const setze = (teil: Partial<Formular>) => setF(alt => ({ ...alt, ...teil }));
   const setzeWunsch = (teil: Partial<Wunsch>) => setWunsch(alt => ({ ...alt, ...teil }));
+  // Ort des Tauschwunschs für die Ortssuche (nur der Name ist gespeichert); gleiche Referenz, solange er gleich bleibt
+  const wunschOrt = useMemo(() => (wunsch.ort ? { name: wunsch.ort, kurzname: wunsch.ort, lat: 0, lon: 0 } : null), [wunsch.ort]);
   const tausch = f.transaktions_typ === 'tauschen';
   const miete = f.transaktions_typ !== 'kaufen';
 
@@ -357,8 +360,11 @@ export default function Inserieren() {
             <span className="text-[11px] text-zinc-500">Bis zu {MAX_WUNSCH_LINIEN} Linien. Die Auswahl rechts legt fest, wie weit die Haltestelle höchstens entfernt sein darf.</span>
           </div>
           <div className="grid md:grid-cols-2 gap-4">
-            <Feld titel="Ort" hinweis="z.B. Berlin; leer lassen, wenn nur die Linie zählt">
-              <input maxLength={100} value={wunsch.ort} onChange={(e) => setzeWunsch({ ort: e.target.value })} className={feld} />
+            <Feld titel="Ort, Bezirk oder PLZ" hinweis="z.B. Berlin, Kreuzberg oder 10997; leer lassen, wenn nur die Linie zählt">
+              {/* gespeichert wird der eigene Name (z. B. „Kreuzberg“), verglichen mit Ort, Bezirk und PLZ der Inserate */}
+              <div className="[&_input]:h-11 [&_input]:rounded-lg">
+                <Ortssuche ort={wunschOrt} onChange={(o) => setzeWunsch({ ort: o ? (o.kurzname ?? o.name).slice(0, 100) : '' })} platzhalter="Ort, Bezirk oder PLZ" />
+              </div>
             </Feld>
             <Feld titel="Warmmiete höchstens (€)"><input inputMode="decimal" value={wunsch.maxWarm} onChange={(e) => setzeWunsch({ maxWarm: e.target.value })} className={feld} /></Feld>
             <Feld titel="Zimmer mindestens"><input inputMode="decimal" value={wunsch.minZimmer} onChange={(e) => setzeWunsch({ minZimmer: e.target.value })} className={feld} /></Feld>

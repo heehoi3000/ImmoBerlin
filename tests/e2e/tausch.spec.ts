@@ -50,13 +50,20 @@ test.describe('Tauschwohnungen', () => {
     await page.getByLabel('Maximale Entfernung zur Haltestelle').selectOption('1000');
     await page.getByLabel(/^Zimmer mindestens/).fill('3');
     await page.getByLabel(/^Warmmiete höchstens/).fill('1100');
+    // Wunschort: beim Tippen kommen Vorschläge, Enter übernimmt den ersten, ohne das Formular abzuschicken
+    const wunschOrt = page.getByPlaceholder('Ort, Bezirk oder PLZ');
+    await wunschOrt.fill('be');
+    await expect(page.getByRole('option', { name: 'Berlin' })).toBeVisible();
+    await wunschOrt.press('Enter');
+    await expect(wunschOrt).toHaveValue('Berlin');
+    await expect(page.getByRole('heading', { name: 'Dein Inserat ist online' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Inserat veröffentlichen' }).click();
 
     await expect(page.getByRole('heading', { name: 'Dein Inserat ist online' })).toBeVisible();
     expect(auf.neueAnzeigen[0]).toMatchObject({ transaktions_typ: 'tauschen', energieausweis_art: null, anbieter_typ: 'privat', kaution: null, warmmiete: 750 });
     expect(auf.wuensche).toHaveLength(1);
     expect(auf.wuensche[0]).toMatchObject({
-      anzeige_id: 'neu-1', umkreis_m: 1000, ort: null, max_warmmiete: 1100, min_zimmer: 3, min_qm: null,
+      anzeige_id: 'neu-1', umkreis_m: 1000, ort: 'Berlin', max_warmmiete: 1100, min_zimmer: 3, min_qm: null,
       linien: [{ typ: 'ubahn', nummer: 'U8', betreiber: 'BVG' }],
     });
   });

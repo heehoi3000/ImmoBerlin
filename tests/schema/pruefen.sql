@@ -164,3 +164,24 @@ begin
   raise notice 'Lage der Inserate wird berechnet';
 end $$;
 rollback;
+
+-- Tauschwunsch-Ort passt zu Ort, Bezirk oder PLZ des Inserats (Migration 0013)
+begin;
+do $$
+declare ergebnis text;
+begin
+  insert into public.anzeigen (id, titel, transaktions_typ, ort, bezirk, plz) values
+    ('00000000-0000-4000-8000-0000000000e1', 'E', 'tauschen', 'Berlin', 'Kreuzberg', '10997'),
+    ('00000000-0000-4000-8000-0000000000f1', 'F', 'tauschen', 'Berlin', null, null);
+  insert into public.tausch_wuensche (anzeige_id, ort) values
+    ('00000000-0000-4000-8000-0000000000e1', 'berlin'),
+    ('00000000-0000-4000-8000-0000000000f1', 'Kreuzberg');
+  select string_agg(w.ort || '>' || an.titel || ':' || privat.tausch_passt(w, an), ',' order by lower(w.ort), an.titel) into ergebnis
+    from public.tausch_wuensche w cross join public.anzeigen an
+    where an.titel in ('E', 'F') and w.anzeige_id in ('00000000-0000-4000-8000-0000000000e1', '00000000-0000-4000-8000-0000000000f1');
+  if ergebnis is distinct from 'berlin>E:true,berlin>F:true,Kreuzberg>E:true,Kreuzberg>F:false' then
+    raise exception 'tausch_passt mit Ort liefert %', ergebnis;
+  end if;
+  raise notice 'Tauschwunsch-Ort passt zu Ort, Bezirk und PLZ';
+end $$;
+rollback;

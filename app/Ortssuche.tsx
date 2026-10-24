@@ -99,12 +99,12 @@ export default function Ortssuche({ ort, onChange, platzhalter = 'Ort oder PLZ, 
           if (e.key === 'ArrowDown' && sichtbar.length) { e.preventDefault(); setMarkiert(m => (m + 1) % sichtbar.length); }
           else if (e.key === 'ArrowUp' && sichtbar.length) { e.preventDefault(); setMarkiert(m => (m <= 0 ? sichtbar.length : m) - 1); }
           else if (e.key === 'Escape') { setOffen(false); setMarkiert(-1); }
-          else if (e.key === 'Enter' && sichtbar.length) waehle(sichtbar[Math.max(markiert, 0)]);
+          else if (e.key === 'Enter' && sichtbar.length) { e.preventDefault(); waehle(sichtbar[Math.max(markiert, 0)]); }
         }}
         className="w-full h-[38px] bg-white border border-zinc-200 rounded-md px-3 pr-8 text-sm font-medium focus:ring-1 focus:ring-black outline-none placeholder:text-zinc-500"
       />
       {ort && (
-        <button title="Ort entfernen" aria-label="Ort entfernen" onClick={() => { onChange(null); setText(''); setVorschlaege([]); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-black text-lg leading-none">×</button>
+        <button type="button" title="Ort entfernen" aria-label="Ort entfernen" onClick={() => { onChange(null); setText(''); setVorschlaege([]); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-black text-lg leading-none">×</button>
       )}
       {sichtbar.length > 0 && (
         <div id={listeId} role="listbox" aria-label="Vorschläge" className="absolute top-full mt-1 w-full bg-white border border-zinc-200 rounded-lg shadow-lg z-30 max-h-60 overflow-y-auto">

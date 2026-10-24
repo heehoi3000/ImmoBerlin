@@ -84,11 +84,12 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     await expect(bereich.getByRole('listitem')).toHaveCount(10);
     await expect(bereich.getByRole('heading', { name: 'Kinder und Freizeit' })).toBeVisible();
     const supermarkt = bereich.getByRole('button', { name: /^Supermarkt/ });
-    await expect(supermarkt).toHaveText(/SupermarktRewe, 180 m/);
-    await expect(bereich.getByRole('button', { name: /^Kita/ })).toHaveText(/Kita Sonnenschein, 140 m/);
+    // Knöpfe zeigen nur die Kategorie, keinen nächsten Ort
+    await expect(supermarkt).toHaveText('Supermarkt');
+    await expect(bereich).not.toContainText('Rewe');
     // ohne Ort im Umkreis kein Umschalten
     await expect(bereich.getByRole('button', { name: /^Drogerie/ })).toBeDisabled();
-    await expect(bereich.getByRole('button', { name: /^Drogerie/ })).toHaveText(/nicht im Umkreis von 500 m/);
+    await expect(bereich.getByRole('button', { name: /^Drogerie\s*, nicht im Umkreis von 500 m$/ })).toBeVisible();
 
     const karte = page.getByRole('region', { name: /^Karte/ });
     await expect(karte.locator('.ort-symbol')).toHaveCount(0);

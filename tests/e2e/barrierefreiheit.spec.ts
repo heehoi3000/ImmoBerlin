@@ -6,6 +6,8 @@ import { expect, Page, test } from '@playwright/test';
 import { STANDARD_DATEN, anmelden, attrappeEinrichten } from './attrappe';
 
 async function pruefen(page: Page) {
+  // Übergänge (transition-all an Filterknöpfen) abschalten, sonst misst axe Farben mitten im Wechsel
+  await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; }' });
   const ergebnis = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .exclude('.leaflet-container')

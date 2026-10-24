@@ -95,9 +95,10 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     await expect(supermarkt).toHaveAttribute('aria-pressed', 'false');
     await supermarkt.click();
     await expect(supermarkt).toHaveAttribute('aria-pressed', 'true');
-    // alle Supermärkte im Umkreis, mit Namen beim Überfahren
+    // alle Supermärkte im Umkreis, mit Namen (Tooltip öffnet beim Überfahren und per Tastatur; focus statt hover,
+    // weil die Karte beim Einpassen noch springt und die Maus dann auf den Knöpfen darüber landen kann)
     await expect(karte.locator('.ort-symbol')).toHaveCount(2);
-    await karte.getByRole('button', { name: 'Supermarkt: Lidl · 420 m' }).hover();
+    await karte.getByRole('button', { name: 'Supermarkt: Lidl · 420 m' }).focus();
     await expect(karte.locator('.leaflet-tooltip', { hasText: 'Lidl · 420 m' })).toBeVisible();
     await bereich.getByRole('button', { name: /^Park/ }).click();
     await expect(karte.locator('.ort-symbol')).toHaveCount(3);

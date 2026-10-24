@@ -57,7 +57,7 @@ jobs:
           echo "Orte: $n" | tee -a "$GITHUB_STEP_SUMMARY"
           python3 -c "import csv,collections,sys; print(collections.Counter(z['art'] for z in csv.DictReader(open(sys.argv[1], encoding='utf-8'))).most_common())" grundversorgung.csv | tee -a "$GITHUB_STEP_SUMMARY"
           # Schutz vor einem kaputten Auszug (Oktober 2026: gut 419.000 Orte). Spielplätze (242.000) erst nach dem
-          # Umzug auf Hetzner, sonst reicht der kostenlose Supabase-Tarif (500 MB) nicht; das Skript kennt sie schon.
+          # Umzug auf Hetzner, sonst reicht der kostenlose Supabase-Tarif (500 MB) nicht.
           if [ "$n" -lt 300000 ]; then echo "Zu wenige Daten, Abbruch ohne Änderung an der Datenbank" >&2; exit 1; fi
 
       - name: In Supabase laden

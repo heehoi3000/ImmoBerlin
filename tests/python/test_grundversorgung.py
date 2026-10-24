@@ -30,9 +30,8 @@ class Grundversorgung(unittest.TestCase):
         self.assertIsNone(gv.art({'shop': 'clothes'}))
         self.assertEqual(gv.art({'amenity': 'kindergarten'}), 'kita')
         self.assertEqual(gv.art({'amenity': 'school'}), 'schule')
-        self.assertEqual(gv.art({'leisure': 'playground'}), 'spielplatz')
+        self.assertIsNone(gv.art({'leisure': 'playground'}))
         self.assertEqual(gv.art({'leisure': 'park'}), 'park')
-        self.assertEqual(gv.name({'leisure': 'playground', 'name': 'Spielplatz Am Teich'}, 'spielplatz'), '')
 
     def test_csv(self):
         flaeche = {'type': 'Feature', 'geometry': {'type': 'Polygon', 'coordinates': [[[13.0, 52.0], [13.2, 52.0], [13.2, 52.2], [13.0, 52.0]]]},
@@ -49,20 +48,6 @@ class Grundversorgung(unittest.TestCase):
         self.assertEqual([(z['osm_id'], z['art'], z['name']) for z in zeilen],
                          [('n1', 'apotheke', 'Linden- Apotheke'), ('w5', 'supermarkt', 'Rewe'), ('n2', 'post', 'Paketstation'), ('n4', 'hausarzt', '')])
         self.assertEqual(zeilen[1]['lat'], '52.050000')
-
-    def test_spielplaetze_ausgeduennt(self):
-        # zwei Spielplätze 30 m auseinander zählen einmal, einer 500 m weiter extra; Kitas werden nie ausgedünnt
-        sp = {'leisure': 'playground'}
-        objekte = [punkt('node', 1, sp, 13.40, 52.5300), punkt('node', 2, sp, 13.40, 52.5303),
-                   punkt('node', 3, sp, 13.40, 52.5345), punkt('node', 4, {'amenity': 'kindergarten'}, 13.40, 52.5300),
-                   punkt('node', 5, {'amenity': 'kindergarten'}, 13.40, 52.5300)]
-        with tempfile.TemporaryDirectory() as d:
-            ein, aus = Path(d) / 'orte.geojsonseq', Path(d) / 'gv.csv'
-            ein.write_text(''.join(json.dumps(o) + '\n' for o in objekte), encoding='utf-8')
-            gv.main(ein, aus)
-            with open(aus, encoding='utf-8') as f:
-                ids = [z['osm_id'] for z in csv.DictReader(f)]
-        self.assertEqual(ids, ['n1', 'n3', 'n4', 'n5'])
 
 
 if __name__ == '__main__':

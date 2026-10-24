@@ -81,7 +81,6 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     const auf = await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=a1');
     const bereich = page.getByRole('region', { name: 'Einkaufen und Alltag' });
-    await bereich.getByRole('button', { name: 'Einkaufen und Alltag' }).click();
     await expect(bereich.getByRole('listitem')).toHaveCount(10);
     await expect(bereich.getByRole('heading', { name: 'Kinder und Freizeit' })).toBeVisible();
     const supermarkt = bereich.getByRole('button', { name: /^Supermarkt/ });
@@ -112,26 +111,23 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     expect(auf.rpc.find(r => r.name === 'grundversorgung_im_umkreis')?.body).toMatchObject({ p_lat: 52.53, p_lon: 13.40, p_radius_m: 500 });
   });
 
-  test('ÖPNV startet ausgeklappt, Einkaufen und Alltag eingeklappt, auch nach Umschalten und Neuladen', async ({ page }) => {
+  test('ÖPNV lässt sich ein- und ausklappen, Einkaufen und Alltag ist immer offen', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=a1');
     const oepnv = page.getByRole('region', { name: 'ÖPNV in der Nähe' });
     const oepnvKnopf = oepnv.getByRole('button', { name: 'ÖPNV in der Nähe' });
-    const alltag = page.getByRole('region', { name: 'Einkaufen und Alltag' });
-    const alltagKnopf = alltag.getByRole('button', { name: 'Einkaufen und Alltag' });
     await expect(oepnvKnopf).toHaveAttribute('aria-expanded', 'true');
     await expect(oepnv.getByRole('list')).toBeVisible();
-    await expect(alltagKnopf).toHaveAttribute('aria-expanded', 'false');
-    await expect(alltag.getByRole('list')).toHaveCount(0);
-
     await oepnvKnopf.click();
-    await alltagKnopf.click();
+    await expect(oepnvKnopf).toHaveAttribute('aria-expanded', 'false');
     await expect(oepnv.getByRole('list')).toHaveCount(0);
-    await expect(alltag.getByRole('button', { name: /^Supermarkt/ })).toBeVisible();
-    // nichts wird gemerkt: jedes Inserat startet wieder gleich
+    // nichts wird gemerkt: jedes Inserat startet wieder ausgeklappt
     await page.reload();
     await expect(oepnvKnopf).toHaveAttribute('aria-expanded', 'true');
-    await expect(alltagKnopf).toHaveAttribute('aria-expanded', 'false');
+
+    const alltag = page.getByRole('region', { name: 'Einkaufen und Alltag' });
+    await expect(alltag.getByRole('button', { name: 'Einkaufen und Alltag' })).toHaveCount(0);
+    await expect(alltag.getByRole('button', { name: /^Supermarkt/ })).toBeVisible();
   });
 
   test('unbekanntes Inserat', async ({ page }) => {

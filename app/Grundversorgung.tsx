@@ -3,13 +3,13 @@
 // auf der Karte darunter ein- oder ausblendet. Kategorien ohne Ort im Umkreis sind ausgegraut.
 import { ARTEN, Art, GRUPPEN, Ort, UMKREIS_TEXT } from '../lib/grundversorgung';
 import { symbolSvg } from '../lib/symbole';
-import Klappbereich from './Klappbereich';
 
 export default function Grundversorgung({ orte, fehler, sichtbar, onUmschalten }: {
   orte: Ort[] | null; fehler?: boolean; sichtbar: Set<Art>; onUmschalten: (art: Art) => void;
 }) {
   return (
-    <Klappbereich id="grundversorgung" titel="Einkaufen und Alltag" anfangsOffen={false}>
+    <section className="bg-white border border-zinc-200 rounded-2xl p-5" aria-labelledby="grundversorgung-titel">
+      <h2 id="grundversorgung-titel" className="font-bold">Einkaufen und Alltag</h2>
       <p className="text-xs text-zinc-500 mt-0.5">Tippe auf eine Kategorie, um alle Orte im Umkreis von {UMKREIS_TEXT} (Luftlinie) auf der Karte zu sehen.</p>
       {orte === null && !fehler && <p className="text-sm text-zinc-500 mt-3" role="status">Wird geladen…</p>}
       {fehler && <p className="text-sm text-zinc-500 mt-3" role="status">Die Angaben konnten nicht geladen werden.</p>}
@@ -38,6 +38,6 @@ export default function Grundversorgung({ orte, fehler, sichtbar, onUmschalten }
         </div>
       ))}
       <p className="text-[11px] text-zinc-500 mt-3">Daten: © OpenStreetMap-Mitwirkende (ODbL), nicht überall vollständig. Hausarzt: nur Praxen mit Angabe Allgemeinmedizin, ohne Namen. Schulen aller Art, ohne Angabe zu Schulform oder Einzugsgebiet.</p>
-    </Klappbereich>
+    </section>
   );
 }

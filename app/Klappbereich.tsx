@@ -1,12 +1,10 @@
 "use client";
-// Abschnitt der Inseratsseite, der sich über seine Überschrift ein- und ausklappen lässt. Jedes Inserat startet
-// mit anfangsOffen (bewusst nicht gemerkt, sonst wirkt ein einmal eingeklappter Abschnitt wie ein Fehler).
+// Abschnitt der Inseratsseite, der sich über seine Überschrift ein- und ausklappen lässt. Startet ausgeklappt
+// (bewusst nicht gemerkt, sonst wirkt ein einmal eingeklappter Abschnitt beim nächsten Inserat wie ein Fehler).
 import { ReactNode, useState } from 'react';
 
-export default function Klappbereich({ id, titel, anfangsOffen = true, children }: {
-  id: string; titel: string; anfangsOffen?: boolean; children: ReactNode;
-}) {
-  const [offen, setOffen] = useState(anfangsOffen);
+export default function Klappbereich({ id, titel, children }: { id: string; titel: string; children: ReactNode }) {
+  const [offen, setOffen] = useState(true);
   return (
     <section className="bg-white border border-zinc-200 rounded-2xl p-5" aria-labelledby={`${id}-titel`}>
       <h2 id={`${id}-titel`} className="font-bold">

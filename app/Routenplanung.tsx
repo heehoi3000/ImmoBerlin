@@ -9,7 +9,7 @@ const ARTEN = [
   { modus: 'walking', name: 'Zu Fuß' },
 ] as const;
 
-export function routenLink(lat: number, lon: number, ziel: string, modus: string) {
+function routenLink(lat: number, lon: number, ziel: string, modus: string) {
   const p = new URLSearchParams({ api: '1', origin: `${lat},${lon}`, travelmode: modus });
   if (ziel.trim()) p.set('destination', ziel.trim());
   return `https://www.google.com/maps/dir/?${p}`;

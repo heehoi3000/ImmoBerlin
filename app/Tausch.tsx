@@ -35,7 +35,7 @@ export function TauschPartnerListe({ anzeigeId }: { anzeigeId: string }) {
     let aktuell = true;
     partnerLaden(anzeigeId).then(async liste => {
       if (!liste.length) return [];
-      const { data, error } = await supabase.from('anzeigen').select('*').in('id', liste.map(p => p.id));
+      const { data, error } = await supabase.from('anzeigen').select('*').eq('status', 'aktiv').in('id', liste.map(p => p.id));
       if (error) throw error;
       const nachId = new Map(((data ?? []) as Anzeige[]).map(a => [a.id, a]));
       return liste.flatMap(p => nachId.has(p.id) ? [{ ...p, a: nachId.get(p.id)! }] : []);

@@ -65,7 +65,7 @@ begin
 end $$;
 rollback;
 
--- Grundversorgung: je Art nur der nächste Ort im Umkreis (supabase/migrations/0005_grundversorgung.sql)
+-- Grundversorgung im Umkreis (supabase/migrations/0005_grundversorgung.sql, 0008)
 begin;
 do $$
 declare
@@ -77,9 +77,6 @@ begin
     ('n2', 'supermarkt', 'Fern', 'SRID=4326;POINT(13.41 52.53)'),
     ('n3', 'apotheke', 'Zu weit', 'SRID=4326;POINT(13.5 52.53)'),
     ('n4', 'kita', 'Kita Sonnenschein', 'SRID=4326;POINT(13.402 52.53)');
-  select count(*), max(name) filter (where art = 'supermarkt') into n, naechster from public.grundversorgung_in_der_naehe(52.53, 13.40, 1500);
-  if n <> 2 or naechster <> 'Nah' then raise exception 'grundversorgung_in_der_naehe liefert % Orte, nächster %', n, naechster; end if;
-  raise notice 'Grundversorgung in der Nähe funktioniert';
   -- alle Orte im Umkreis (0008), nächste zuerst
   select count(*), string_agg(name, ',') into n, naechster from public.grundversorgung_im_umkreis(52.53, 13.40, 1500);
   if n <> 3 or naechster <> 'Nah,Kita Sonnenschein,Fern' then raise exception 'grundversorgung_im_umkreis liefert % Orte: %', n, naechster; end if;
@@ -154,5 +151,16 @@ begin
   end;
   if not ok then raise exception 'Dokument mit fremdem Pfad wurde angenommen'; end if;
   raise notice 'Links und Dokumente werden geprüft';
+end $$;
+rollback;
+
+-- anzeigen.geom kommt aus der berechneten Spalte, ohne Trigger (Migration 0012)
+begin;
+do $$
+declare g text;
+begin
+  insert into public.anzeigen (titel, koordinate_lat, koordinate_lon) values ('G', 52.5, 13.4) returning st_astext(geom) into g;
+  if g is distinct from 'POINT(13.4 52.5)' then raise exception 'anzeigen.geom ist %', g; end if;
+  raise notice 'Lage der Inserate wird berechnet';
 end $$;
 rollback;

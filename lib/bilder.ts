@@ -8,7 +8,7 @@ export const MAX_EINGANG_MB = 25;
 // Kleine Fassung für Ergebnislisten und Vorschaubilder (Kacheln sind höchstens etwa 400 px breit, doppelt für scharfe Bildschirme)
 const KLEIN_KANTE = 800;
 
-export interface FertigesBild { blob: Blob; klein: Blob; endung: 'webp' | 'jpg' }
+interface FertigesBild { blob: Blob; klein: Blob; endung: 'webp' | 'jpg' }
 
 function alsBlob(canvas: HTMLCanvasElement, typ: string): Promise<Blob | null> {
   return new Promise(fertig => canvas.toBlob(fertig, typ, QUALITAET));

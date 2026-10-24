@@ -12,7 +12,7 @@ import {
   weitereFilterAnzahl,
 } from '../../lib/filter';
 import { bezirkeLaden, bezirksgrenzeLaden } from '../../lib/bezirke';
-import { anzeigenSuchen, erweiterteFelderVorhanden, linienUmkreisM, Suchergebnis } from '../../lib/suche';
+import { anzeigenSuchen, linienUmkreisM, Suchergebnis } from '../../lib/suche';
 
 const Map = dynamic(() => import("../Map"), {
   ssr: false,
@@ -93,7 +93,6 @@ export default function Suche() {
   const [angewendet, setAngewendet] = useState<Filter>(STANDARD_FILTER);
   const [panel, setPanel] = useState<Panel>(null);
   const [ausschnitt, setAusschnitt] = useState<Kartenausschnitt | null>(null);
-  const [erweitert, setErweitert] = useState(false);
   const [ergebnis, setErgebnis] = useState<Suchergebnis>(LEER);
   const [laedt, setLaedt] = useState(true);
   const [fehler, setFehler] = useState(false);
@@ -105,8 +104,6 @@ export default function Suche() {
   const anfrageNr = useRef(0);
 
   const setze = (teil: Partial<Filter>) => setFilter(f => ({ ...f, ...teil }));
-
-  useEffect(() => { erweiterteFelderVorhanden().then(setErweitert); }, []);
 
   // Suche von der Startseite übernehmen (Ort, Mieten/Kaufen, Wohnung/Haus)
   useEffect(() => {
@@ -130,11 +127,11 @@ export default function Suche() {
 
   useEffect(() => {
     const nr = ++anfrageNr.current;
-    anzeigenSuchen(angewendet, erweitert)
+    anzeigenSuchen(angewendet)
       .then(e => { if (nr === anfrageNr.current) { setErgebnis(e); setFehler(false); } })
       .catch(err => { console.error("Ladefehler:", err); if (nr === anfrageNr.current) { setErgebnis(LEER); setFehler(true); } })
       .finally(() => { if (nr === anfrageNr.current) setLaedt(false); });
-  }, [angewendet, erweitert]);
+  }, [angewendet]);
 
   // Karte klebt direkt unter der Filterleiste; deren Höhe hängt von der Bildschirmbreite ab
   useEffect(() => {
@@ -253,7 +250,7 @@ export default function Suche() {
               )}
               {panel === 'preis' && (
                 <>
-                  {istMiete && erweitert && (
+                  {istMiete && (
                     <div className="flex gap-2">
                       <Chip aktiv={filter.preisArt === 'kalt'} onClick={() => setze({ preisArt: 'kalt' })}>Kaltmiete</Chip>
                       <Chip aktiv={filter.preisArt === 'warm'} onClick={() => setze({ preisArt: 'warm' })}>Warmmiete</Chip>
@@ -280,56 +277,52 @@ export default function Suche() {
                   umkreis={filter.linienUmkreisM} onUmkreis={(v) => setze({ linienUmkreisM: v })} />
               )}
               {panel === 'weitere' && (
-                erweitert ? (
-                  <div className="flex flex-col gap-5 md:w-[640px]">
-                    <Abschnitt titel="Objektart">
-                      <div className="flex gap-1.5 flex-wrap">
-                        {OBJEKTARTEN[filter.immobilientyp].map(o => (
-                          <Chip key={o.wert} aktiv={filter.objektarten.includes(o.wert)} onClick={() => setze({ objektarten: umschalten(filter.objektarten, o.wert) })}>{o.name}</Chip>
-                        ))}
-                      </div>
-                    </Abschnitt>
-                    <Abschnitt titel="Ausstattung">
-                      <div className="flex gap-1.5 flex-wrap">
-                        {AUSSTATTUNG.map(a => (
-                          <Chip key={a.wert} aktiv={filter.ausstattung.includes(a.wert)} onClick={() => setze({ ausstattung: umschalten(filter.ausstattung, a.wert) })}>{a.name}</Chip>
-                        ))}
-                      </div>
-                    </Abschnitt>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Abschnitt titel="Baujahr">
-                        <VonBis name="Baujahr" min={filter.baujahrMin} max={filter.baujahrMax} onMin={(v) => setze({ baujahrMin: v })} onMax={(v) => setze({ baujahrMax: v })} />
-                      </Abschnitt>
-                      {filter.immobilientyp === 'wohnung' && (
-                        <Abschnitt titel="Etage (0 = Erdgeschoss)">
-                          <VonBis name="Etage" min={filter.etageMin} max={filter.etageMax} onMin={(v) => setze({ etageMin: v })} onMax={(v) => setze({ etageMax: v })} />
-                        </Abschnitt>
-                      )}
-                      <Abschnitt titel="Bezugsfrei bis">
-                        <input type="date" aria-label="Bezugsfrei bis" value={filter.bezugsfreiBis} onChange={(e) => setze({ bezugsfreiBis: e.target.value })}
-                          className="w-full h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium focus:ring-1 focus:ring-black outline-none" />
-                      </Abschnitt>
-                      <Abschnitt titel="Energieeffizienz mindestens">
-                        <select aria-label="Energieeffizienz mindestens" value={filter.energieMindestens} onChange={(e) => setze({ energieMindestens: e.target.value })}
-                          className="w-full h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium">
-                          <option value="">Egal</option>
-                          {ENERGIEKLASSEN.map(k => <option key={k} value={k}>Klasse {k}{k !== 'A+' ? ' oder besser' : ''}</option>)}
-                        </select>
-                      </Abschnitt>
+              <div className="flex flex-col gap-5 md:w-[640px]">
+                  <Abschnitt titel="Objektart">
+                    <div className="flex gap-1.5 flex-wrap">
+                      {OBJEKTARTEN[filter.immobilientyp].map(o => (
+                        <Chip key={o.wert} aktiv={filter.objektarten.includes(o.wert)} onClick={() => setze({ objektarten: umschalten(filter.objektarten, o.wert) })}>{o.name}</Chip>
+                      ))}
                     </div>
-                    {istMiete && (
-                      <Abschnitt titel="Wohnberechtigungsschein (WBS)">
-                        <div className="flex gap-1.5">
-                          <Chip aktiv={filter.wbs === 'egal'} onClick={() => setze({ wbs: 'egal' })}>Egal</Chip>
-                          <Chip aktiv={filter.wbs === 'ohne'} onClick={() => setze({ wbs: 'ohne' })}>Ohne WBS</Chip>
-                          <Chip aktiv={filter.wbs === 'nur'} onClick={() => setze({ wbs: 'nur' })}>Nur mit WBS</Chip>
-                        </div>
+                  </Abschnitt>
+                  <Abschnitt titel="Ausstattung">
+                    <div className="flex gap-1.5 flex-wrap">
+                      {AUSSTATTUNG.map(a => (
+                        <Chip key={a.wert} aktiv={filter.ausstattung.includes(a.wert)} onClick={() => setze({ ausstattung: umschalten(filter.ausstattung, a.wert) })}>{a.name}</Chip>
+                      ))}
+                    </div>
+                  </Abschnitt>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Abschnitt titel="Baujahr">
+                      <VonBis name="Baujahr" min={filter.baujahrMin} max={filter.baujahrMax} onMin={(v) => setze({ baujahrMin: v })} onMax={(v) => setze({ baujahrMax: v })} />
+                    </Abschnitt>
+                    {filter.immobilientyp === 'wohnung' && (
+                      <Abschnitt titel="Etage (0 = Erdgeschoss)">
+                        <VonBis name="Etage" min={filter.etageMin} max={filter.etageMax} onMin={(v) => setze({ etageMin: v })} onMax={(v) => setze({ etageMax: v })} />
                       </Abschnitt>
                     )}
+                    <Abschnitt titel="Bezugsfrei bis">
+                      <input type="date" aria-label="Bezugsfrei bis" value={filter.bezugsfreiBis} onChange={(e) => setze({ bezugsfreiBis: e.target.value })}
+                        className="w-full h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium focus:ring-1 focus:ring-black outline-none" />
+                    </Abschnitt>
+                    <Abschnitt titel="Energieeffizienz mindestens">
+                      <select aria-label="Energieeffizienz mindestens" value={filter.energieMindestens} onChange={(e) => setze({ energieMindestens: e.target.value })}
+                        className="w-full h-10 bg-white border border-zinc-200 rounded-xl px-3 text-sm font-medium">
+                        <option value="">Egal</option>
+                        {ENERGIEKLASSEN.map(k => <option key={k} value={k}>Klasse {k}{k !== 'A+' ? ' oder besser' : ''}</option>)}
+                      </select>
+                    </Abschnitt>
                   </div>
-                ) : (
-                  <p className="text-xs text-zinc-500 max-w-sm">Diese Filter (Objektart, Ausstattung, Baujahr, Etage, Verfügbarkeit, Energieeffizienz, WBS) werden aktiv, sobald die zusätzlichen Felder in der Datenbank angelegt sind.</p>
-                )
+                  {istMiete && (
+                    <Abschnitt titel="Wohnberechtigungsschein (WBS)">
+                      <div className="flex gap-1.5">
+                        <Chip aktiv={filter.wbs === 'egal'} onClick={() => setze({ wbs: 'egal' })}>Egal</Chip>
+                        <Chip aktiv={filter.wbs === 'ohne'} onClick={() => setze({ wbs: 'ohne' })}>Ohne WBS</Chip>
+                        <Chip aktiv={filter.wbs === 'nur'} onClick={() => setze({ wbs: 'nur' })}>Nur mit WBS</Chip>
+                      </div>
+                    </Abschnitt>
+                  )}
+                </div>
               )}
               <div className="flex justify-end">
                 <button onClick={() => suchen()} className="h-10 px-5 bg-zinc-900 text-white font-semibold text-sm rounded-full hover:bg-black">Ergebnisse anzeigen</button>
@@ -381,7 +374,7 @@ export default function Suche() {
           style={{ top: leisteUnten, height: `calc(100dvh - ${leisteUnten}px)` }}>
           <div className="relative h-full w-full lg:p-3 lg:pl-0">
             <div className="relative h-full w-full overflow-hidden lg:rounded-2xl">
-              <Map anzeigen={ergebnis.anzeigen} haltestellen={ergebnis.haltestellen} naechste={ergebnis.naechste}
+              <Map anzeigen={ergebnis.anzeigen} haltestellen={ergebnis.haltestellen}
                 linienUmkreisM={linienUmkreisM(angewendet.linienUmkreisM)} linien={angewendet.linien} ortKreis={ortKreis} bezirke={grenzen}
                 aktivId={hoverId ?? auswahlId} onAuswahl={pinWaehlen} onAusschnittChange={setAusschnitt} />
               {ausgewaehlt && (

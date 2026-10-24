@@ -3,10 +3,9 @@
 // danach die maximale Entfernung zur Haltestelle. Ausführliche Auswahl in der Suche: Linienauswahl.tsx.
 import { useId, useState } from 'react';
 import { Linie, endpunkteKurz, LINIENTYPEN } from '../lib/oepnv';
-import { useLinienSuche } from '../lib/linienSuche';
+import { UMKREISE_M, useLinienSuche } from '../lib/linienSuche';
 
 const MAX_LISTE = 30;
-export const UMKREISE_M = [300, 600, 1000, 1500, 2000];
 
 interface Props {
   bezug: { lat: number; lon: number } | null;

@@ -11,19 +11,11 @@ import { setWorkerUrl } from 'maplibre-gl';
 import { Kartenausschnitt, Linie, haltestelleKurz } from '../lib/oepnv';
 import { Bezirk } from '../lib/filter';
 import { bezirkeAusdehnung } from '../lib/bezirke';
-import { Anzeige, Haltestelle, NaechsteHaltestelle } from '../lib/suche';
+import { Anzeige, Haltestelle } from '../lib/suche';
 import { BASIS } from '../lib/basis';
 import { Station } from '../lib/oepnvNaehe';
 import { Art, Ort, UMKREIS_M, artName, ortBeschriftung } from '../lib/grundversorgung';
 import { symbolSvg, verkehrArt, verkehrSvg } from '../lib/symbole';
-
-delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: `${BASIS}/leaflet/marker-icon-2x.png`,
-  iconUrl: `${BASIS}/leaflet/marker-icon.png`,
-  shadowUrl: `${BASIS}/leaflet/marker-shadow.png`,
-});
-
 
 // Hintergrundkarte: OpenFreeMap (weltweit, kostenlos, ohne API-Schlüssel).
 // Liefert Vektorkacheln, die MapLibre über das Leaflet-Plugin zeichnet.
@@ -131,8 +123,6 @@ function Linienkorridore({ haltestellen, linien, umkreisM }: { haltestellen: Hal
   );
 }
 
-// Inseratsseite: Haltestellen in der Nähe, die gewählte (anfangs die nächste) hervorgehoben und mit
-// gestrichelter Luftlinie zum Inserat. Die Karte zeigt Inserat und gewählte Haltestelle zusammen.
 // Haltestellen-Symbol (Bahn, Tram, Bus, Fähre); die gewählte Haltestelle größer und schwarz
 function stationIcon(s: Station, gewaehlt: boolean) {
   const g = gewaehlt ? 32 : 24;
@@ -142,6 +132,8 @@ function stationIcon(s: Station, gewaehlt: boolean) {
   });
 }
 
+// Inseratsseite: Haltestellen in der Nähe, die gewählte (anfangs die nächste) hervorgehoben und mit
+// gestrichelter Luftlinie zum Inserat. Die Karte zeigt Inserat und gewählte Haltestelle zusammen.
 function StationenAnzeige({ stationen, auswahl, von }: { stationen: Station[]; auswahl: number; von: { lat: number; lon: number } }) {
   const map = useMap();
   const ziel = stationen[auswahl];
@@ -293,7 +285,6 @@ function KlickLeer({ onKlick }: { onKlick?: () => void }) {
 interface MapProps {
   anzeigen: Anzeige[];
   haltestellen: Haltestelle[];
-  naechste: Record<string, NaechsteHaltestelle>;
   linienUmkreisM: number;
   ortKreis: OrtKreis | null;
   bezirke: Bezirk[];

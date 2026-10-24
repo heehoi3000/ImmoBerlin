@@ -3,7 +3,7 @@
 // Linien nahe dem gewählten Ort bzw. der Kartenmitte stehen oben.
 import { useState } from 'react';
 import { Linie, endpunkteKurz, LINIENTYPEN } from '../lib/oepnv';
-import { useLinienSuche } from '../lib/linienSuche';
+import { UMKREISE_M, useLinienSuche } from '../lib/linienSuche';
 
 const MAX_LISTE = 60;
 
@@ -57,7 +57,7 @@ export default function Linienauswahl({ bezug, ausgewaehlt, onChange, umkreis, o
             <input type="number" aria-label="Maximale Entfernung zur Haltestelle in Metern" min={50} max={5000} step={50} value={umkreis} onChange={(e) => onUmkreis(e.target.value)} className="w-20 bg-white border border-zinc-200 rounded-md py-1 px-2 text-xs text-center font-bold outline-none focus:ring-1 focus:ring-black" />
           </div>
           <div className="flex gap-1.5 flex-wrap">
-            {[300, 600, 1000, 1500, 2000].map(m => (
+            {UMKREISE_M.map(m => (
               <button key={m} onClick={() => onUmkreis(String(m))} aria-pressed={umkreis === String(m)} className={`px-2 py-1 rounded-md border text-[11px] font-bold ${umkreis === String(m) ? 'border-black bg-black text-white' : 'border-zinc-200 text-zinc-600 hover:border-black'}`}>{m} m</button>
             ))}
           </div>

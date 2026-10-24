@@ -13,7 +13,7 @@ export default function Merkliste() {
 
   useEffect(() => {
     if (ids.length === 0) { setAnzeigen([]); return; } // eslint-disable-line react-hooks/set-state-in-effect
-    supabase.from('anzeigen').select('*').in('id', ids)
+    supabase.from('anzeigen').select('*').eq('status', 'aktiv').in('id', ids)
       .then(({ data }) => setAnzeigen(((data as Anzeige[]) ?? []).sort((a, b) => ids.indexOf(b.id) - ids.indexOf(a.id))));
   }, [ids]);
 
@@ -29,7 +29,7 @@ export default function Merkliste() {
           Noch nichts gemerkt. Tippe in der <Link href="/suche/" className="text-black font-semibold underline underline-offset-2">Suche</Link> auf das Herz bei einem Inserat.
         </div>
       )}
-      {anzeigen && <Ergebnisliste anzeigen={anzeigen} naechste={{}} />}
+      {anzeigen && <Ergebnisliste anzeigen={anzeigen} />}
       {anzeigen && anzeigen.length < ids.length && <p className="text-xs text-zinc-500">{ids.length - anzeigen.length} gemerkte Inserate sind nicht mehr online.</p>}
     </div>
   );

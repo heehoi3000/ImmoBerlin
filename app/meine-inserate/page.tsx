@@ -37,7 +37,7 @@ export default function MeineInserate() {
     if (!confirm(`„${a.titel}“ endgültig löschen?`)) return;
     const { error } = await supabase.from('anzeigen').delete().eq('id', a.id);
     if (error) return;
-    // Fotos aus dem Speicher entfernen
+    // Fotos und Dokumente aus dem Speicher entfernen
     const pfade = [
       ...(a.bilder as string[] ?? []).map(fotoPfad).filter(Boolean).flatMap(p => [p, kleinPfad(p)]),
       ...dokumenteVon(a.dokumente).map(d => d.pfad),

@@ -5,13 +5,16 @@ import { supabase } from './supabase';
 import { Linie, punktAusEwkb, LINIENTYPEN } from './oepnv';
 import { entfernungM } from './filter';
 
+// Auswahl für die maximale Entfernung zur Haltestelle (Startseite und Suche)
+export const UMKREISE_M = [300, 600, 1000, 1500, 2000];
+
 // Breite Suche (Betreiber, Endpunkte, Nummernanfang) liefert höchstens so viele Linien
 const MAX_TREFFER = 400;
 
-export type Treffer = Linie & { km: number | null; guete: number };
+type Treffer = Linie & { km: number | null; guete: number };
 
 // Zeichen, die in PostgREST-Filtern eine Bedeutung haben, entfernen
-export function bereinigen(text: string) {
+function bereinigen(text: string) {
   return text.replace(/[,()*%"\\:]/g, ' ').trim();
 }
 

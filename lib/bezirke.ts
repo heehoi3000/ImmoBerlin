@@ -30,7 +30,7 @@ function merken(schluessel: string, wert: unknown) {
 
 // Gibt es die vorab erzeugten Dateien? Einmal je Seitenaufruf geprüft.
 let dateienDa: Promise<boolean> | null = null;
-export function gebietsdateienVorhanden() {
+function gebietsdateienVorhanden() {
   dateienDa ??= fetch(`${GEBIETE_URL}/stand.json`).then(a => a.ok).catch(() => false);
   return dateienDa;
 }

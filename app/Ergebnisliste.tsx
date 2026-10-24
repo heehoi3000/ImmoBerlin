@@ -34,7 +34,7 @@ export function KeinFoto({ id }: { id: string }) {
 }
 
 // Link zum Inserat; nach einem Linienfilter mit den Linien, damit das Inserat deren nächste Haltestelle zeigt
-export function inseratLink(id: string, linienIds?: number[]) {
+function inseratLink(id: string, linienIds?: number[]) {
   return `/anzeige/?id=${id}${linienIds?.length ? `&linien=${linienIds.join(',')}` : ''}`;
 }
 
@@ -83,7 +83,7 @@ export function AnzeigeKachel({ a, n, aktiv, onHover, kompakt, linienIds }: {
 
 interface Props {
   anzeigen: Anzeige[];
-  naechste: Record<string, NaechsteHaltestelle>;
+  naechste?: Record<string, NaechsteHaltestelle>;
   aktivId?: string | null;
   onHover?: (id: string | null) => void;
   raster?: string;
@@ -94,7 +94,7 @@ export default function Ergebnisliste({ anzeigen, naechste, aktivId, onHover, ra
   if (anzeigen.length === 0) return null;
   return (
     <div className={`grid ${raster} gap-x-5 gap-y-8`}>
-      {anzeigen.map(a => <AnzeigeKachel key={a.id} a={a} n={naechste[a.id]} aktiv={aktivId === a.id} onHover={onHover} linienIds={linienIds} />)}
+      {anzeigen.map(a => <AnzeigeKachel key={a.id} a={a} n={naechste?.[a.id]} aktiv={aktivId === a.id} onHover={onHover} linienIds={linienIds} />)}
     </div>
   );
 }

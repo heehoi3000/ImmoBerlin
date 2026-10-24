@@ -56,9 +56,9 @@ export default function Startseite() {
   const [anzahl, setAnzahl] = useState<number | null>(null);
 
   useEffect(() => {
-    supabase.from('anzeigen').select('*').order('erstellt_am', { ascending: false }).limit(4)
+    supabase.from('anzeigen').select('*').eq('status', 'aktiv').order('erstellt_am', { ascending: false }).limit(4)
       .then(({ data }) => setNeueste((data as Anzeige[]) ?? []));
-    supabase.from('anzeigen').select('id', { count: 'exact', head: true }).then(({ count }) => setAnzahl(count ?? null));
+    supabase.from('anzeigen').select('id', { count: 'exact', head: true }).eq('status', 'aktiv').then(({ count }) => setAnzahl(count ?? null));
   }, []);
 
   function suchen(teil: Partial<Filter>) {

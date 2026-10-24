@@ -30,17 +30,18 @@ describe('linienUmkreisM', () => {
 describe('anzeigenSuchen', () => {
   it('fragt Miete, Wohnung und Preisgrenzen ab', async () => {
     const f: Filter = { ...STANDARD_FILTER, preisMin: '500', preisMax: '1000,5', zimmerMin: '2' };
-    await anzeigenSuchen(f, false);
+    await anzeigenSuchen(f);
     const p = parameter('/rest/v1/anzeigen');
+    expect(p.get('status')).toBe('eq.aktiv');
     expect(p.get('transaktions_typ')).toBe('eq.mieten');
     expect(p.get('immobilien_typ')).toBe('eq.wohnung');
     expect(p.getAll('preis')).toEqual(['gte.500', 'lte.1000.5']);
     expect(p.get('zimmer')).toBe('gte.2');
   });
 
-  it('Warmmiete und weitere Filter nur mit erweiterten Spalten', async () => {
+  it('Warmmiete und weitere Filter', async () => {
     const f: Filter = { ...STANDARD_FILTER, preisArt: 'warm', preisMax: '900', ausstattung: ['aufzug'], wbs: 'ohne', energieMindestens: 'B' };
-    await anzeigenSuchen(f, true);
+    await anzeigenSuchen(f);
     const p = parameter('/rest/v1/anzeigen');
     expect(p.get('warmmiete')).toBe('lte.900');
     expect(p.get('aufzug')).toBe('eq.true');
@@ -50,7 +51,7 @@ describe('anzeigenSuchen', () => {
 
   it('mit Linien sucht die Datenbankfunktion im Umkreis der Haltestellen', async () => {
     const f: Filter = { ...STANDARD_FILTER, linien: [{ linie_id: 7, typ: 'ubahn', nummer: 'U8', betreiber: 'BVG', endpunkte: '' }], linienUmkreisM: '400' };
-    await anzeigenSuchen(f, false);
+    await anzeigenSuchen(f);
     const rpc = anfragen.filter(a => a.pathname.startsWith('/rest/v1/rpc/')).map(a => a.pathname);
     expect(rpc).toContain('/rest/v1/rpc/anzeigen_nahe_linien');
     expect(rpc).toContain('/rest/v1/rpc/haltestellen_der_linien');
@@ -64,7 +65,7 @@ describe('anzeigenSuchen', () => {
       anzeige('ohne-lage', 0, 0),
     ];
     const f: Filter = { ...STANDARD_FILTER, ort: { name: 'Berlin', lat: 52.52, lon: 13.40 }, umkreisKm: 2 };
-    const { anzeigen } = await anzeigenSuchen(f, false);
+    const { anzeigen } = await anzeigenSuchen(f);
     expect(anzeigen.map(a => a.id)).toEqual(['nah']);
     expect(parameter('/rest/v1/anzeigen').getAll('koordinate_lat')).toHaveLength(2);
   });
@@ -76,7 +77,7 @@ describe('anzeigenSuchen', () => {
       ort: { name: 'Berlin', lat: 52.52, lon: 13.40, osmRelation: 62422 },
       bezirke: [{ id: 1, name: 'Dreieck', grenze: { type: 'Polygon', coordinates: [[[13, 52], [14, 52], [13, 53], [13, 52]]] } }],
     };
-    const { anzeigen } = await anzeigenSuchen(f, false);
+    const { anzeigen } = await anzeigenSuchen(f);
     expect(anzeigen.map(a => a.id)).toEqual(['drin']);
   });
 
@@ -87,7 +88,7 @@ describe('anzeigenSuchen', () => {
       { anzeige_id: 'b', distanz_m: 120, haltestelle: 'Y', linie: 'U8' },
     ];
     const f: Filter = { ...STANDARD_FILTER, sortierung: 'haltestelle', linien: [{ linie_id: 7, typ: 'ubahn', nummer: 'U8', betreiber: 'BVG', endpunkte: '' }] };
-    const { anzeigen, naechste } = await anzeigenSuchen(f, false);
+    const { anzeigen, naechste } = await anzeigenSuchen(f);
     expect(anzeigen.map(a => a.id)).toEqual(['b', 'a']);
     expect(naechste.b.distanz_m).toBe(120);
   });

@@ -1,7 +1,6 @@
 // Fragt die Anzeigen passend zu den Filtern bei Supabase ab.
 import { supabase } from './supabase';
-import { Filter, ENERGIEKLASSEN, entfernungM } from './filter';
-import { Bezirk } from './filter';
+import { Bezirk, Filter, ENERGIEKLASSEN, entfernungM } from './filter';
 import { bezirkeAusdehnung, bezirksgrenzeLaden, inBezirken } from './bezirke';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,19 +20,12 @@ export function linienUmkreisM(eingabe?: string) {
   return Math.min(Math.max(parseInt(eingabe || '') || 600, 50), 5000);
 }
 
-// Prüft einmal, ob die Spalten aus supabase/verlauf/anzeigen_filter.sql schon existieren.
-// Ohne sie blendet die Seite die Filter für Ausstattung, Baujahr usw. aus.
-export async function erweiterteFelderVorhanden(): Promise<boolean> {
-  const { error } = await supabase.from('anzeigen').select('warmmiete, objektart, erstellt_am').limit(1);
-  return !error;
-}
-
 function zahl(eingabe: string) {
   const n = parseFloat(eingabe.replace(',', '.'));
   return Number.isFinite(n) ? n : null;
 }
 
-export async function anzeigenSuchen(f: Filter, erweitert: boolean): Promise<Suchergebnis> {
+export async function anzeigenSuchen(f: Filter): Promise<Suchergebnis> {
   const linienIds = f.linien.map(l => l.linie_id);
   const radius = linienUmkreisM(f.linienUmkreisM);
 
@@ -43,18 +35,17 @@ export async function anzeigenSuchen(f: Filter, erweitert: boolean): Promise<Suc
     ? supabase.rpc('anzeigen_nahe_linien', { linien_ids: linienIds, radius_m: radius }).select('*') as unknown as ReturnType<ReturnType<typeof supabase.from>['select']>
     : supabase.from('anzeigen').select('*');
 
-  query = query.eq('transaktions_typ', f.transaktion).eq('immobilien_typ', f.immobilientyp);
+  // Nur öffentliche Inserate; eigene pausierte oder gesperrte (und für Moderatoren alle) ließe die Datenbank sonst durch
+  query = query.eq('status', 'aktiv').eq('transaktions_typ', f.transaktion).eq('immobilien_typ', f.immobilientyp);
 
-  const preisSpalte = erweitert && f.transaktion !== 'kaufen' && f.preisArt === 'warm' ? 'warmmiete' : 'preis';
+  const preisSpalte = f.transaktion !== 'kaufen' && f.preisArt === 'warm' ? 'warmmiete' : 'preis';
   const bereiche: [string, string, string][] = [
     [preisSpalte, f.preisMin, f.preisMax],
     ['zimmer', f.zimmerMin, f.zimmerMax],
     ['quadratmeter', f.flaecheMin, f.flaecheMax],
+    ['baujahr', f.baujahrMin, f.baujahrMax],
   ];
-  if (erweitert) {
-    bereiche.push(['baujahr', f.baujahrMin, f.baujahrMax]);
-    if (f.immobilientyp === 'wohnung') bereiche.push(['etage', f.etageMin, f.etageMax]);
-  }
+  if (f.immobilientyp === 'wohnung') bereiche.push(['etage', f.etageMin, f.etageMax]);
   for (const [spalte, min, max] of bereiche) {
     const von = zahl(min), bis = zahl(max);
     if (von !== null) query = query.gte(spalte, von);
@@ -94,18 +85,16 @@ export async function anzeigenSuchen(f: Filter, erweitert: boolean): Promise<Suc
       .gte('koordinate_lon', minLon).lte('koordinate_lon', maxLon);
   }
 
-  if (erweitert) {
-    if (f.objektarten.length > 0) query = query.in('objektart', f.objektarten);
-    for (const spalte of f.ausstattung) query = query.eq(spalte, true);
-    if (f.bezugsfreiBis) query = query.or(`verfuegbar_ab.is.null,verfuegbar_ab.lte.${f.bezugsfreiBis}`);
-    if (f.energieMindestens) {
-      query = query.in('energieeffizienzklasse', ENERGIEKLASSEN.slice(0, ENERGIEKLASSEN.indexOf(f.energieMindestens) + 1));
-    }
-    if (f.transaktion !== 'kaufen' && f.wbs !== 'egal') query = query.eq('wbs_erforderlich', f.wbs === 'nur');
+  if (f.objektarten.length > 0) query = query.in('objektart', f.objektarten);
+  for (const spalte of f.ausstattung) query = query.eq(spalte, true);
+  if (f.bezugsfreiBis) query = query.or(`verfuegbar_ab.is.null,verfuegbar_ab.lte.${f.bezugsfreiBis}`);
+  if (f.energieMindestens) {
+    query = query.in('energieeffizienzklasse', ENERGIEKLASSEN.slice(0, ENERGIEKLASSEN.indexOf(f.energieMindestens) + 1));
   }
+  if (f.transaktion !== 'kaufen' && f.wbs !== 'egal') query = query.eq('wbs_erforderlich', f.wbs === 'nur');
 
   const sortierung: Record<string, [string, boolean]> = {
-    neueste: [erweitert ? 'erstellt_am' : 'preis', !erweitert],
+    neueste: ['erstellt_am', false],
     preis_auf: [preisSpalte, true],
     preis_ab: [preisSpalte, false],
     flaeche_ab: ['quadratmeter', false],

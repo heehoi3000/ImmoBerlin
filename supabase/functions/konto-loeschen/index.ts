@@ -1,4 +1,4 @@
-// Löscht das Konto des angemeldeten Nutzers samt Fotos (DSGVO Art. 17).
+// Löscht das Konto des angemeldeten Nutzers samt Fotos und Dokumenten (DSGVO Art. 17), beide im Ordner <nutzer-id>/.
 // Inserate und empfangene Nachrichten fallen per Fremdschlüssel weg, Meldungen verlieren den Bezug zum Konto.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 

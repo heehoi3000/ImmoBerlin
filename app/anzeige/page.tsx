@@ -256,7 +256,7 @@ export default function AnzeigeSeite() {
           {/* Karte links, Einkaufen und Alltag rechts daneben (auf dem Handy untereinander) */}
           <div className="grid md:grid-cols-[1fr_300px] gap-6">
             <section className="h-80 md:h-auto md:min-h-80 rounded-2xl overflow-hidden border border-zinc-200 relative z-0" aria-label="Karte mit Lage, Haltestellen und Grundversorgung">
-              <Map anzeigen={[a]} haltestellen={[]} naechste={{}} linienUmkreisM={0}
+              <Map anzeigen={[a]} haltestellen={[]} linienUmkreisM={0}
                 ortKreis={stationen?.length ? null : { lat: a.koordinate_lat, lon: a.koordinate_lon, m: 0 }} bezirke={[]} fokus={null}
                 stationen={stationen ?? undefined} stationAuswahl={station}
                 orte={orte && orteSichtbar.size ? orte.filter(o => orteSichtbar.has(o.art)) : undefined} />

@@ -18,7 +18,6 @@ export interface TauschWunsch {
 export interface TauschPartner { id: string; gegenseitig: boolean }
 
 export const MAX_WUNSCH_LINIEN = 5;
-export const LEERER_WUNSCH: TauschWunsch = { linien: [], umkreis_m: 600, ort: null, max_warmmiete: null, min_zimmer: null, min_qm: null };
 
 export const wunschLinie = (l: Linie): WunschLinie => ({ typ: l.typ, nummer: l.nummer, betreiber: l.betreiber, endpunkte: l.endpunkte });
 

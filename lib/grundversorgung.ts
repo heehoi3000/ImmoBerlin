@@ -7,7 +7,7 @@ export type Art = 'supermarkt' | 'drogerie' | 'baeckerei' | 'apotheke' | 'hausar
 
 export interface Ort { art: Art; name: string; lat: number; lon: number; entfernung_m: number }
 
-export type Gruppe = 'alltag' | 'familie';
+type Gruppe = 'alltag' | 'familie';
 
 export const GRUPPEN: { gruppe: Gruppe; name: string }[] = [
   { gruppe: 'alltag', name: 'Einkaufen und Erledigungen' },

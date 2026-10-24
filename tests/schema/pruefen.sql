@@ -80,6 +80,10 @@ begin
   select count(*), max(name) filter (where art = 'supermarkt') into n, naechster from public.grundversorgung_in_der_naehe(52.53, 13.40, 1500);
   if n <> 2 or naechster <> 'Nah' then raise exception 'grundversorgung_in_der_naehe liefert % Orte, nächster %', n, naechster; end if;
   raise notice 'Grundversorgung in der Nähe funktioniert';
+  -- alle Orte im Umkreis (0008), nächste zuerst
+  select count(*), string_agg(name, ',') into n, naechster from public.grundversorgung_im_umkreis(52.53, 13.40, 1500);
+  if n <> 3 or naechster <> 'Nah,Kita Sonnenschein,Fern' then raise exception 'grundversorgung_im_umkreis liefert % Orte: %', n, naechster; end if;
+  raise notice 'Grundversorgung im Umkreis funktioniert';
 end $$;
 rollback;
 

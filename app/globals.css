@@ -12,6 +12,14 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Symbole der Grundversorgung auf der Karte der Inseratsseite */
+.ort-symbol {
+  display: flex; align-items: center; justify-content: center;
+  background: #111; color: #fff; border: 2px solid #fff; border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.3); cursor: pointer;
+}
+.ort-symbol:hover, .ort-symbol:focus-visible { background: #3f3f46; outline: 2px solid #111; }
+
 /* Preis-Pins und Gruppen auf der Karte */
 .leaflet-container { font-family: inherit !important; }
 .preis-pin { background: none; border: none; }

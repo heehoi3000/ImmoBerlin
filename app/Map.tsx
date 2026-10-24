@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
-import { MapContainer, Popup, Circle, CircleMarker, Rectangle, GeoJSON, Polygon, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, Popup, Circle, CircleMarker, Rectangle, GeoJSON, Polygon, Polyline, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import '@maplibre/maplibre-gl-leaflet';
 import 'leaflet.markercluster';
@@ -14,7 +14,8 @@ import { bezirkeAusdehnung } from '../lib/bezirke';
 import { Anzeige, Haltestelle, NaechsteHaltestelle } from '../lib/suche';
 import { BASIS } from '../lib/basis';
 import { Station } from '../lib/oepnvNaehe';
-import { Ort, artFarbe, artName } from '../lib/grundversorgung';
+import { Art, Ort, UMKREIS_M, artName, ortBeschriftung } from '../lib/grundversorgung';
+import { symbolSvg } from '../lib/symbole';
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -167,7 +168,18 @@ function StationenAnzeige({ stationen, auswahl, von }: { stationen: Station[]; a
   );
 }
 
-// Inseratsseite: Orte der Grundversorgung als farbige Punkte; beim Einblenden passt sich die Karte an
+// Inseratsseite: eingeblendete Orte der Grundversorgung als Symbole, Name beim Überfahren (Tooltip) und
+// Antippen (Popup); der gestrichelte Kreis zeigt den Umkreis. Beim Ein- und Ausblenden passt sich die Karte an.
+const symbolIcons = new globalThis.Map<Art, L.DivIcon>();
+function symbolIcon(art: Art) {
+  let icon = symbolIcons.get(art);
+  if (!icon) {
+    icon = L.divIcon({ html: symbolSvg(art, 14), className: 'ort-symbol', iconSize: [26, 26], iconAnchor: [13, 13] });
+    symbolIcons.set(art, icon);
+  }
+  return icon;
+}
+
 function OrteAnzeige({ orte, von }: { orte: Ort[]; von: { lat: number; lon: number } }) {
   const map = useMap();
   useEffect(() => {
@@ -176,11 +188,14 @@ function OrteAnzeige({ orte, von }: { orte: Ort[]; von: { lat: number; lon: numb
   }, [map, orte, von.lat, von.lon]);
   return (
     <>
+      <Circle center={[von.lat, von.lon]} radius={UMKREIS_M} interactive={false}
+        pathOptions={{ color: '#000', weight: 1.5, opacity: 0.5, dashArray: '4 6', fill: false }} />
       {orte.map(o => (
-        <CircleMarker key={`ort-${o.art}`} center={[o.lat, o.lon]} radius={6}
-          pathOptions={{ color: '#fff', weight: 2, fillColor: artFarbe(o.art), fillOpacity: 1 }}>
-          <Tooltip>{artName(o.art)}{o.name ? `: ${o.name}` : ''} · {o.entfernung_m} m</Tooltip>
-        </CircleMarker>
+        <Marker key={`ort-${o.art}-${o.lat}-${o.lon}`} position={[o.lat, o.lon]} icon={symbolIcon(o.art)}
+          eventHandlers={{ add: e => e.target.getElement()?.setAttribute('aria-label', `${artName(o.art)}: ${ortBeschriftung(o)}`) }}>
+          <Tooltip direction="top" offset={[0, -12]}>{ortBeschriftung(o)}</Tooltip>
+          <Popup><strong>{artName(o.art)}</strong><br />{ortBeschriftung(o)}</Popup>
+        </Marker>
       ))}
     </>
   );

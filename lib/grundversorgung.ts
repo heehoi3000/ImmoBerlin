@@ -1,5 +1,5 @@
-// Grundversorgung in der Nähe eines Inserats (RPC grundversorgung_in_der_naehe,
-// supabase/migrations/0005/0007): je Art der nächste Ort, Daten aus OpenStreetMap.
+// Grundversorgung in der Nähe eines Inserats (RPC grundversorgung_im_umkreis,
+// supabase/migrations/0008): alle Orte im Umkreis, nächste zuerst, Daten aus OpenStreetMap.
 import { supabase } from './supabase';
 
 export type Art = 'supermarkt' | 'drogerie' | 'baeckerei' | 'apotheke' | 'hausarzt' | 'post' | 'geldautomat'
@@ -7,7 +7,6 @@ export type Art = 'supermarkt' | 'drogerie' | 'baeckerei' | 'apotheke' | 'hausar
 
 export interface Ort { art: Art; name: string; lat: number; lon: number; entfernung_m: number }
 
-// Reihenfolge der Anzeige, Bezeichnung und Farbe auf der Karte
 export type Gruppe = 'alltag' | 'familie';
 
 export const GRUPPEN: { gruppe: Gruppe; name: string }[] = [
@@ -15,26 +14,32 @@ export const GRUPPEN: { gruppe: Gruppe; name: string }[] = [
   { gruppe: 'familie', name: 'Kinder und Freizeit' },
 ];
 
-export const ARTEN: { art: Art; name: string; farbe: string; gruppe: Gruppe }[] = [
-  { art: 'supermarkt', name: 'Supermarkt', farbe: '#15803d', gruppe: 'alltag' },
-  { art: 'drogerie', name: 'Drogerie', farbe: '#be185d', gruppe: 'alltag' },
-  { art: 'baeckerei', name: 'Bäckerei', farbe: '#b45309', gruppe: 'alltag' },
-  { art: 'apotheke', name: 'Apotheke', farbe: '#b91c1c', gruppe: 'alltag' },
-  { art: 'hausarzt', name: 'Hausarzt', farbe: '#1d4ed8', gruppe: 'alltag' },
-  { art: 'post', name: 'Post und Pakete', farbe: '#0f766e', gruppe: 'alltag' },
-  { art: 'geldautomat', name: 'Geldautomat', farbe: '#4338ca', gruppe: 'alltag' },
-  { art: 'kita', name: 'Kita', farbe: '#c2410c', gruppe: 'familie' },
-  { art: 'schule', name: 'Schule', farbe: '#7e22ce', gruppe: 'familie' },
-  { art: 'park', name: 'Park', farbe: '#166534', gruppe: 'familie' },
+// Reihenfolge der Anzeige; ohneName steht auf der Karte, wenn ein Ort keinen Namen hat (Hausärzte immer)
+export const ARTEN: { art: Art; name: string; ohneName: string; gruppe: Gruppe }[] = [
+  { art: 'supermarkt', name: 'Supermarkt', ohneName: 'Supermarkt', gruppe: 'alltag' },
+  { art: 'drogerie', name: 'Drogerie', ohneName: 'Drogerie', gruppe: 'alltag' },
+  { art: 'baeckerei', name: 'Bäckerei', ohneName: 'Bäckerei', gruppe: 'alltag' },
+  { art: 'apotheke', name: 'Apotheke', ohneName: 'Apotheke', gruppe: 'alltag' },
+  { art: 'hausarzt', name: 'Hausarzt', ohneName: 'Hausarztpraxis', gruppe: 'alltag' },
+  { art: 'post', name: 'Post und Pakete', ohneName: 'Post', gruppe: 'alltag' },
+  { art: 'geldautomat', name: 'Geldautomat', ohneName: 'Geldautomat', gruppe: 'alltag' },
+  { art: 'kita', name: 'Kita', ohneName: 'Kita', gruppe: 'familie' },
+  { art: 'schule', name: 'Schule', ohneName: 'Schule', gruppe: 'familie' },
+  { art: 'park', name: 'Park', ohneName: 'Park', gruppe: 'familie' },
 ];
 
 export const UMKREIS_M = 1500;
 
 export const artName = (art: Art) => ARTEN.find(a => a.art === art)?.name ?? art;
-export const artFarbe = (art: Art) => ARTEN.find(a => a.art === art)?.farbe ?? '#3f3f46';
+
+// Text für Tooltip und Popup auf der Karte, z. B. „Rewe · 180 m“
+export function ortBeschriftung(o: Ort) {
+  const name = o.name || ARTEN.find(a => a.art === o.art)?.ohneName || o.art;
+  return `${name} · ${o.entfernung_m.toLocaleString('de-DE')} m`;
+}
 
 export async function grundversorgungLaden(lat: number, lon: number): Promise<Ort[]> {
-  const { data, error } = await supabase.rpc('grundversorgung_in_der_naehe', { p_lat: lat, p_lon: lon, p_radius_m: UMKREIS_M });
+  const { data, error } = await supabase.rpc('grundversorgung_im_umkreis', { p_lat: lat, p_lon: lon, p_radius_m: UMKREIS_M });
   if (error) throw error;
   return (data ?? []) as Ort[];
 }

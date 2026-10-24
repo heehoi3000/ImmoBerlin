@@ -116,3 +116,13 @@ test.describe('Tastatur', () => {
     await expect(melden).toBeFocused();
   });
 });
+
+test('Barrierefreiheit: Inserat mit eingeschalteten Kategorien der Grundversorgung', async ({ page }) => {
+  await attrappeEinrichten(page, STANDARD_DATEN);
+  await page.goto('anzeige/?id=a1');
+  const bereich = page.getByRole('region', { name: 'Einkaufen und Alltag' });
+  await bereich.getByRole('button', { name: /^Supermarkt/ }).click();
+  await bereich.getByRole('button', { name: /^Kita/ }).click();
+  await expect(page.locator('.ort-symbol')).toHaveCount(3);
+  await pruefen(page);
+});

@@ -1,7 +1,7 @@
 "use client";
 // Grundversorgung in der Nähe eines Inserats: je Art der nächste Ort mit Entfernung (Luftlinie).
 // Ein Knopf blendet die Orte auf der Karte darunter ein.
-import { ARTEN, Ort, UMKREIS_M } from '../lib/grundversorgung';
+import { ARTEN, GRUPPEN, Ort, UMKREIS_M } from '../lib/grundversorgung';
 
 export default function Grundversorgung({ orte, fehler, aufKarte, onAufKarte }: {
   orte: Ort[] | null; fehler?: boolean; aufKarte: boolean; onAufKarte: (an: boolean) => void;
@@ -22,30 +22,33 @@ export default function Grundversorgung({ orte, fehler, aufKarte, onAufKarte }: 
       </div>
       {orte === null && !fehler && <p className="text-sm text-zinc-500 mt-3" role="status">Wird geladen…</p>}
       {fehler && <p className="text-sm text-zinc-500 mt-3" role="status">Die Angaben konnten nicht geladen werden.</p>}
-      {orte && (
-        <dl className="mt-3 grid sm:grid-cols-2 gap-x-6">
-          {ARTEN.map(({ art, name, farbe }) => {
-            const o = orte.find(x => x.art === art);
-            return (
-              <div key={art} className="flex items-baseline justify-between gap-3 py-2 border-b border-zinc-100 text-sm">
-                <dt className="flex items-center gap-2 text-zinc-600">
-                  <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: farbe }} />
-                  {name}
-                </dt>
-                <dd className="text-right">
-                  {o ? (
-                    <>
-                      {o.name && <span className="font-semibold">{o.name}, </span>}
-                      <span className="tabular-nums">{o.entfernung_m.toLocaleString('de-DE')} m</span>
-                    </>
-                  ) : <span className="text-zinc-500">nicht im Umkreis von {(UMKREIS_M / 1000).toLocaleString('de-DE')} km</span>}
-                </dd>
-              </div>
-            );
-          })}
-        </dl>
-      )}
-      <p className="text-[11px] text-zinc-500 mt-3">Daten: © OpenStreetMap-Mitwirkende (ODbL), nicht überall vollständig. Hausarzt: nur Praxen mit Angabe Allgemeinmedizin, ohne Namen.</p>
+      {orte && GRUPPEN.map(({ gruppe, name: gruppenName }) => (
+        <div key={gruppe} className="mt-3">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-zinc-600">{gruppenName}</h3>
+          <dl className="mt-1 grid sm:grid-cols-2 gap-x-6">
+            {ARTEN.filter(a => a.gruppe === gruppe).map(({ art, name, farbe }) => {
+              const o = orte.find(x => x.art === art);
+              return (
+                <div key={art} className="flex items-baseline justify-between gap-3 py-2 border-b border-zinc-100 text-sm">
+                  <dt className="flex items-center gap-2 text-zinc-600">
+                    <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: farbe }} />
+                    {name}
+                  </dt>
+                  <dd className="text-right">
+                    {o ? (
+                      <>
+                        {o.name && <span className="font-semibold">{o.name}, </span>}
+                        <span className="tabular-nums">{o.entfernung_m.toLocaleString('de-DE')} m</span>
+                      </>
+                    ) : <span className="text-zinc-500">nicht im Umkreis von {(UMKREIS_M / 1000).toLocaleString('de-DE')} km</span>}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        </div>
+      ))}
+      <p className="text-[11px] text-zinc-500 mt-3">Daten: © OpenStreetMap-Mitwirkende (ODbL), nicht überall vollständig. Hausarzt: nur Praxen mit Angabe Allgemeinmedizin, ohne Namen. Schulen aller Art, ohne Angabe zu Schulform oder Einzugsgebiet.</p>
     </section>
   );
 }

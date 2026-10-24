@@ -75,9 +75,10 @@ begin
   insert into public.grundversorgung (osm_id, art, name, geom) values
     ('n1', 'supermarkt', 'Nah', 'SRID=4326;POINT(13.401 52.53)'),
     ('n2', 'supermarkt', 'Fern', 'SRID=4326;POINT(13.41 52.53)'),
-    ('n3', 'apotheke', 'Zu weit', 'SRID=4326;POINT(13.5 52.53)');
-  select count(*), max(name) into n, naechster from public.grundversorgung_in_der_naehe(52.53, 13.40, 1500);
-  if n <> 1 or naechster <> 'Nah' then raise exception 'grundversorgung_in_der_naehe liefert % Orte, nächster %', n, naechster; end if;
+    ('n3', 'apotheke', 'Zu weit', 'SRID=4326;POINT(13.5 52.53)'),
+    ('n4', 'kita', 'Kita Sonnenschein', 'SRID=4326;POINT(13.402 52.53)');
+  select count(*), max(name) filter (where art = 'supermarkt') into n, naechster from public.grundversorgung_in_der_naehe(52.53, 13.40, 1500);
+  if n <> 2 or naechster <> 'Nah' then raise exception 'grundversorgung_in_der_naehe liefert % Orte, nächster %', n, naechster; end if;
   raise notice 'Grundversorgung in der Nähe funktioniert';
 end $$;
 rollback;

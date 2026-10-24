@@ -1,0 +1,41 @@
+name: Datenbank-Migration einspielen
+
+# Spielt eine Datei aus supabase/migrations in die Datenbank ein (Secret SUPABASE_DB_URL). Nur von Hand
+# und nur für Migrationen, die mehrfach ausführbar sind; für Änderungen, die der Supabase-Zugang von Claude
+# nicht ohne Rückfrage ausführt (z. B. drop constraint).
+on:
+  workflow_dispatch:
+    inputs:
+      datei:
+        description: 'Dateiname in supabase/migrations, z. B. 0007_grundversorgung_familie.sql'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migration
+  cancel-in-progress: false
+
+jobs:
+  einspielen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: psql bereitstellen
+        run: |
+          als_root() { if command -v sudo >/dev/null; then sudo "$@"; else "$@"; fi; }
+          command -v psql >/dev/null || { als_root apt-get update -q && als_root apt-get install -y -q postgresql-client; }
+      - name: Migration einspielen
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DATEI: ${{ inputs.datei }}
+        run: |
+          case "$DATEI" in
+            */*|..*|'') echo "Nur ein Dateiname aus supabase/migrations" >&2; exit 1 ;;
+          esac
+          test -f "supabase/migrations/$DATEI" || { echo "supabase/migrations/$DATEI fehlt" >&2; exit 1; }
+          echo "Spiele $DATEI ein" | tee -a "$GITHUB_STEP_SUMMARY"
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction -f "supabase/migrations/$DATEI"

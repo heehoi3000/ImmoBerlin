@@ -28,6 +28,22 @@ const objektartName: Record<string, string> = Object.fromEntries([...OBJEKTARTEN
 const wbsArtName: Record<string, string> = Object.fromEntries(WBS_ARTEN.map(o => [o.wert, o.name]));
 const AUSWEIS: Record<string, string> = { verbrauch: 'Verbrauchsausweis', bedarf: 'Bedarfsausweis', nicht_erforderlich: 'Nicht erforderlich' };
 
+// Farben der Effizienzklassen wie auf dem Energieausweis (A+ dunkelgrün bis H rot); Text so gewählt, dass er lesbar bleibt
+const KLASSEN_FARBE: Record<string, [string, string]> = {
+  'A+': ['#007a3d', '#fff'], A: ['#2e9e44', '#000'], B: ['#8cc63f', '#000'], C: ['#c8d82e', '#000'], D: ['#fff200', '#000'],
+  E: ['#fcb814', '#000'], F: ['#f37021', '#000'], G: ['#ed1c24', '#000'], H: ['#b5121b', '#fff'],
+};
+
+function Effizienzklasse({ klasse }: { klasse: string }) {
+  const [hintergrund, text] = KLASSEN_FARBE[klasse] ?? ['#e4e4e7', '#000'];
+  return (
+    <span className="inline-flex items-center justify-center min-w-9 h-6 pl-2 pr-3 text-xs font-extrabold"
+      style={{ background: hintergrund, color: text, clipPath: 'polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)' }}>
+      {klasse}
+    </span>
+  );
+}
+
 function Zeile({ name, wert }: { name: string; wert: React.ReactNode }) {
   if (wert === null || wert === undefined || wert === '') return null;
   return (
@@ -156,8 +172,6 @@ export default function AnzeigeSeite() {
         <div className="flex flex-col gap-6">
           <div>
             <div className="flex flex-wrap gap-2 mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wide px-2 py-1 rounded-full bg-black text-white">{tausch ? 'Tausch' : miete ? 'Miete' : 'Kauf'}</span>
-              {a.objektart && <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">{objektartName[a.objektart]}</span>}
               {a.anbieter_typ && <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-zinc-100 text-zinc-700">{a.anbieter_typ === 'gewerblich' ? `Gewerblich${a.anbieter_name ? `: ${a.anbieter_name}` : ''}` : 'Privatanbieter'}</span>}
               {a.status !== 'aktiv' && <span className="text-[11px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-800">Nicht öffentlich ({a.status})</span>}
             </div>
@@ -208,22 +222,29 @@ export default function AnzeigeSeite() {
 
           <section className="bg-white border border-zinc-200 rounded-2xl p-5">
             <h2 className="font-bold mb-2">Gebäude und Energie</h2>
-            <div className="grid md:grid-cols-2 gap-x-8">
-              <div>
-                <Zeile name="Typ" wert={a.objektart && objektartName[a.objektart]} />
-                <Zeile name="Etage" wert={etage} />
-                <Zeile name="Baujahr" wert={a.baujahr} />
-                <Zeile name="Verfügbar ab" wert={!a.verfuegbar_ab || new Date(a.verfuegbar_ab) <= new Date() ? 'sofort' : new Date(a.verfuegbar_ab).toLocaleDateString('de-DE')} />
-                {miete && <Zeile name="WBS erforderlich" wert={a.wbs_erforderlich ? 'Ja' : 'Nein'} />}
-                {miete && a.wbs_erforderlich && <Zeile name="WBS-Art" wert={a.wbs_art ? wbsArtName[a.wbs_art] : 'ohne Angabe'} />}
-              </div>
-              <div>
-                <Zeile name="Energieausweis" wert={AUSWEIS[a.energieausweis_art]} />
-                <Zeile name="Energiekennwert" wert={a.energiekennwert && `${a.energiekennwert} kWh/(m²·a)`} />
-                <Zeile name="Energieträger" wert={a.energietraeger} />
-                <Zeile name="Effizienzklasse" wert={a.energieeffizienzklasse} />
-              </div>
-            </div>
+            {(() => {
+              // Angaben gleichmäßig auf zwei Spalten verteilen (leere fallen weg)
+              const zeilen: [string, React.ReactNode][] = ([
+                ['Typ', a.objektart && objektartName[a.objektart]],
+                ['Etage', etage],
+                ['Baujahr', a.baujahr],
+                ['Verfügbar ab', !a.verfuegbar_ab || new Date(a.verfuegbar_ab) <= new Date() ? 'sofort' : new Date(a.verfuegbar_ab).toLocaleDateString('de-DE')],
+                ['WBS erforderlich', miete ? (a.wbs_erforderlich ? 'Ja' : 'Nein') : null],
+                ['WBS-Art', miete && a.wbs_erforderlich ? (a.wbs_art ? wbsArtName[a.wbs_art] : 'ohne Angabe') : null],
+                ['Energieausweis', AUSWEIS[a.energieausweis_art]],
+                ['Energiekennwert', a.energiekennwert && `${a.energiekennwert} kWh/(m²·a)`],
+                ['Energieträger', a.energietraeger],
+                ['Effizienzklasse', a.energieeffizienzklasse && <Effizienzklasse klasse={a.energieeffizienzklasse} />],
+              ] as [string, React.ReactNode][]).filter(([, w]) => w !== null && w !== undefined && w !== '');
+              const haelfte = Math.ceil(zeilen.length / 2);
+              return (
+                <div className="grid md:grid-cols-2 gap-x-8">
+                  {[zeilen.slice(0, haelfte), zeilen.slice(haelfte)].map((spalte, i) => (
+                    <div key={i}>{spalte.map(([n, w]) => <Zeile key={n} name={n} wert={w} />)}</div>
+                  ))}
+                </div>
+              );
+            })()}
           </section>
 
           <OepnvNaehe stationen={stationen} auswahl={station} onAuswahl={setStation} fehler={stationenFehler}
@@ -247,8 +268,6 @@ export default function AnzeigeSeite() {
 
         <aside className="lg:sticky lg:top-24 flex flex-col gap-3">
           <div className="bg-white border border-zinc-200 rounded-2xl p-5 flex flex-col gap-3">
-            <div className="text-2xl font-extrabold">{euro.format(Number(miete && a.warmmiete ? a.warmmiete : a.preis))}</div>
-            <div className="text-xs text-zinc-500 -mt-2">{miete && a.warmmiete ? 'Warmmiete pro Monat' : miete ? 'Kaltmiete pro Monat' : 'Kaufpreis'}</div>
             <button onClick={() => umschalten(a.id)} className={`h-11 rounded-lg border text-sm font-bold transition ${gemerkt(a.id) ? 'border-red-700 text-red-700 bg-red-50' : 'border-zinc-200 hover:border-black'}`}>
               {gemerkt(a.id) ? '♥ Gemerkt' : '♡ Merken'}
             </button>

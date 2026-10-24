@@ -165,7 +165,8 @@ export function anzeige(id: string, teil: Zeile = {}): Zeile {
 export const STANDARD_DATEN: Daten = {
   anzeigen: [
     anzeige('a1', { titel: 'Altbau an der U8', preis: 750, nebenkosten: 250, kaution: 2250, objektart: 'etagenwohnung',
-      wbs_erforderlich: true, wbs_art: 'wbs_160' }),
+      wbs_erforderlich: true, wbs_art: 'wbs_160', baujahr: 1905, etage: 3, energieausweis_art: 'verbrauch',
+      energiekennwert: 110, energietraeger: 'Fernwärme', energieeffizienzklasse: 'D' }),
     anzeige('a2', { titel: 'Neubau mit Balkon', preis: 1200, koordinate_lat: 52.55 }),
     anzeige('a3', { titel: 'Kleine Wohnung', preis: 500, zimmer: 1, koordinate_lat: 52.50 }),
   ],

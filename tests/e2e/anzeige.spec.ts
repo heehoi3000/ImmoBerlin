@@ -156,6 +156,26 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     await expect(gebaeude).toContainText('TypEtagenwohnung');
     await expect(gebaeude).toContainText('WBS erforderlichJa');
     await expect(gebaeude).toContainText('WBS-ArtWBS 160');
+    // 10 Angaben, je 5 pro Spalte; Effizienzklasse als farbiges Schild
+    const spalten = gebaeude.locator('div.grid > div');
+    await expect(spalten.nth(0).locator('> div')).toHaveCount(5);
+    await expect(spalten.nth(1).locator('> div')).toHaveCount(5);
+    await expect(gebaeude.getByText('D', { exact: true })).toHaveCSS('background-color', 'rgb(255, 242, 0)');
+    // keine Schilder „Miete“/Typ unter den Fotos, kein Preis über „Merken“
+    await expect(page.getByText('Miete', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Warmmiete pro Monat')).toHaveCount(0);
+  });
+
+  test('Haltestellen auf der Karte als Verkehrssymbol, Name beim Überfahren', async ({ page }) => {
+    await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('anzeige/?id=a1');
+    const karte = page.getByRole('region', { name: /^Karte/ });
+    await expect(karte.locator('.station-symbol')).toHaveCount(3);
+    await expect(karte.locator('.station-symbol.gewaehlt')).toHaveCount(1);
+    // Name erscheint erst beim Überfahren bzw. per Tastatur, nicht dauerhaft
+    await expect(karte.locator('.leaflet-tooltip', { hasText: 'Wolliner Str.' })).toHaveCount(0);
+    await karte.getByRole('button', { name: 'Gewählte Haltestelle Wolliner Str. · 150 m' }).focus();
+    await expect(karte.locator('.leaflet-tooltip', { hasText: 'Wolliner Str. · 150 m' })).toBeVisible();
   });
 
   test('unbekanntes Inserat', async ({ page }) => {

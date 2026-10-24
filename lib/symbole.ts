@@ -19,3 +19,22 @@ const PFADE: Record<Art, string> = {
 export function symbolSvg(art: Art, groesse = 16) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${groesse}" height="${groesse}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${PFADE[art]}</svg>`;
 }
+
+// Haltestellen auf der Karte: Symbol nach dem wichtigsten Verkehrsmittel der Station (Schiene vor Tram vor Bus)
+const VERKEHR: Record<string, string> = {
+  bahn: '<rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14"/><path d="M9 14h.01M15 14h.01"/><path d="M8 21l2-4M16 21l-2-4"/>',
+  tram: '<rect x="6" y="6" width="12" height="11" rx="2"/><path d="M6 12h12"/><path d="M10 3h4M12 3v3"/><path d="M9 21l1.5-4M15 21l-1.5-4"/>',
+  bus: '<rect x="4" y="3" width="16" height="15" rx="3"/><path d="M4 11h16"/><path d="M8 15h.01M16 15h.01"/><path d="M7 18v3M17 18v3"/>',
+  faehre: '<path d="M3 17l2 4h14l2-4z"/><path d="M6 17V9h12v8"/><path d="M12 9V4"/><path d="M2 21c2 0 2-1 4-1s2 1 4 1 2-1 4-1 2 1 4 1 2-1 4-1"/>',
+};
+
+export function verkehrArt(typen: string[]) {
+  if (typen.some(t => ['sbahn', 'ubahn', 'regional', 'fern'].includes(t))) return 'bahn';
+  if (typen.includes('tram')) return 'tram';
+  if (typen.includes('faehre') && !typen.includes('bus')) return 'faehre';
+  return 'bus';
+}
+
+export function verkehrSvg(art: string, groesse = 16) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${groesse}" height="${groesse}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${VERKEHR[art] ?? VERKEHR.bus}</svg>`;
+}

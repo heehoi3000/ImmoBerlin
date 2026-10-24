@@ -15,7 +15,7 @@ import { Anzeige, Haltestelle, NaechsteHaltestelle } from '../lib/suche';
 import { BASIS } from '../lib/basis';
 import { Station } from '../lib/oepnvNaehe';
 import { Art, Ort, UMKREIS_M, artName, ortBeschriftung } from '../lib/grundversorgung';
-import { symbolSvg } from '../lib/symbole';
+import { symbolSvg, verkehrArt, verkehrSvg } from '../lib/symbole';
 
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -133,6 +133,15 @@ function Linienkorridore({ haltestellen, linien, umkreisM }: { haltestellen: Hal
 
 // Inseratsseite: Haltestellen in der Nähe, die gewählte (anfangs die nächste) hervorgehoben und mit
 // gestrichelter Luftlinie zum Inserat. Die Karte zeigt Inserat und gewählte Haltestelle zusammen.
+// Haltestellen-Symbol (Bahn, Tram, Bus, Fähre); die gewählte Haltestelle größer und schwarz
+function stationIcon(s: Station, gewaehlt: boolean) {
+  const g = gewaehlt ? 32 : 24;
+  return L.divIcon({
+    html: verkehrSvg(verkehrArt(s.linien.map(l => l.typ)), gewaehlt ? 18 : 13),
+    className: `station-symbol${gewaehlt ? ' gewaehlt' : ''}`, iconSize: [g, g], iconAnchor: [g / 2, g / 2],
+  });
+}
+
 function StationenAnzeige({ stationen, auswahl, von }: { stationen: Station[]; auswahl: number; von: { lat: number; lon: number } }) {
   const map = useMap();
   const ziel = stationen[auswahl];
@@ -150,18 +159,21 @@ function StationenAnzeige({ stationen, auswahl, von }: { stationen: Station[]; a
   return (
     <>
       {stationen.map((s, i) => i !== auswahl && (
-        <CircleMarker key={`station-${i}`} center={[s.lat, s.lon]} radius={5}
-          pathOptions={{ color: '#3f3f46', weight: 2, fillColor: '#fff', fillOpacity: 1 }}>
-          <Tooltip>{s.name} · {s.entfernung_m} m</Tooltip>
-        </CircleMarker>
+        <Marker key={`station-${s.lat}-${s.lon}`} position={[s.lat, s.lon]} icon={stationIcon(s, false)}
+          eventHandlers={{ add: e => e.target.getElement()?.setAttribute('aria-label', `Haltestelle ${s.name} · ${s.entfernung_m} m`) }}>
+          <Tooltip direction="top" offset={[0, -12]}>{s.name} · {s.entfernung_m} m</Tooltip>
+          <Popup><strong>{s.name}</strong><br />{s.entfernung_m} m · {s.linien.map(l => l.nummer).join(', ')}</Popup>
+        </Marker>
       ))}
       {ziel && (
         <>
           <Polyline positions={[[von.lat, von.lon], [ziel.lat, ziel.lon]]} interactive={false}
             pathOptions={{ color: '#000', weight: 3, opacity: 0.7, dashArray: '2 8', lineCap: 'round' }} />
-          <CircleMarker center={[ziel.lat, ziel.lon]} radius={8} pathOptions={{ color: '#fff', weight: 3, fillColor: '#000', fillOpacity: 1 }}>
-            <Tooltip permanent direction="right" offset={[10, 0]}>{ziel.name} · {ziel.entfernung_m} m</Tooltip>
-          </CircleMarker>
+          <Marker key={`ziel-${ziel.lat}-${ziel.lon}`} position={[ziel.lat, ziel.lon]} icon={stationIcon(ziel, true)} zIndexOffset={500}
+            eventHandlers={{ add: e => e.target.getElement()?.setAttribute('aria-label', `Gewählte Haltestelle ${ziel.name} · ${ziel.entfernung_m} m`) }}>
+            <Tooltip direction="top" offset={[0, -16]}>{ziel.name} · {ziel.entfernung_m} m</Tooltip>
+            <Popup><strong>{ziel.name}</strong><br />{ziel.entfernung_m} m · {ziel.linien.map(l => l.nummer).join(', ')}</Popup>
+          </Marker>
         </>
       )}
     </>

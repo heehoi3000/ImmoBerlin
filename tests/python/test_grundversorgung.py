@@ -28,6 +28,11 @@ class Grundversorgung(unittest.TestCase):
         self.assertIsNone(gv.art({'amenity': 'doctors', 'healthcare:speciality': 'dentist'}))
         self.assertIsNone(gv.art({'amenity': 'doctors'}))
         self.assertIsNone(gv.art({'shop': 'clothes'}))
+        self.assertEqual(gv.art({'amenity': 'kindergarten'}), 'kita')
+        self.assertEqual(gv.art({'amenity': 'school'}), 'schule')
+        self.assertEqual(gv.art({'leisure': 'playground'}), 'spielplatz')
+        self.assertEqual(gv.art({'leisure': 'park'}), 'park')
+        self.assertEqual(gv.name({'leisure': 'playground', 'name': 'Spielplatz Am Teich'}, 'spielplatz'), '')
 
     def test_csv(self):
         flaeche = {'type': 'Feature', 'geometry': {'type': 'Polygon', 'coordinates': [[[13.0, 52.0], [13.2, 52.0], [13.2, 52.2], [13.0, 52.0]]]},

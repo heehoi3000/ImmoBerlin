@@ -4,7 +4,7 @@ als CSV für die Tabelle grundversorgung (Workflow grundversorgung.yml).
 
   osm_id, art, name, lat, lon
 
-art: supermarkt, drogerie, baeckerei, apotheke, hausarzt, post, geldautomat.
+art: supermarkt, drogerie, baeckerei, apotheke, hausarzt, post, geldautomat, kita, schule, spielplatz, park.
 Wege und Flächen (z. B. ein Supermarkt als Gebäude) bekommen den Mittelpunkt ihrer Punkte. Nur Standardbibliothek.
 Aufruf: python3 grundversorgung_osm.py orte.geojsonseq grundversorgung.csv
 """
@@ -13,7 +13,9 @@ import json
 import sys
 
 SHOP = {'supermarket': 'supermarkt', 'chemist': 'drogerie', 'bakery': 'baeckerei'}
-AMENITY = {'pharmacy': 'apotheke', 'post_office': 'post', 'parcel_locker': 'post', 'atm': 'geldautomat'}
+AMENITY = {'pharmacy': 'apotheke', 'post_office': 'post', 'parcel_locker': 'post', 'atm': 'geldautomat',
+           'kindergarten': 'kita', 'school': 'schule'}
+LEISURE = {'playground': 'spielplatz', 'park': 'park'}
 
 
 def werte(text):
@@ -27,6 +29,8 @@ def art(p):
     a = p.get('amenity')
     if a in AMENITY:
         return AMENITY[a]
+    if p.get('leisure') in LEISURE:
+        return LEISURE[p['leisure']]
     if a == 'bank' and p.get('atm') == 'yes':
         return 'geldautomat'
     # Hausarzt: Praxis für Allgemeinmedizin; Fachärzte und Praxen ohne Fachangabe zählen nicht
@@ -38,6 +42,9 @@ def art(p):
 def name(p, a):
     # Praxisnamen sind meist Namen von Personen (DSGVO); für die Wohnungssuche reicht die Entfernung
     if a == 'hausarzt':
+        return ''
+    # Spielplätze haben selten einen Namen, der hilft; spart Platz in der Datenbank
+    if a == 'spielplatz':
         return ''
     n = p.get('name') or p.get('brand') or p.get('operator') or ''
     if not n and a == 'post' and p.get('amenity') == 'parcel_locker':

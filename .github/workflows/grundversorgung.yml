@@ -1,8 +1,9 @@
 name: Grundversorgung aktualisieren
 
 # Lädt einmal im Monat den OSM-Auszug Deutschland (Geofabrik), sucht Supermärkte, Drogerien, Bäckereien,
-# Apotheken, Hausarztpraxen, Post/Paketstationen und Geldautomaten heraus und ersetzt die Tabelle
-# grundversorgung in Supabase (scripts/umgebung/grundversorgung_osm.py, supabase/grundversorgung_laden.sql).
+# Apotheken, Hausarztpraxen, Post/Paketstationen, Geldautomaten, Kitas, Schulen, Spielplätze und Parks heraus
+# und ersetzt die Tabelle grundversorgung in Supabase (scripts/umgebung/grundversorgung_osm.py,
+# supabase/grundversorgung_laden.sql).
 # Ohne das Secret SUPABASE_DB_URL, mit probe=true oder bei einem Push auf einen claude/-Branch
 # (Probelauf nach Änderungen an diesem Workflow) bleibt die Datenbank unverändert.
 on:
@@ -47,16 +48,16 @@ jobs:
       - name: Orte heraussuchen
         run: |
           osmium tags-filter -o orte.osm.pbf deutschland.osm.pbf \
-            nwr/shop=supermarket,chemist,bakery nwr/amenity=pharmacy,doctors,post_office,parcel_locker,atm,bank \
-            nwr/healthcare=doctor
+            nwr/shop=supermarket,chemist,bakery nwr/amenity=pharmacy,doctors,post_office,parcel_locker,atm,bank,kindergarten,school \
+            nwr/healthcare=doctor nwr/leisure=playground,park
           rm deutschland.osm.pbf
           osmium export -f geojsonseq -a type,id -o orte.geojsonseq orte.osm.pbf
           python3 scripts/umgebung/grundversorgung_osm.py orte.geojsonseq grundversorgung.csv
           n=$(($(wc -l < grundversorgung.csv) - 1))
           echo "Orte: $n" | tee -a "$GITHUB_STEP_SUMMARY"
           python3 -c "import csv,collections,sys; print(collections.Counter(z['art'] for z in csv.DictReader(open(sys.argv[1], encoding='utf-8'))).most_common())" grundversorgung.csv | tee -a "$GITHUB_STEP_SUMMARY"
-          # Schutz vor einem kaputten Auszug (Deutschland hat allein über 15.000 Supermärkte)
-          if [ "$n" -lt 80000 ]; then echo "Zu wenige Daten, Abbruch ohne Änderung an der Datenbank" >&2; exit 1; fi
+          # Schutz vor einem kaputten Auszug (Oktober 2026: gut 150.000 Orte ohne Kitas, Schulen, Spielplätze und Parks)
+          if [ "$n" -lt 200000 ]; then echo "Zu wenige Daten, Abbruch ohne Änderung an der Datenbank" >&2; exit 1; fi
 
       - name: In Supabase laden
         env:

@@ -3,6 +3,7 @@
 // Ein Klick auf eine Station zeigt sie auf der Karte darunter.
 import { BARRIEREFREI_TEXT, Station, taktText } from '../lib/oepnvNaehe';
 import { LINIENTYPEN, endpunkteKurz } from '../lib/oepnv';
+import Klappbereich from './Klappbereich';
 
 const BARRIEREFREI_STIL = { ja: 'bg-emerald-50 text-emerald-800', eingeschraenkt: 'bg-amber-50 text-amber-800', nein: 'bg-red-50 text-red-800' };
 
@@ -24,8 +25,7 @@ export default function OepnvNaehe({ stationen, auswahl, onAuswahl, fehler, gewa
 }) {
   const gefiltert = !!gewaehlteLinien?.length;
   return (
-    <section className="bg-white border border-zinc-200 rounded-2xl p-5" aria-labelledby="oepnv-titel">
-      <h2 id="oepnv-titel" className="font-bold">ÖPNV in der Nähe</h2>
+    <Klappbereich id="oepnv" titel="ÖPNV in der Nähe">
       <p className="text-xs text-zinc-500 mt-0.5 mb-3">
         {gefiltert ? 'Nächste Haltestelle deiner gewählten Linie mit allen Linien, die dort fahren. ' : 'Nächste Haltestellen, jede mit mindestens einer weiteren Linie. '}
         Entfernung in Luftlinie, Takt werktags von 6 bis 20 Uhr
@@ -73,6 +73,6 @@ export default function OepnvNaehe({ stationen, auswahl, onAuswahl, fehler, gewa
       <p className="text-[11px] text-zinc-500 mt-3">
         Fahrplandaten: DELFI e.V. (CC BY 4.0). Barrierefreiheit: © OpenStreetMap-Mitwirkende (ODbL), nicht überall eingetragen.
       </p>
-    </section>
+    </Klappbereich>
   );
 }

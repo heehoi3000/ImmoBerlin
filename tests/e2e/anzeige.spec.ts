@@ -111,6 +111,25 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     expect(auf.rpc.find(r => r.name === 'grundversorgung_im_umkreis')?.body).toMatchObject({ p_lat: 52.53, p_lon: 13.40, p_radius_m: 500 });
   });
 
+  test('ÖPNV und Einkaufen und Alltag lassen sich einklappen, der Zustand bleibt gemerkt', async ({ page }) => {
+    await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('anzeige/?id=a1');
+    for (const titel of ['ÖPNV in der Nähe', 'Einkaufen und Alltag']) {
+      const bereich = page.getByRole('region', { name: titel });
+      const knopf = bereich.getByRole('button', { name: titel });
+      await expect(knopf).toHaveAttribute('aria-expanded', 'true');
+      await expect(bereich.getByRole('list').first()).toBeVisible();
+      await knopf.click();
+      await expect(knopf).toHaveAttribute('aria-expanded', 'false');
+      await expect(bereich.getByRole('list')).toHaveCount(0);
+    }
+    await page.reload();
+    const alltag = page.getByRole('region', { name: 'Einkaufen und Alltag' });
+    await expect(alltag.getByRole('button', { name: 'Einkaufen und Alltag' })).toHaveAttribute('aria-expanded', 'false');
+    await alltag.getByRole('button', { name: 'Einkaufen und Alltag' }).click();
+    await expect(alltag.getByRole('button', { name: /^Supermarkt/ })).toBeVisible();
+  });
+
   test('unbekanntes Inserat', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=gibt-es-nicht');

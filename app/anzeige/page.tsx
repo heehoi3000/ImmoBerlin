@@ -220,14 +220,18 @@ export default function AnzeigeSeite() {
           <OepnvNaehe stationen={stationen} auswahl={station} onAuswahl={setStation} fehler={stationenFehler}
             gewaehlteLinien={linienIds.length ? linienIds : undefined} />
 
-          <Grundversorgung orte={orte} fehler={orteFehler} sichtbar={orteSichtbar} onUmschalten={orteUmschalten} />
-
-          <section className="h-80 rounded-2xl overflow-hidden border border-zinc-200 relative z-0" aria-label="Karte mit Lage, Haltestellen und Grundversorgung">
-            <Map anzeigen={[a]} haltestellen={[]} naechste={{}} linienUmkreisM={0}
-              ortKreis={stationen?.length ? null : { lat: a.koordinate_lat, lon: a.koordinate_lon, m: 0 }} bezirke={[]} fokus={null}
-              stationen={stationen ?? undefined} stationAuswahl={station}
-              orte={orte && orteSichtbar.size ? orte.filter(o => orteSichtbar.has(o.art)) : undefined} />
-          </section>
+          {/* Karte links, Einkaufen und Alltag rechts daneben (auf dem Handy untereinander) */}
+          <div className="grid md:grid-cols-[1fr_300px] gap-6">
+            <section className="h-80 md:h-auto md:min-h-80 rounded-2xl overflow-hidden border border-zinc-200 relative z-0" aria-label="Karte mit Lage, Haltestellen und Grundversorgung">
+              <Map anzeigen={[a]} haltestellen={[]} naechste={{}} linienUmkreisM={0}
+                ortKreis={stationen?.length ? null : { lat: a.koordinate_lat, lon: a.koordinate_lon, m: 0 }} bezirke={[]} fokus={null}
+                stationen={stationen ?? undefined} stationAuswahl={station}
+                orte={orte && orteSichtbar.size ? orte.filter(o => orteSichtbar.has(o.art)) : undefined} />
+            </section>
+            <div className="self-start">
+              <Grundversorgung orte={orte} fehler={orteFehler} sichtbar={orteSichtbar} onUmschalten={orteUmschalten} />
+            </div>
+          </div>
         </div>
 
         <aside className="lg:sticky lg:top-24 flex flex-col gap-3">

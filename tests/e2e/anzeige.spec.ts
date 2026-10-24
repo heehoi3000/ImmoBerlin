@@ -112,7 +112,7 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     expect(auf.rpc.find(r => r.name === 'grundversorgung_im_umkreis')?.body).toMatchObject({ p_lat: 52.53, p_lon: 13.40, p_radius_m: 500 });
   });
 
-  test('ÖPNV startet ausgeklappt, Einkaufen und Alltag eingeklappt; der Zustand bleibt gemerkt', async ({ page }) => {
+  test('ÖPNV startet ausgeklappt, Einkaufen und Alltag eingeklappt, auch nach Umschalten und Neuladen', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=a1');
     const oepnv = page.getByRole('region', { name: 'ÖPNV in der Nähe' });
@@ -128,9 +128,10 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     await alltagKnopf.click();
     await expect(oepnv.getByRole('list')).toHaveCount(0);
     await expect(alltag.getByRole('button', { name: /^Supermarkt/ })).toBeVisible();
+    // nichts wird gemerkt: jedes Inserat startet wieder gleich
     await page.reload();
-    await expect(oepnvKnopf).toHaveAttribute('aria-expanded', 'false');
-    await expect(alltagKnopf).toHaveAttribute('aria-expanded', 'true');
+    await expect(oepnvKnopf).toHaveAttribute('aria-expanded', 'true');
+    await expect(alltagKnopf).toHaveAttribute('aria-expanded', 'false');
   });
 
   test('unbekanntes Inserat', async ({ page }) => {

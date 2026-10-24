@@ -63,6 +63,17 @@ export const STANDARD_FILTER: Filter = {
   sortierung: 'neueste',
 };
 
+// Art des Wohnberechtigungsscheins (Spalte anzeigen.wbs_art, Migration 0009); Prozentzahl = Einkommensgrenze
+export const WBS_ARTEN: { wert: string; name: string }[] = [
+  { wert: 'wbs', name: 'WBS (ohne nähere Angabe)' },
+  { wert: 'wbs_100', name: 'WBS 100' },
+  { wert: 'wbs_140', name: 'WBS 140' },
+  { wert: 'wbs_160', name: 'WBS 160' },
+  { wert: 'wbs_180', name: 'WBS 180' },
+  { wert: 'wbs_220', name: 'WBS 220' },
+  { wert: 'besonderer_bedarf', name: 'WBS mit besonderem Wohnbedarf' },
+];
+
 export const OBJEKTARTEN: Record<Filter['immobilientyp'], { wert: string; name: string }[]> = {
   wohnung: [
     { wert: 'etagenwohnung', name: 'Etagenwohnung' },

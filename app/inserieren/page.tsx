@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 import { useNutzer } from '../../lib/konto';
 import { Adresse, adressenSuchen } from '../../lib/adresse';
-import { AUSSTATTUNG, ENERGIEKLASSEN, OBJEKTARTEN } from '../../lib/filter';
+import { AUSSTATTUNG, ENERGIEKLASSEN, OBJEKTARTEN, WBS_ARTEN } from '../../lib/filter';
 import { MAX_EINGANG_MB, bildVorbereiten } from '../../lib/bilder';
 import { FOTO_BUCKET, fotoFallback, fotoUrl, kleinPfad } from '../../lib/fotos';
 import { Linie } from '../../lib/oepnv';
@@ -26,6 +26,7 @@ interface Formular {
   quadratmeter: string; zimmer: string; etage: string; baujahr: string; verfuegbar_ab: string;
   ausstattung: string[];
   wbs_erforderlich: boolean;
+  wbs_art: string;
   energieausweis_art: '' | 'verbrauch' | 'bedarf' | 'nicht_erforderlich';
   energiekennwert: string; energietraeger: string; energieeffizienzklasse: string;
   anbieter_typ: 'privat' | 'gewerblich';
@@ -41,7 +42,7 @@ const LEER: Formular = {
   transaktions_typ: 'mieten', immobilien_typ: 'wohnung', objektart: '', titel: '', beschreibung: '',
   preis: '', nebenkosten: '', warmmiete: '', kaution: '', provision: '',
   quadratmeter: '', zimmer: '', etage: '', baujahr: '', verfuegbar_ab: '',
-  ausstattung: [], wbs_erforderlich: false,
+  ausstattung: [], wbs_erforderlich: false, wbs_art: '',
   energieausweis_art: '', energiekennwert: '', energietraeger: '', energieeffizienzklasse: '',
   anbieter_typ: 'privat', anbieter_name: '', bilder: [],
 };
@@ -197,6 +198,7 @@ export default function Inserieren() {
       verfuegbar_ab: f.verfuegbar_ab || null,
       ...Object.fromEntries(AUSSTATTUNG.map(a => [a.wert, f.ausstattung.includes(a.wert)])),
       wbs_erforderlich: miete && f.wbs_erforderlich,
+      wbs_art: miete && f.wbs_erforderlich && f.wbs_art ? f.wbs_art : null,
       // Beim Tausch inseriert der Mieter: kein Energieausweis (Pflicht des Vermieters), immer privat
       energieausweis_art: tausch ? null : f.energieausweis_art,
       energiekennwert: tausch || f.energieausweis_art === 'nicht_erforderlich' ? null : zahl(f.energiekennwert),
@@ -359,6 +361,14 @@ export default function Inserieren() {
             <input type="checkbox" checked={f.wbs_erforderlich} onChange={(e) => setze({ wbs_erforderlich: e.target.checked })} className="w-4 h-4 accent-black" />
             Wohnberechtigungsschein (WBS) erforderlich
           </label>
+        )}
+        {miete && f.wbs_erforderlich && (
+          <Feld titel="Art des WBS">
+            <select value={f.wbs_art} onChange={(e) => setze({ wbs_art: e.target.value })} className={feld}>
+              <option value="">Bitte wählen (optional)</option>
+              {WBS_ARTEN.map(o => <option key={o.wert} value={o.wert}>{o.name}</option>)}
+            </select>
+          </Feld>
         )}
       </Karte>
 

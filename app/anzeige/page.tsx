@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { supabase } from '../../lib/supabase';
 import { Anzeige } from '../../lib/suche';
 import { fotoUrl } from '../../lib/fotos';
-import { AUSSTATTUNG, OBJEKTARTEN } from '../../lib/filter';
+import { AUSSTATTUNG, OBJEKTARTEN, WBS_ARTEN } from '../../lib/filter';
 import { useMerkliste } from '../../lib/merkliste';
 import { useNutzer } from '../../lib/konto';
 import { useMelden } from '../Meldedialog';
@@ -25,6 +25,7 @@ const Map = dynamic(() => import('../Map'), { ssr: false, loading: () => <div cl
 
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const objektartName: Record<string, string> = Object.fromEntries([...OBJEKTARTEN.wohnung, ...OBJEKTARTEN.haus].map(o => [o.wert, o.name]));
+const wbsArtName: Record<string, string> = Object.fromEntries(WBS_ARTEN.map(o => [o.wert, o.name]));
 const AUSWEIS: Record<string, string> = { verbrauch: 'Verbrauchsausweis', bedarf: 'Bedarfsausweis', nicht_erforderlich: 'Nicht erforderlich' };
 
 function Zeile({ name, wert }: { name: string; wert: React.ReactNode }) {
@@ -164,9 +165,11 @@ export default function AnzeigeSeite() {
             <p className="text-sm text-zinc-500 mt-1">{[a.adresse, [a.plz, a.ort].filter(Boolean).join(' '), a.bezirk].filter(Boolean).join(', ')}</p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          {/* Eckdaten unter den Bildern; Nebenkosten, Kaution und Provision als Zeile darunter */}
+          <div className={`grid gap-3 ${miete && a.warmmiete ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-3'}`}>
             {[
               [euro.format(Number(a.preis)), miete ? 'Kaltmiete' : 'Kaufpreis'],
+              ...(miete && a.warmmiete ? [[euro.format(Number(a.warmmiete)), 'Warmmiete']] : []),
               [`${a.quadratmeter} m²`, 'Wohnfläche'],
               [String(a.zimmer), 'Zimmer'],
             ].map(([w, n]) => (
@@ -176,6 +179,13 @@ export default function AnzeigeSeite() {
               </div>
             ))}
           </div>
+          {(() => {
+            const weitere = miete
+              ? [a.nebenkosten && `Nebenkosten ${euro.format(Number(a.nebenkosten))}`, a.kaution && `Kaution ${euro.format(Number(a.kaution))}`]
+              : [a.provision && `Käuferprovision: ${a.provision}`];
+            const text = weitere.filter(Boolean).join(' · ');
+            return text ? <p className="text-sm text-zinc-600 -mt-3">{text}</p> : null;
+          })()}
 
           {tausch && <TauschWunschAnzeige anzeigeId={a.id} eigenes={!!eigenes} />}
           {tausch && eigenes && <TauschPartnerListe anzeigeId={a.id} />}
@@ -196,25 +206,23 @@ export default function AnzeigeSeite() {
             </section>
           )}
 
-          <section className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white border border-zinc-200 rounded-2xl p-5">
-              <h2 className="font-bold mb-2">Kosten</h2>
-              <Zeile name={miete ? 'Kaltmiete' : 'Kaufpreis'} wert={euro.format(Number(a.preis))} />
-              {miete && <Zeile name="Nebenkosten" wert={a.nebenkosten && euro.format(Number(a.nebenkosten))} />}
-              {miete && <Zeile name="Warmmiete" wert={a.warmmiete && euro.format(Number(a.warmmiete))} />}
-              {miete && <Zeile name="Kaution" wert={a.kaution && euro.format(Number(a.kaution))} />}
-              {!miete && <Zeile name="Käuferprovision" wert={a.provision} />}
-              {miete && <Zeile name="WBS erforderlich" wert={a.wbs_erforderlich ? 'Ja' : 'Nein'} />}
-            </div>
-            <div className="bg-white border border-zinc-200 rounded-2xl p-5">
-              <h2 className="font-bold mb-2">Gebäude und Energie</h2>
-              <Zeile name="Etage" wert={etage} />
-              <Zeile name="Baujahr" wert={a.baujahr} />
-              <Zeile name="Verfügbar ab" wert={!a.verfuegbar_ab || new Date(a.verfuegbar_ab) <= new Date() ? 'sofort' : new Date(a.verfuegbar_ab).toLocaleDateString('de-DE')} />
-              <Zeile name="Energieausweis" wert={AUSWEIS[a.energieausweis_art]} />
-              <Zeile name="Energiekennwert" wert={a.energiekennwert && `${a.energiekennwert} kWh/(m²·a)`} />
-              <Zeile name="Energieträger" wert={a.energietraeger} />
-              <Zeile name="Effizienzklasse" wert={a.energieeffizienzklasse} />
+          <section className="bg-white border border-zinc-200 rounded-2xl p-5">
+            <h2 className="font-bold mb-2">Gebäude und Energie</h2>
+            <div className="grid md:grid-cols-2 gap-x-8">
+              <div>
+                <Zeile name="Typ" wert={a.objektart && objektartName[a.objektart]} />
+                <Zeile name="Etage" wert={etage} />
+                <Zeile name="Baujahr" wert={a.baujahr} />
+                <Zeile name="Verfügbar ab" wert={!a.verfuegbar_ab || new Date(a.verfuegbar_ab) <= new Date() ? 'sofort' : new Date(a.verfuegbar_ab).toLocaleDateString('de-DE')} />
+                {miete && <Zeile name="WBS erforderlich" wert={a.wbs_erforderlich ? 'Ja' : 'Nein'} />}
+                {miete && a.wbs_erforderlich && <Zeile name="WBS-Art" wert={a.wbs_art ? wbsArtName[a.wbs_art] : 'ohne Angabe'} />}
+              </div>
+              <div>
+                <Zeile name="Energieausweis" wert={AUSWEIS[a.energieausweis_art]} />
+                <Zeile name="Energiekennwert" wert={a.energiekennwert && `${a.energiekennwert} kWh/(m²·a)`} />
+                <Zeile name="Energieträger" wert={a.energietraeger} />
+                <Zeile name="Effizienzklasse" wert={a.energieeffizienzklasse} />
+              </div>
             </div>
           </section>
 

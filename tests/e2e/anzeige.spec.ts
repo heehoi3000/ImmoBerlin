@@ -144,6 +144,20 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     }
   });
 
+  test('Eckdaten mit Warmmiete, Gebäude und Energie mit Typ und WBS, kein Kostenblock', async ({ page }) => {
+    await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('anzeige/?id=a1');
+    for (const [wert, name] of [['750 €', 'Kaltmiete'], ['1.000 €', 'Warmmiete'], ['60 m²', 'Wohnfläche'], ['2', 'Zimmer']]) {
+      await expect(page.getByText(name, { exact: true }).first().locator('..')).toContainText(wert);
+    }
+    await expect(page.getByText('Nebenkosten 250 € · Kaution 2.250 €')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Kosten' })).toHaveCount(0);
+    const gebaeude = page.locator('section', { has: page.getByRole('heading', { name: 'Gebäude und Energie' }) });
+    await expect(gebaeude).toContainText('TypEtagenwohnung');
+    await expect(gebaeude).toContainText('WBS erforderlichJa');
+    await expect(gebaeude).toContainText('WBS-ArtWBS 160');
+  });
+
   test('unbekanntes Inserat', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=gibt-es-nicht');

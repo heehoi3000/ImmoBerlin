@@ -34,6 +34,9 @@ test.describe('Inserieren', () => {
     await page.getByLabel(/^Effizienzklasse/).selectOption('C');
     await page.getByLabel(/^Baujahr/).fill('1910');
     await page.getByRole('button', { name: 'Balkon/Terrasse' }).click();
+    await expect(page.getByLabel('Art des WBS')).toHaveCount(0);
+    await page.getByLabel('Wohnberechtigungsschein (WBS) erforderlich').check();
+    await page.getByLabel('Art des WBS').selectOption('WBS 140');
     await page.getByRole('button', { name: 'Inserat veröffentlichen' }).click();
 
     await expect(page.getByRole('heading', { name: 'Dein Inserat ist online' })).toBeVisible();
@@ -44,6 +47,7 @@ test.describe('Inserieren', () => {
       preis: 900, nebenkosten: 150, warmmiete: 1050, quadratmeter: 62.5, zimmer: 2,
       energieausweis_art: 'verbrauch', energiekennwert: 95, energieeffizienzklasse: 'C', baujahr: 1910,
       balkon_terrasse: true, aufzug: false, anbieter_typ: 'privat', provision: null,
+      wbs_erforderlich: true, wbs_art: 'wbs_140',
     });
     expect(auf.neueAnzeigen[0]).not.toHaveProperty('inserent_id');   // setzt die Datenbank selbst
     expect(NUTZER.id).toBeTruthy();

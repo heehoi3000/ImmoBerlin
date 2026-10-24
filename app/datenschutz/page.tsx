@@ -114,6 +114,11 @@ export default function Datenschutz() {
           <li>Nur falls ein Ort oder eine Gebietsgrenze nicht in unseren eigenen Dateien liegt: Photon (wie oben), Nominatim der OpenStreetMap Foundation (nominatim.openstreetmap.org) und die Overpass API (overpass-api.de)</li>
         </ul>
         <p>Rechtsgrundlage ist unser berechtigtes Interesse an einer funktionierenden Kartensuche (Art. 6 Abs. 1 lit. f DSGVO). Die Dienste speichern nach eigenen Angaben keine Profile über Nutzer.</p>
+        <p>
+          Routenplanung: Im Inserat kannst du eine Route zu einem Ziel planen. Dafür öffnet sich Google Maps (Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland) in einem neuen Fenster.
+          Erst mit diesem Klick übermittelt dein Browser die Lage der Wohnung, dein eingegebenes Ziel und deine IP-Adresse an Google; vorher fließen keine Daten an Google.
+          Ab dann gilt die Datenschutzerklärung von Google (policies.google.com/privacy), Google kann die Daten auch in den USA verarbeiten.
+        </p>
       </section>
 
       <section>

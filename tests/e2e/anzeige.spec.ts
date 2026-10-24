@@ -130,6 +130,20 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     await expect(alltag.getByRole('button', { name: /^Supermarkt/ })).toBeVisible();
   });
 
+  test('Route planen öffnet Google Maps ab der Wohnung mit ÖPNV, Auto oder zu Fuß', async ({ page }) => {
+    await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('anzeige/?id=a1');
+    const bereich = page.getByRole('region', { name: 'Route planen' });
+    await bereich.getByRole('textbox', { name: 'Ziel' }).fill('Alexanderplatz, Berlin');
+    for (const [name, modus] of [['ÖPNV', 'transit'], ['Auto', 'driving'], ['Zu Fuß', 'walking']]) {
+      const link = bereich.getByRole('link', { name: new RegExp(`^${name}`) });
+      const url = new URL(await link.getAttribute('href') ?? '');
+      expect(url.origin + url.pathname).toBe('https://www.google.com/maps/dir/');
+      expect(Object.fromEntries(url.searchParams)).toEqual({ api: '1', origin: '52.53,13.4', travelmode: modus, destination: 'Alexanderplatz, Berlin' });
+      await expect(link).toHaveAttribute('target', '_blank');
+    }
+  });
+
   test('unbekanntes Inserat', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=gibt-es-nicht');

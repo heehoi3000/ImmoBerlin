@@ -17,6 +17,7 @@ import Sperrdialog from '../Sperrdialog';
 import OepnvNaehe from '../OepnvNaehe';
 import { TauschPartnerListe, TauschWunschAnzeige } from '../Tausch';
 import Grundversorgung from '../Grundversorgung';
+import Routenplanung from '../Routenplanung';
 import { Art, Ort, grundversorgungLaden } from '../../lib/grundversorgung';
 import { Station, nurMitNeuenLinien, stationenDerLinien, stationenLaden } from '../../lib/oepnvNaehe';
 
@@ -232,6 +233,8 @@ export default function AnzeigeSeite() {
               <Grundversorgung orte={orte} fehler={orteFehler} sichtbar={orteSichtbar} onUmschalten={orteUmschalten} />
             </div>
           </div>
+
+          <Routenplanung lat={a.koordinate_lat} lon={a.koordinate_lon} />
         </div>
 
         <aside className="lg:sticky lg:top-24 flex flex-col gap-3">

@@ -22,7 +22,7 @@ export const ARTEN: { art: Art; name: string; ohneName: string; gruppe: Gruppe }
   { art: 'apotheke', name: 'Apotheke', ohneName: 'Apotheke', gruppe: 'alltag' },
   { art: 'hausarzt', name: 'Hausarzt', ohneName: 'Hausarztpraxis', gruppe: 'alltag' },
   { art: 'post', name: 'Post und Pakete', ohneName: 'Post', gruppe: 'alltag' },
-  { art: 'geldautomat', name: 'Geldautomat', ohneName: 'Geldautomat', gruppe: 'alltag' },
+  { art: 'geldautomat', name: 'Bank und Geldautomat', ohneName: 'Bank oder Geldautomat', gruppe: 'alltag' },
   { art: 'kita', name: 'Kita', ohneName: 'Kita', gruppe: 'familie' },
   { art: 'schule', name: 'Schule', ohneName: 'Schule', gruppe: 'familie' },
   { art: 'park', name: 'Park', ohneName: 'Park', gruppe: 'familie' },

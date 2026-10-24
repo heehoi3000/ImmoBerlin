@@ -23,7 +23,7 @@ class Grundversorgung(unittest.TestCase):
         self.assertEqual(gv.art({'amenity': 'pharmacy'}), 'apotheke')
         self.assertEqual(gv.art({'amenity': 'parcel_locker'}), 'post')
         self.assertEqual(gv.art({'amenity': 'bank', 'atm': 'yes'}), 'geldautomat')
-        self.assertIsNone(gv.art({'amenity': 'bank'}))
+        self.assertEqual(gv.art({'amenity': 'bank'}), 'geldautomat')
         self.assertEqual(gv.art({'amenity': 'doctors', 'healthcare:speciality': 'general;internal'}), 'hausarzt')
         self.assertIsNone(gv.art({'amenity': 'doctors', 'healthcare:speciality': 'dentist'}))
         self.assertIsNone(gv.art({'amenity': 'doctors'}))

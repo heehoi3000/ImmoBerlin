@@ -4,7 +4,7 @@ als CSV für die Tabelle grundversorgung (Workflow grundversorgung.yml).
 
   osm_id, art, name, lat, lon
 
-art: supermarkt, drogerie, baeckerei, apotheke, hausarzt, post, geldautomat, kita, schule, park.
+art (geldautomat = Bank oder Geldautomat): supermarkt, drogerie, baeckerei, apotheke, hausarzt, post, geldautomat, kita, schule, park.
 Spielplätze erst nach dem Umzug auf Hetzner (zu viele für den kostenlosen Supabase-Tarif).
 Wege und Flächen (z. B. ein Supermarkt als Gebäude) bekommen den Mittelpunkt ihrer Punkte. Nur Standardbibliothek.
 Aufruf: python3 grundversorgung_osm.py orte.geojsonseq grundversorgung.csv
@@ -14,7 +14,8 @@ import json
 import sys
 
 SHOP = {'supermarket': 'supermarkt', 'chemist': 'drogerie', 'bakery': 'baeckerei'}
-AMENITY = {'pharmacy': 'apotheke', 'post_office': 'post', 'parcel_locker': 'post', 'atm': 'geldautomat',
+AMENITY = {'pharmacy': 'apotheke', 'post_office': 'post', 'parcel_locker': 'post',
+           'atm': 'geldautomat', 'bank': 'geldautomat',
            'kindergarten': 'kita', 'school': 'schule'}
 LEISURE = {'park': 'park'}
 
@@ -32,8 +33,6 @@ def art(p):
         return AMENITY[a]
     if p.get('leisure') in LEISURE:
         return LEISURE[p['leisure']]
-    if a == 'bank' and p.get('atm') == 'yes':
-        return 'geldautomat'
     # Hausarzt: Praxis für Allgemeinmedizin; Fachärzte und Praxen ohne Fachangabe zählen nicht
     if (a == 'doctors' or p.get('healthcare') == 'doctor') and 'general' in werte(p.get('healthcare:speciality')):
         return 'hausarzt'

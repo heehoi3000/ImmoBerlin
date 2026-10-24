@@ -1,13 +1,19 @@
 "use client";
 // Abschnitt der Inseratsseite, der sich über seine Überschrift ein- und ausklappen lässt. Der Zustand wird je
-// Abschnitt im Browser gemerkt (localStorage), damit er beim nächsten Inserat gleich bleibt.
+// Abschnitt im Browser gemerkt (localStorage), damit er beim nächsten Inserat gleich bleibt; ohne gemerkten
+// Zustand gilt anfangsOffen.
 import { ReactNode, useEffect, useState } from 'react';
 
-export default function Klappbereich({ id, titel, children }: { id: string; titel: string; children: ReactNode }) {
+export default function Klappbereich({ id, titel, anfangsOffen = true, children }: {
+  id: string; titel: string; anfangsOffen?: boolean; children: ReactNode;
+}) {
   const schluessel = `klappbereich-${id}`;
-  const [offen, setOffen] = useState(true);
+  const [offen, setOffen] = useState(anfangsOffen);
   useEffect(() => {
-    try { if (localStorage.getItem(schluessel) === 'zu') setOffen(false); } catch { /* ohne Speicher immer offen */ } // eslint-disable-line react-hooks/set-state-in-effect
+    try {
+      const gemerkt = localStorage.getItem(schluessel);
+      if (gemerkt) setOffen(gemerkt === 'offen'); // eslint-disable-line react-hooks/set-state-in-effect
+    } catch { /* ohne Speicher gilt anfangsOffen */ }
   }, [schluessel]);
   const umschalten = () => {
     setOffen(!offen);

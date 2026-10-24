@@ -9,7 +9,7 @@ export default function Grundversorgung({ orte, fehler, sichtbar, onUmschalten }
   orte: Ort[] | null; fehler?: boolean; sichtbar: Set<Art>; onUmschalten: (art: Art) => void;
 }) {
   return (
-    <Klappbereich id="grundversorgung" titel="Einkaufen und Alltag">
+    <Klappbereich id="grundversorgung" titel="Einkaufen und Alltag" anfangsOffen={false}>
       <p className="text-xs text-zinc-500 mt-0.5">Tippe auf eine Kategorie, um alle Orte im Umkreis von {UMKREIS_TEXT} (Luftlinie) auf der Karte zu sehen.</p>
       {orte === null && !fehler && <p className="text-sm text-zinc-500 mt-3" role="status">Wird geladen…</p>}
       {fehler && <p className="text-sm text-zinc-500 mt-3" role="status">Die Angaben konnten nicht geladen werden.</p>}

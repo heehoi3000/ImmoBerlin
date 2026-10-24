@@ -81,6 +81,7 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     const auf = await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=a1');
     const bereich = page.getByRole('region', { name: 'Einkaufen und Alltag' });
+    await bereich.getByRole('button', { name: 'Einkaufen und Alltag' }).click();
     await expect(bereich.getByRole('listitem')).toHaveCount(10);
     await expect(bereich.getByRole('heading', { name: 'Kinder und Freizeit' })).toBeVisible();
     const supermarkt = bereich.getByRole('button', { name: /^Supermarkt/ });
@@ -111,23 +112,25 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     expect(auf.rpc.find(r => r.name === 'grundversorgung_im_umkreis')?.body).toMatchObject({ p_lat: 52.53, p_lon: 13.40, p_radius_m: 500 });
   });
 
-  test('ÖPNV und Einkaufen und Alltag lassen sich einklappen, der Zustand bleibt gemerkt', async ({ page }) => {
+  test('ÖPNV startet ausgeklappt, Einkaufen und Alltag eingeklappt; der Zustand bleibt gemerkt', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('anzeige/?id=a1');
-    for (const titel of ['ÖPNV in der Nähe', 'Einkaufen und Alltag']) {
-      const bereich = page.getByRole('region', { name: titel });
-      const knopf = bereich.getByRole('button', { name: titel });
-      await expect(knopf).toHaveAttribute('aria-expanded', 'true');
-      await expect(bereich.getByRole('list').first()).toBeVisible();
-      await knopf.click();
-      await expect(knopf).toHaveAttribute('aria-expanded', 'false');
-      await expect(bereich.getByRole('list')).toHaveCount(0);
-    }
-    await page.reload();
+    const oepnv = page.getByRole('region', { name: 'ÖPNV in der Nähe' });
+    const oepnvKnopf = oepnv.getByRole('button', { name: 'ÖPNV in der Nähe' });
     const alltag = page.getByRole('region', { name: 'Einkaufen und Alltag' });
-    await expect(alltag.getByRole('button', { name: 'Einkaufen und Alltag' })).toHaveAttribute('aria-expanded', 'false');
-    await alltag.getByRole('button', { name: 'Einkaufen und Alltag' }).click();
+    const alltagKnopf = alltag.getByRole('button', { name: 'Einkaufen und Alltag' });
+    await expect(oepnvKnopf).toHaveAttribute('aria-expanded', 'true');
+    await expect(oepnv.getByRole('list')).toBeVisible();
+    await expect(alltagKnopf).toHaveAttribute('aria-expanded', 'false');
+    await expect(alltag.getByRole('list')).toHaveCount(0);
+
+    await oepnvKnopf.click();
+    await alltagKnopf.click();
+    await expect(oepnv.getByRole('list')).toHaveCount(0);
     await expect(alltag.getByRole('button', { name: /^Supermarkt/ })).toBeVisible();
+    await page.reload();
+    await expect(oepnvKnopf).toHaveAttribute('aria-expanded', 'false');
+    await expect(alltagKnopf).toHaveAttribute('aria-expanded', 'true');
   });
 
   test('unbekanntes Inserat', async ({ page }) => {

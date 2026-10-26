@@ -70,6 +70,7 @@ jobs:
             [ "$status" = 0 ] || exit 1
           done
           sql postgres < tests/schema/pruefen.sql
+          sql postgres < tests/schema/altcha.sql
 
   browser:
     name: Browser-Tests

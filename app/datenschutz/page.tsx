@@ -2,7 +2,6 @@
 import Link from 'next/link';
 import { BETREIBER } from '../../lib/betreiber';
 import { Rechtstext } from '../Rechtstext';
-import { TURNSTILE_SITE_KEY } from '../../lib/turnstile';
 
 export const metadata = { title: 'Datenschutz', alternates: { canonical: './' } };
 
@@ -92,14 +91,12 @@ export default function Datenschutz() {
           Dafür speichern wir keinen Klartext deiner IP-Adresse, sondern nur einen Prüfwert, der mit einem geheimen Schlüssel und dem Tagesdatum gebildet wird und sich nicht auf die Adresse zurückrechnen lässt.
           Diese Prüfwerte löschen wir nach einem Tag. Rechtsgrundlage ist unser berechtigtes Interesse am Schutz vor Spam und Missbrauch (Art. 6 Abs. 1 lit. f DSGVO).
         </p>
-        {TURNSTILE_SITE_KEY && (
-          <p>
-            Bei Registrierung, Anmeldung und „Passwort vergessen“ nutzen wir Cloudflare Turnstile (Cloudflare, Inc., 101 Townsend St., San Francisco, CA 94107, USA), um automatisierte Zugriffe durch Bots zu erkennen.
-            Dazu lädt dein Browser ein Skript von challenges.cloudflare.com, und Cloudflare verarbeitet deine IP-Adresse sowie technische Merkmale deines Browsers. Cookies zu Werbe- oder Analysezwecken setzt Turnstile nicht.
-            Rechtsgrundlage ist unser berechtigtes Interesse am Schutz deines Kontos und unserer Website (Art. 6 Abs. 1 lit. f DSGVO, § 25 Abs. 2 Nr. 2 TDDDG).
-            Cloudflare ist unter dem EU-US Data Privacy Framework zertifiziert.
-          </p>
-        )}
+        <p>
+          Beim Registrieren, Melden, Kontaktieren eines Anbieters und Veröffentlichen eines Inserats prüfen wir mit ALTCHA, ob ein Mensch das Formular benutzt.
+          Dein Browser löst dazu eine kleine Rechenaufgabe, die unser Server ausstellt und prüft. Das Programm dafür liefern wir selbst aus; es werden keine Daten an Dritte übertragen, keine Cookies gesetzt und keine Merkmale deines Browsers ausgewertet.
+          Wir speichern nur einen Prüfwert der gelösten Aufgabe (ohne Bezug zu deiner Person), damit sie nicht zweimal benutzt werden kann, und löschen ihn nach höchstens zehn Minuten.
+          Rechtsgrundlage ist unser berechtigtes Interesse am Schutz vor Spam und Missbrauch (Art. 6 Abs. 1 lit. f DSGVO, § 25 Abs. 2 Nr. 2 TDDDG).
+        </p>
       </section>
 
       <section>

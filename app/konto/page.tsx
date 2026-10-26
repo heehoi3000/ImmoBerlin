@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { authFehlerText, seitenUrl, useNutzer } from '../../lib/konto';
-import Turnstile, { TurnstileGriff } from '../Turnstile';
-import { TURNSTILE_SITE_KEY } from '../../lib/turnstile';
+import BotSchutz, { BotSchutzGriff } from '../BotSchutz';
+import { BOTSCHUTZ_FEHLER } from '../../lib/botschutz';
 
 type Modus = 'anmelden' | 'registrieren' | 'vergessen' | 'neues_passwort';
 
@@ -21,9 +21,8 @@ export default function Konto() {
   const [laedt, setLaedt] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
   const [hinweis, setHinweis] = useState<string | null>(null);
-  const [captcha, setCaptcha] = useState<string | null>(null);
   const [zustimmung, setZustimmung] = useState(false);
-  const turnstile = useRef<TurnstileGriff>(null);
+  const botschutzFeld = useRef<BotSchutzGriff>(null);
 
   // Link aus der "Passwort vergessen"-Mail öffnet diese Seite im Modus "neues Passwort"
   useEffect(() => {
@@ -37,19 +36,21 @@ export default function Konto() {
   async function absenden(e: React.FormEvent) {
     e.preventDefault();
     setLaedt(true); setFehler(null); setHinweis(null);
-    const captchaToken = captcha ?? undefined;
     try {
       if (modus === 'anmelden') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password: passwort, options: { captchaToken } });
+        const { error } = await supabase.auth.signInWithPassword({ email, password: passwort });
         if (error) throw error;
         router.push(weiterZiel() ?? '/meine-inserate/');
       } else if (modus === 'registrieren') {
-        const { data, error } = await supabase.auth.signUp({ email, password: passwort, options: { emailRedirectTo: seitenUrl('/konto/'), captchaToken } });
+        // Registrieren nur mit gelöster Aufgabe; Anmelden und „Passwort vergessen“ begrenzt Supabase selbst
+        const botschutz = await botschutzFeld.current?.loesung();
+        if (!botschutz) { setFehler(BOTSCHUTZ_FEHLER); return; }
+        const { data, error } = await supabase.auth.signUp({ email, password: passwort, options: { emailRedirectTo: seitenUrl('/konto/'), data: { altcha: botschutz } } });
         if (error) throw error;
         if (data.session) router.push(weiterZiel() ?? '/inserieren/');
         else setHinweis(`Fast geschafft: Wir haben dir eine Mail an ${email} geschickt. Klicke auf den Link darin, um dein Konto zu bestätigen.`);
       } else if (modus === 'vergessen') {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: seitenUrl('/konto/'), captchaToken });
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: seitenUrl('/konto/') });
         if (error) throw error;
         setHinweis(`Wenn es ein Konto für ${email} gibt, ist jetzt eine Mail mit einem Link zum Zurücksetzen unterwegs.`);
       } else {
@@ -62,8 +63,8 @@ export default function Konto() {
       setFehler(authFehlerText((err as Error).message ?? ''));
     } finally {
       setLaedt(false);
-      // ein Token gilt nur für einen Versuch
-      turnstile.current?.zuruecksetzen();
+      // eine Lösung gilt nur für einen Versuch
+      botschutzFeld.current?.zuruecksetzen();
     }
   }
 
@@ -122,10 +123,10 @@ export default function Konto() {
             <span>Ich akzeptiere die <Link href="/nutzungsbedingungen/" target="_blank" className="underline underline-offset-2">Nutzungsbedingungen</Link>.</span>
           </label>
         )}
-        {modus !== 'neues_passwort' && <Turnstile ref={turnstile} onToken={setCaptcha} />}
+        {modus === 'registrieren' && <BotSchutz ref={botschutzFeld} />}
         {fehler && <p className="text-sm text-red-600">{fehler}</p>}
         {hinweis && <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">{hinweis}</p>}
-        <button type="submit" disabled={laedt || (!!TURNSTILE_SITE_KEY && modus !== 'neues_passwort' && !captcha)} className="h-11 rounded-lg bg-black text-white text-sm font-bold hover:bg-zinc-800 disabled:opacity-50 mt-1">
+        <button type="submit" disabled={laedt} className="h-11 rounded-lg bg-black text-white text-sm font-bold hover:bg-zinc-800 disabled:opacity-50 mt-1">
           {laedt ? 'Einen Moment…' : { anmelden: 'Anmelden', registrieren: 'Konto erstellen', vergessen: 'Link senden', neues_passwort: 'Passwort speichern' }[modus]}
         </button>
       </form>

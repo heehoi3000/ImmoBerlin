@@ -1,13 +1,16 @@
 "use client";
 // Anfrage an den Inserenten. Die Nachricht landet in "nachrichten", der Inserent sieht sie in seinem Postfach.
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 import { useNutzer } from '../lib/konto';
+import BotSchutz, { BotSchutzGriff } from './BotSchutz';
+import { ALTCHA_KOPF, BOTSCHUTZ_FEHLER, istBotSchutzFehler } from '../lib/botschutz';
 
 const feld = 'w-full border border-zinc-200 rounded-lg px-3 text-sm focus:ring-2 focus:ring-black/10 focus:border-black outline-none';
 
 function fehlerText(nachricht: string) {
+  if (istBotSchutzFehler(nachricht)) return BOTSCHUTZ_FEHLER;
   if (nachricht.includes('Zu viele')) return 'Du hast in der letzten Stunde schon mehrere Anfragen gesendet. Bitte versuche es später noch einmal.';
   if (nachricht.includes('nicht kontaktiert')) return 'Dieses Inserat ist nicht mehr online.';
   if (nachricht.includes('check constraint')) return 'Bitte prüfe deine Angaben (Name, E-Mail und eine Nachricht mit mindestens 10 Zeichen).';
@@ -23,6 +26,7 @@ export default function Kontaktformular({ anzeigeId, titel, kontaktierbar }: { a
   const [falle, setFalle] = useState(''); // unsichtbares Feld gegen Spam-Bots
   const [zustand, setZustand] = useState<'offen' | 'sendet' | 'gesendet'>('offen');
   const [fehler, setFehler] = useState('');
+  const botschutz = useRef<BotSchutzGriff>(null);
 
   if (!kontaktierbar) {
     return <p className="text-xs text-zinc-500 bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2">Das ist ein Beispielinserat. Eine Anfrage ist hier nicht möglich.</p>;
@@ -42,6 +46,8 @@ export default function Kontaktformular({ anzeigeId, titel, kontaktierbar }: { a
     if (falle) { setZustand('gesendet'); return; }
     setZustand('sendet');
     setFehler('');
+    const loesung = await botschutz.current?.loesung();
+    if (!loesung) { setFehler(BOTSCHUTZ_FEHLER); setZustand('offen'); return; }
     // ohne .select(): nicht angemeldete Absender dürfen die Zeile danach nicht lesen
     const { error } = await supabase.from('nachrichten').insert({
       anzeige_id: anzeigeId,
@@ -49,7 +55,8 @@ export default function Kontaktformular({ anzeigeId, titel, kontaktierbar }: { a
       email: (email.trim() || nutzer?.email || '').trim(),
       telefon: telefon.trim() || null,
       nachricht: nachricht.trim(),
-    });
+    }).setHeader(ALTCHA_KOPF, loesung);
+    botschutz.current?.zuruecksetzen();
     if (error) { console.error('Anfrage fehlgeschlagen:', error); setFehler(fehlerText(error.message)); setZustand('offen'); return; }
     setZustand('gesendet');
   }
@@ -62,6 +69,7 @@ export default function Kontaktformular({ anzeigeId, titel, kontaktierbar }: { a
       <input aria-label="Telefon" type="tel" maxLength={40} placeholder="Telefon (freiwillig)" value={telefon} onChange={(e) => setTelefon(e.target.value)} className={`${feld} h-10`} />
       <textarea aria-label="Nachricht" required minLength={10} maxLength={3000} rows={6} value={nachricht} onChange={(e) => setNachricht(e.target.value)} className={`${feld} py-2 resize-y`} />
       <input tabIndex={-1} autoComplete="off" aria-hidden="true" value={falle} onChange={(e) => setFalle(e.target.value)} className="absolute -left-[9999px] w-px h-px opacity-0" name="website" />
+      <BotSchutz ref={botschutz} />
       {fehler && <p role="alert" className="text-xs text-red-600">{fehler}</p>}
       <button type="submit" disabled={zustand === 'sendet'} className="h-11 rounded-lg bg-black text-white text-sm font-bold hover:bg-zinc-800 disabled:opacity-50">
         {zustand === 'sendet' ? 'Wird gesendet…' : 'Anfrage senden'}

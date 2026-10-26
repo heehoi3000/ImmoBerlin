@@ -23,7 +23,15 @@ export interface Aufzeichnung {
   rpc: { name: string; body: Zeile }[];
   wuensche: Zeile[];                        // gespeicherte Tauschwünsche (upsert)
   hochgeladen: string[];                    // Pfade im Speicher (Fotos, PDFs)
+  botschutz: { pfad: string; loesung: string | null }[];   // Header x-altcha bei jedem Eintrag
+  registrierungen: Zeile[];                 // Anfragen an /auth/v1/signup
 }
+
+// Leichte Bot-Schutz-Aufgabe (eine Hex-Null, im Mittel 16 Versuche); das echte Widget löst sie im Browser
+const AUFGABE = {
+  parameters: { algorithm: 'SHA-256', cost: 1, keyLength: 32, keyPrefix: '0', nonce: '0123456789abcdef0123456789abcdef', salt: 'fedcba9876543210fedcba9876543210', expiresAt: 4102444800 },
+  signature: 'test',
+};
 
 export const NUTZER = { id: '00000000-0000-4000-8000-000000000001', email: 'test@example.org' };
 
@@ -59,7 +67,7 @@ function ergebnis(route: Route, zeilen: Zeile[]) {
 }
 
 export async function attrappeEinrichten(page: Page, daten: Daten): Promise<Aufzeichnung> {
-  const auf: Aufzeichnung = { nachrichten: [], neueAnzeigen: [], rpc: [], wuensche: [], hochgeladen: [] };
+  const auf: Aufzeichnung = { nachrichten: [], neueAnzeigen: [], rpc: [], wuensche: [], hochgeladen: [], botschutz: [], registrierungen: [] };
 
   await page.route(`${SUPABASE}/**`, async route => {
     const req = route.request();
@@ -74,6 +82,9 @@ export async function attrappeEinrichten(page: Page, daten: Daten): Promise<Aufz
       return json(route, { Key: datei, Id: datei });
     }
     const body = req.postData() ? JSON.parse(req.postData()!) : {};
+    if (req.method() === 'POST' && pfad.startsWith('/rest/v1/') && !pfad.startsWith('/rest/v1/rpc/')) {
+      auf.botschutz.push({ pfad, loesung: req.headers()['x-altcha'] ?? null });
+    }
 
     if (pfad.startsWith('/rest/v1/rpc/')) {
       const name = pfad.slice('/rest/v1/rpc/'.length);
@@ -85,6 +96,7 @@ export async function attrappeEinrichten(page: Page, daten: Daten): Promise<Aufz
       }
       if (name === 'haltestellen_der_linien') return json(route, ids.flatMap(id => daten.haltestellen[id] ?? []));
       if (name === 'ist_moderator') return json(route, false);
+      if (name === 'altcha_aufgabe') return json(route, AUFGABE);
       if (name === 'haltestellen_in_der_naehe') return json(route, daten.naheHalte ?? []);
       if (name === 'grundversorgung_im_umkreis') return json(route, daten.grundversorgung ?? []);
       if (name === 'tausch_partner') return json(route, daten.tauschPartner ?? []);
@@ -113,6 +125,10 @@ export async function attrappeEinrichten(page: Page, daten: Daten): Promise<Aufz
     if (pfad === '/rest/v1/nachrichten') {
       if (req.method() === 'POST') { auf.nachrichten.push(body); return route.fulfill({ status: 201, headers: { 'Access-Control-Allow-Origin': '*' } }); }
       return json(route, [], 200, { 'Content-Range': '*/0' });
+    }
+    if (pfad === '/auth/v1/signup') {
+      auf.registrierungen.push(body);
+      return json(route, { id: NUTZER.id, email: body.email, user_metadata: body.data ?? {} });
     }
     if (pfad.startsWith('/auth/v1/')) return json(route, { message: 'nicht nachgebaut' }, 400);
     return json(route, []);

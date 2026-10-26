@@ -16,6 +16,10 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     expect(auf.nachrichten).toHaveLength(1);
     expect(auf.nachrichten[0]).toMatchObject({ anzeige_id: 'a1', name: 'Erika Muster', email: 'erika@example.org', telefon: null });
     expect(String(auf.nachrichten[0].nachricht)).toContain('Altbau an der U8');
+    // Lösung der Bot-Schutz-Aufgabe geht als Header mit (Prüfung in der Datenbank, tests/schema/altcha.sql)
+    const loesung = JSON.parse(Buffer.from(auf.botschutz[0].loesung ?? '', 'base64').toString());
+    expect(loesung.challenge.parameters.nonce).toBe('0123456789abcdef0123456789abcdef');
+    expect(Number.isInteger(loesung.solution.counter)).toBe(true);
   });
 
   test('ausgefülltes Spam-Feld sendet nichts', async ({ page }) => {

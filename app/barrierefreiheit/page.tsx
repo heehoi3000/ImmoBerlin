@@ -34,6 +34,7 @@ export default function Barrierefreiheit() {
           <li>Alle Funktionen lassen sich mit der Tastatur bedienen. Der erste Tab führt zu „Zum Inhalt springen“, Menüs und Dialoge schließen mit Escape.</li>
           <li>Eingabefelder, Knöpfe und Umschalter haben Namen, die Bildschirmleser vorlesen. Ortsvorschläge wählst du mit den Pfeiltasten.</li>
           <li>Texte haben ausreichenden Kontrast, die Seite lässt sich vergrößern und passt sich schmalen Bildschirmen an.</li>
+          <li>Der Schutz gegen Bots beim Registrieren, Melden, Kontaktieren und Inserieren kommt ohne Bilder- oder Hörrätsel aus: Dein Browser löst im Hintergrund eine Rechenaufgabe, der Haken „Ich bin kein Roboter“ lässt sich auch per Tastatur setzen.</li>
           <li>Die Zahl der Treffer wird nach jeder Suche angesagt, Fehlermeldungen werden sofort vorgelesen.</li>
           <li>Jede Änderung an der Seite wird automatisch mit dem Prüfwerkzeug axe gegen WCAG 2.1 AA getestet, dazu kommen Tests der Tastaturbedienung.</li>
         </ul>

@@ -15,6 +15,8 @@ import { Linie } from '../../lib/oepnv';
 import { MAX_WUNSCH_LINIEN, wunschLaden, wunschLinie, wunschLinienAufloesen, wunschLoeschen, wunschSpeichern } from '../../lib/tausch';
 import LinienFeld from '../LinienFeld';
 import Ortssuche from '../Ortssuche';
+import BotSchutz, { BotSchutzGriff } from '../BotSchutz';
+import { ALTCHA_KOPF, BOTSCHUTZ_FEHLER, istBotSchutzFehler } from '../../lib/botschutz';
 
 const MAX_BILDER = 15;
 
@@ -102,6 +104,7 @@ export default function Inserieren() {
   const [laedt, setLaedt] = useState(false);
   const [hochladen, setHochladen] = useState(0);
   const [fehler, setFehler] = useState<string | null>(null);
+  const botschutz = useRef<BotSchutzGriff>(null);
   const [gespeichert, setGespeichert] = useState<string | null>(null);
   const adressAnfrage = useRef(0);
   const [wunsch, setWunsch] = useState<Wunsch>(LEERER_WUNSCH);
@@ -238,13 +241,20 @@ export default function Inserieren() {
       dokumente: f.dokumente.map(d => ({ ...d, titel: d.titel.trim().slice(0, 100) || DOKUMENT_ARTEN.find(a => a.wert === d.art)!.name })),
       links: f.links.flatMap(l => { const url = linkPruefen(l.url); return url ? [{ titel: l.titel.trim().slice(0, 100), url }] : []; }),
     };
+    // Neue Inserate nur mit gelöster Bot-Schutz-Aufgabe, Änderungen brauchen keine
+    const loesung = id ? null : await botschutz.current?.loesung();
+    if (!id && !loesung) { setLaedt(false); setFehler(BOTSCHUTZ_FEHLER); return; }
     const { data, error } = id
       ? await supabase.from('anzeigen').update(zeile).eq('id', id).select('id').single()
-      : await supabase.from('anzeigen').insert({ ...zeile, status: 'aktiv' }).select('id').single();
+      : await supabase.from('anzeigen').insert({ ...zeile, status: 'aktiv' }).setHeader(ALTCHA_KOPF, loesung!).select('id').single();
+    if (!id) botschutz.current?.zuruecksetzen();
     if (error) {
       setLaedt(false);
       console.error(error);
-      setFehler(error.message.includes('Zu viele') ? 'Du hast heute schon 10 Inserate aufgegeben. Weitere sind ab morgen möglich.' : 'Das Inserat konnte nicht gespeichert werden. Bitte prüfe deine Angaben und versuche es noch einmal.');
+      setFehler(error.message.includes('Zu viele') ? 'Du hast heute schon 10 Inserate aufgegeben. Weitere sind ab morgen möglich.'
+        : istBotSchutzFehler(error.message) ? BOTSCHUTZ_FEHLER
+        : 'Das Inserat konnte nicht gespeichert werden. Bitte prüfe deine Angaben und versuche es noch einmal.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     try {
@@ -533,6 +543,8 @@ export default function Inserieren() {
           <Feld titel="Firmenname" pflicht><input maxLength={200} value={f.anbieter_name} onChange={(e) => setze({ anbieter_name: e.target.value })} className={feld} /></Feld>
         )}
       </Karte>}
+
+      {!id && <div className="flex justify-end"><BotSchutz ref={botschutz} /></div>}
 
       <div className="sticky bottom-0 -mx-4 px-4 py-3 bg-zinc-50/90 backdrop-blur border-t border-zinc-200 flex items-center justify-end gap-3">
         <Link href="/meine-inserate/" className="h-11 px-4 rounded-lg text-sm font-semibold text-zinc-600 hover:bg-zinc-100 flex items-center">Abbrechen</Link>

@@ -50,8 +50,6 @@ jobs:
           # Links steht der Name für Next.js, rechts der Name deines GitHub Secrets
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          # Spamschutz (Cloudflare Turnstile), öffentlicher Schlüssel als Repository-Variable; leer = aus
-          NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
         run: npm run build
         
       - name: Setup Pages

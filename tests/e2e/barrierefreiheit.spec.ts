@@ -70,6 +70,19 @@ test.describe('Barrierefreiheit', () => {
     await expect(page.getByRole('dialog')).toBeVisible();
     await pruefen(page);
   });
+
+  test('Registrieren mit Bot-Schutz, auch nach dem Lösen', async ({ page }) => {
+    await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('konto/');
+    await page.getByRole('button', { name: 'Registrieren' }).click();
+    await expect(page.getByRole('checkbox', { name: 'Ich bin kein Roboter' })).toBeVisible();
+    await pruefen(page);
+    // per Tastatur lösen
+    await page.getByRole('checkbox', { name: 'Ich bin kein Roboter' }).focus();
+    await page.keyboard.press('Space');
+    await expect(page.getByRole('checkbox', { name: 'Überprüft' })).toBeChecked();
+    await pruefen(page);
+  });
 });
 
 test.describe('Tastatur', () => {

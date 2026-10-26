@@ -50,6 +50,7 @@ test.describe('Inserieren', () => {
       wbs_erforderlich: true, wbs_art: 'wbs_140',
     });
     expect(auf.neueAnzeigen[0]).not.toHaveProperty('inserent_id');   // setzt die Datenbank selbst
+    expect(auf.botschutz[0].loesung).toBeTruthy();
     expect(NUTZER.id).toBeTruthy();
   });
 

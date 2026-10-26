@@ -43,12 +43,13 @@ export default function Datenschutz() {
         <p>
           Inserate, Konten, Fotos, Kontaktanfragen und Meldungen speichern wir bei Supabase (Supabase Inc., USA) in einem Rechenzentrum in Irland (EU).
           Mit Supabase besteht ein Vertrag zur Auftragsverarbeitung mit Standardvertragsklauseln der EU-Kommission (Art. 28 und Art. 46 Abs. 2 lit. c DSGVO).
+          Supabase legt täglich eine Datensicherung der Datenbank an und führt technische Protokolle. Gelöschte Daten können darin noch bis zu sieben Tage enthalten sein und verschwinden dann automatisch. Fotos und Dokumente sind in den Datensicherungen nicht enthalten.
         </p>
         <h3>Konto</h3>
         <p>
           Für ein Konto speichern wir deine E-Mail-Adresse, dein Passwort (nur verschlüsselt als Hash) sowie Zeitpunkte von Registrierung und letzter Anmeldung.
           Wir senden dir E-Mails zur Bestätigung der Adresse und zum Zurücksetzen des Passworts.
-          Rechtsgrundlage ist die Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO). Die Daten bleiben gespeichert, bis du dein Konto unter „Mein Konto“ löschst. Dann löschen wir auch alle deine Inserate mit Fotos und die Anfragen, die du bekommen hast. Deine Meldungen bleiben ohne Bezug zu deinem Konto erhalten.
+          Rechtsgrundlage ist die Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO). Die Daten bleiben gespeichert, bis du dein Konto unter „Mein Konto“ löschst. Dann löschen wir auch alle deine Inserate mit Fotos und Dokumenten und die Anfragen, die du bekommen hast. Deine Meldungen bleiben ohne Bezug zu deinem Konto erhalten. Anfragen, die du an Anbieter geschickt hast, bleiben beim Anbieter gespeichert (siehe Abschnitt 5).
         </p>
         <h3>Inserate</h3>
         <p>
@@ -69,7 +70,7 @@ export default function Datenschutz() {
           Wenn du über „Anbieter kontaktieren“ schreibst, speichern wir deinen Namen, deine E-Mail-Adresse, die Telefonnummer (falls angegeben), deine Nachricht und den Zeitpunkt.
           Diese Angaben sieht nur der Anbieter des Inserats, damit er dir antworten kann, und, wenn du angemeldet bist, du selbst unter „Gesendet“.
           Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Anbahnung eines Miet- oder Kaufvertrags).
-          Die Anfrage bleibt gespeichert, bis der Anbieter sie oder das Inserat löscht.
+          Die Anfrage bleibt gespeichert, bis der Anbieter sie oder das Inserat löscht, auch wenn du dein eigenes Konto löschst.
           Was der Anbieter danach mit deinen Angaben macht, liegt in seiner eigenen Verantwortung.
         </p>
       </section>

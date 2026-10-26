@@ -158,7 +158,7 @@ function KontoLoeschen({ onGeloescht }: { onGeloescht: () => void }) {
   return (
     <div className="mt-6 border border-red-200 bg-red-50 rounded-xl p-4 flex flex-col gap-3 text-sm text-red-900">
       <strong>Konto endgültig löschen?</strong>
-      <p>Wir löschen dein Konto, alle deine Inserate mit Fotos und Dokumenten und die Anfragen, die du bekommen hast. Das lässt sich nicht rückgängig machen.</p>
+      <p>Wir löschen dein Konto, alle deine Inserate mit Fotos und Dokumenten und die Anfragen, die du bekommen hast. Anfragen, die du selbst an Anbieter geschickt hast, bleiben dort erhalten. Das lässt sich nicht rückgängig machen.</p>
       <label className="flex flex-col gap-1.5">
         <span className="text-xs font-bold">Zur Bestätigung LÖSCHEN eintippen</span>
         <input value={bestaetigung} onChange={(e) => setBestaetigung(e.target.value)} className="h-10 bg-white border border-red-200 rounded-lg px-3 text-zinc-900 outline-none focus:border-red-700" />

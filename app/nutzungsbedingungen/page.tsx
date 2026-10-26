@@ -38,7 +38,7 @@ export default function Nutzungsbedingungen() {
         <ul>
           <li>Ein Konto darf anlegen, wer mindestens 18 Jahre alt ist. Unternehmen handeln durch eine dazu berechtigte Person.</li>
           <li>Deine Angaben müssen stimmen. Halte dein Passwort geheim und sag uns Bescheid, wenn du einen Missbrauch deines Kontos vermutest.</li>
-          <li>Du kannst dein Konto jederzeit unter „Mein Konto“ löschen. Damit endet der Nutzungsvertrag, und wir löschen deine Inserate mit Fotos und die Anfragen, die du bekommen hast.</li>
+          <li>Du kannst dein Konto jederzeit unter „Mein Konto“ löschen. Damit endet der Nutzungsvertrag, und wir löschen deine Inserate mit Fotos und Dokumenten und die Anfragen, die du bekommen hast.</li>
         </ul>
       </section>
 

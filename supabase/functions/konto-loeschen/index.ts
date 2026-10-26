@@ -1,5 +1,6 @@
 // Löscht das Konto des angemeldeten Nutzers samt Fotos und Dokumenten (DSGVO Art. 17), beide im Ordner <nutzer-id>/.
-// Inserate und empfangene Nachrichten fallen per Fremdschlüssel weg, Meldungen verlieren den Bezug zum Konto.
+// Inserate und empfangene Nachrichten fallen per Fremdschlüssel weg, Meldungen verlieren den Bezug zum Konto,
+// gesendete Anfragen bleiben beim Anbieter (ohne Bezug zum Konto).
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const CORS = {
@@ -24,7 +25,16 @@ Deno.serve(async (req) => {
   const { data: { user }, error: authFehler } = await admin.auth.getUser(token);
   if (authFehler || !user) return antwort(401, { fehler: 'Nicht angemeldet' });
 
-  // Fotos im Ordner <nutzer-id>/ löschen, seitenweise
+  // Reihenfolge so, dass ein Abbruch nie Daten öffentlich lässt: erst Inserate aus der Suche nehmen, dann Meldungen
+  // anonymisieren, dann Fotos und Dokumente löschen, zuletzt das Konto. Scheitert ein Schritt, sind die Inserate
+  // schon unsichtbar und ein zweiter Versuch räumt den Rest auf.
+  const { error: pauseFehler } = await admin.from('anzeigen').update({ status: 'pausiert' }).eq('inserent_id', user.id).eq('status', 'aktiv');
+  if (pauseFehler) return antwort(500, { fehler: 'Inserate konnten nicht pausiert werden' });
+
+  const { error: meldFehler } = await admin.from('meldungen').update({ nutzer_id: null, email: null }).eq('nutzer_id', user.id);
+  if (meldFehler) return antwort(500, { fehler: 'Meldungen konnten nicht anonymisiert werden' });
+
+  // Fotos und Dokumente im Ordner <nutzer-id>/ löschen, seitenweise
   for (;;) {
     const { data: dateien, error } = await admin.storage.from(BUCKET).list(user.id, { limit: 100 });
     if (error) return antwort(500, { fehler: 'Fotos konnten nicht gelesen werden' });
@@ -33,9 +43,6 @@ Deno.serve(async (req) => {
     if (loeschFehler) return antwort(500, { fehler: 'Fotos konnten nicht gelöscht werden' });
     if (dateien.length < 100) break;
   }
-
-  const { error: meldFehler } = await admin.from('meldungen').update({ nutzer_id: null, email: null }).eq('nutzer_id', user.id);
-  if (meldFehler) return antwort(500, { fehler: 'Meldungen konnten nicht anonymisiert werden' });
 
   const { error: loeschFehler } = await admin.auth.admin.deleteUser(user.id);
   if (loeschFehler) return antwort(500, { fehler: 'Konto konnte nicht gelöscht werden' });

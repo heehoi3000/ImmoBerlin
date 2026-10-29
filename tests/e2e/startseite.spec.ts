@@ -2,6 +2,14 @@ import { expect, test } from '@playwright/test';
 import { STANDARD_DATEN, attrappeEinrichten } from './attrappe';
 
 test.describe('Startseite', () => {
+  test('unter der Suchleiste steht direkt So funktioniert\'s', async ({ page }) => {
+    await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('');
+    await expect(page.getByRole('heading', { name: "So funktioniert's" })).toBeVisible();
+    await expect(page.getByText('Beliebt:')).toHaveCount(0);
+    await expect(page.getByText('Haltestellen', { exact: true })).toHaveCount(0);
+  });
+
   test('Linie in der Suchleiste wählen und mit Umkreis suchen', async ({ page }) => {
     const auf = await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('');

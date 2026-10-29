@@ -53,12 +53,10 @@ export default function Startseite() {
   const [linien, setLinien] = useState<Linie[]>([]);
   const [umkreis, setUmkreis] = useState(STANDARD_FILTER.linienUmkreisM);
   const [neueste, setNeueste] = useState<Anzeige[] | null>(null);
-  const [anzahl, setAnzahl] = useState<number | null>(null);
 
   useEffect(() => {
     supabase.from('anzeigen').select('*').eq('status', 'aktiv').order('erstellt_am', { ascending: false }).limit(4)
       .then(({ data }) => setNeueste((data as Anzeige[]) ?? []));
-    supabase.from('anzeigen').select('id', { count: 'exact', head: true }).eq('status', 'aktiv').then(({ count }) => setAnzahl(count ?? null));
   }, []);
 
   function suchen(teil: Partial<Filter>) {
@@ -103,49 +101,28 @@ export default function Startseite() {
             </button>
           </div>
 
-          <div className="flex flex-wrap justify-center items-center gap-2 text-sm">
-            <span className="text-zinc-500">Beliebt:</span>
-            {STAEDTE.slice(0, 4).map(stadt => (
-              <button key={stadt.name} onClick={() => suchen({ transaktion, ort: stadt, linien, linienUmkreisM: umkreis })}
-                className="px-3 py-1.5 rounded-full bg-white border border-zinc-200 font-medium text-zinc-700 hover:border-zinc-900 hover:text-black transition">{stadt.kurzname}</button>
-            ))}
-          </div>
-
-          <dl className="grid grid-cols-3 gap-6 md:gap-16 mt-6 md:mt-10">
-            {[
-              [anzahl !== null ? anzahl.toLocaleString('de-DE') : '…', 'Angebote'],
-              ['26.200', 'ÖPNV-Linien'],
-              ['466.000', 'Haltestellen'],
-            ].map(([w, n]) => (
-              <div key={n} className="flex flex-col items-center">
-                <dt className="order-2 text-xs md:text-sm text-zinc-500">{n}</dt>
-                <dd className="order-1 text-xl md:text-3xl font-bold tracking-tight">{w}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </section>
-
-      {/* --- SO FUNKTIONIERT'S --- */}
-      <section className="max-w-7xl w-full mx-auto px-4 lg:px-8 py-14 md:py-20">
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-8">So funktioniert&apos;s</h2>
-        <div className="grid md:grid-cols-3 gap-4">
-          {[
-            ['1', 'Ort wählen', 'Stadt, Postleitzahl oder einzelne Bezirke, auf Wunsch mit Umkreis.'],
-            ['2', 'Linien wählen', 'Eine oder mehrere Linien, z. B. U8 und S41, und den maximalen Abstand zur Haltestelle.'],
-            ['3', 'Passend wohnen', 'Du siehst nur Angebote nahe deinen Linien, mit Entfernung zur nächsten Haltestelle.'],
-          ].map(([nr, t, x]) => (
-            <div key={nr} className="bg-white border border-zinc-200 rounded-2xl p-6 flex flex-col gap-3">
-              <span className="w-9 h-9 rounded-full bg-zinc-900 text-white text-sm font-bold flex items-center justify-center">{nr}</span>
-              <h3 className="font-semibold text-lg">{t}</h3>
-              <p className="text-sm text-zinc-600 leading-relaxed">{x}</p>
+          {/* So funktioniert's direkt unter der Suchleiste */}
+          <div className="w-full max-w-5xl mt-6 md:mt-10 text-left">
+            <h2 className="text-xl md:text-2xl font-bold tracking-tight mb-4 text-center">So funktioniert&apos;s</h2>
+            <div className="grid md:grid-cols-3 gap-4">
+              {[
+                ['1', 'Ort wählen', 'Stadt, Postleitzahl oder einzelne Bezirke, auf Wunsch mit Umkreis.'],
+                ['2', 'Linien wählen', 'Eine oder mehrere Linien, z. B. U8 und S41, und den maximalen Abstand zur Haltestelle.'],
+                ['3', 'Passend wohnen', 'Du siehst nur Angebote nahe deinen Linien, mit Entfernung zur nächsten Haltestelle.'],
+              ].map(([nr, t, x]) => (
+                <div key={nr} className="bg-white/90 backdrop-blur border border-zinc-200 rounded-2xl p-6 flex flex-col gap-3">
+                  <span className="w-9 h-9 rounded-full bg-zinc-900 text-white text-sm font-bold flex items-center justify-center">{nr}</span>
+                  <h3 className="font-semibold text-lg">{t}</h3>
+                  <p className="text-sm text-zinc-600 leading-relaxed">{x}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </section>
 
       {/* --- NEUESTE ANGEBOTE --- */}
-      <section className="max-w-7xl w-full mx-auto px-4 lg:px-8 pb-14 md:pb-20">
+      <section className="max-w-7xl w-full mx-auto px-4 lg:px-8 py-14 md:py-20">
         <div className="flex items-end justify-between gap-4 mb-6">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Neueste Angebote</h2>
           <Link href="/suche/" className="text-sm font-semibold hover:underline underline-offset-4 shrink-0">Alle ansehen →</Link>

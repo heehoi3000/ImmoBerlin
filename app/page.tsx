@@ -1,5 +1,5 @@
 "use client";
-// Startseite: Einstieg in die Suche, neueste Angebote, Städte und geplante Bereiche.
+// Startseite: Einstieg in die Suche, Städte, neueste Angebote und geplante Bereiche.
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -121,21 +121,8 @@ export default function Startseite() {
         </div>
       </section>
 
-      {/* --- NEUESTE ANGEBOTE --- */}
-      <section className="max-w-7xl w-full mx-auto px-4 lg:px-8 py-14 md:py-20">
-        <div className="flex items-end justify-between gap-4 mb-6">
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Neueste Angebote</h2>
-          <Link href="/suche/" className="text-sm font-semibold hover:underline underline-offset-4 shrink-0">Alle ansehen →</Link>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-8">
-          {neueste === null
-            ? Array.from({ length: 4 }, (_, i) => <div key={i} className="aspect-[4/3] rounded-2xl bg-zinc-200/70 animate-pulse" />)
-            : neueste.map(a => <AnzeigeKachel key={a.id} a={a} />)}
-        </div>
-      </section>
-
       {/* --- STÄDTE --- */}
-      <section className="max-w-7xl w-full mx-auto px-4 lg:px-8 pb-14 md:pb-20">
+      <section className="max-w-7xl w-full mx-auto px-4 lg:px-8 py-14 md:py-20">
         <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-6">Beliebte Städte</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {STAEDTE.map(({ bild, ...stadt }) => (
@@ -145,6 +132,19 @@ export default function Startseite() {
               <span className="text-xs text-zinc-700 group-hover:underline underline-offset-2">Angebote ansehen</span>
             </button>
           ))}
+        </div>
+      </section>
+
+      {/* --- NEUESTE ANGEBOTE --- */}
+      <section className="max-w-7xl w-full mx-auto px-4 lg:px-8 pb-14 md:pb-20">
+        <div className="flex items-end justify-between gap-4 mb-6">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Neueste Angebote</h2>
+          <Link href="/suche/" className="text-sm font-semibold hover:underline underline-offset-4 shrink-0">Alle ansehen →</Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-8">
+          {neueste === null
+            ? Array.from({ length: 4 }, (_, i) => <div key={i} className="aspect-[4/3] rounded-2xl bg-zinc-200/70 animate-pulse" />)
+            : neueste.map(a => <AnzeigeKachel key={a.id} a={a} />)}
         </div>
       </section>
 

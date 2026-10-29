@@ -84,6 +84,36 @@ begin
 end $$;
 rollback;
 
+-- Liniensuche im Ort (supabase/migrations/0015_linien_im_gebiet.sql): zwei Linien "U8", eine mit Haltestelle im
+-- Gebiet, eine 100 km entfernt; die ferne erscheint erst gar nicht, mit Umkreis auch nicht (nur 5 km).
+begin;
+do $$
+declare
+  gebiet jsonb := '{"type":"Polygon","coordinates":[[[13.3,52.4],[13.5,52.4],[13.5,52.6],[13.3,52.6],[13.3,52.4]]]}';
+  ergebnis text;
+begin
+  insert into public.oepnv_linien (linie_id, typ, nummer, betreiber, endpunkte, mitte) values
+    (999801, 'ubahn', 'U8', 'Hier', 'A – B', 'SRID=4326;POINT(13.40 52.50)'),
+    (999802, 'ubahn', 'U8', 'Dort', 'C – D', 'SRID=4326;POINT(14.90 52.50)'),
+    (999803, 'bus', 'U80', 'Hier', 'E – F', 'SRID=4326;POINT(13.40 52.50)'),
+    (999804, 'bus', '100', 'Hier', 'G – H', 'SRID=4326;POINT(13.51 52.50)');
+  insert into public.oepnv_haltestellen (stop_id, name, geom) values
+    ('u8-hier', 'Hier', 'SRID=4326;POINT(13.40 52.50)'), ('u8-dort', 'Dort', 'SRID=4326;POINT(14.90 52.50)'),
+    ('bus-rand', 'Rand', 'SRID=4326;POINT(13.52 52.50)');
+  insert into public.oepnv_linie_haltestelle (linie_id, stop_id) values
+    (999801, 'u8-hier'), (999802, 'u8-dort'), (999803, 'u8-hier'), (999804, 'bus-rand');
+  select string_agg(linie_id::text, ',' order by linie_id) into ergebnis from public.linien_im_gebiet('U8', gebiet);
+  if ergebnis is distinct from '999801,999803' then raise exception 'linien_im_gebiet(U8) liefert %', ergebnis; end if;
+  select string_agg(linie_id::text, ',') into ergebnis from public.linien_im_gebiet('100', gebiet);
+  if ergebnis is not null then raise exception 'Linie 100 außerhalb des Gebiets gefunden'; end if;
+  select string_agg(linie_id::text, ',') into ergebnis from public.linien_im_gebiet('100', gebiet, 5000);
+  if ergebnis is distinct from '999804' then raise exception 'Linie 100 im Umkreis fehlt: %', ergebnis; end if;
+  select string_agg(linie_id::text, ',') into ergebnis from public.linien_im_gebiet('U_', gebiet);
+  if ergebnis is not null then raise exception 'Unterstrich wirkt als Platzhalter: %', ergebnis; end if;
+  raise notice 'Liniensuche im Ort funktioniert';
+end $$;
+rollback;
+
 -- Tauschpartner (supabase/migrations/0006_tausch.sql): A sucht an Linie T9 höchstens 500 m entfernt; B liegt
 -- 200 m von deren Haltestelle, C 3 km. B sucht mindestens 3 Zimmer, A hat 3 → gegenseitig.
 begin;

@@ -273,7 +273,7 @@ export default function Suche() {
                 <VonBis name="Fläche" min={filter.flaecheMin} max={filter.flaecheMax} onMin={(v) => setze({ flaecheMin: v })} onMax={(v) => setze({ flaecheMax: v })} einheit="m²" />
               )}
               {panel === 'linien' && (
-                <Linienauswahl bezug={filter.ort ?? (ausschnitt ? { lat: (ausschnitt.minLat + ausschnitt.maxLat) / 2, lon: (ausschnitt.minLon + ausschnitt.maxLon) / 2 } : null)} ausgewaehlt={filter.linien} onChange={(l) => setze({ linien: l })}
+                <Linienauswahl bezug={filter.ort ?? (ausschnitt ? { lat: (ausschnitt.minLat + ausschnitt.maxLat) / 2, lon: (ausschnitt.minLon + ausschnitt.maxLon) / 2 } : null)} ort={filter.ort} umkreisKm={filter.umkreisKm} ausgewaehlt={filter.linien} onChange={(l) => setze({ linien: l })}
                   umkreis={filter.linienUmkreisM} onUmkreis={(v) => setze({ linienUmkreisM: v })} />
               )}
               {panel === 'weitere' && (

@@ -4,23 +4,25 @@
 import { useId, useState } from 'react';
 import { Linie, endpunkteKurz, LINIENTYPEN } from '../lib/oepnv';
 import { UMKREISE_M, useLinienSuche } from '../lib/linienSuche';
+import { Ort } from '../lib/filter';
 
 const MAX_LISTE = 30;
 
 interface Props {
-  bezug: { lat: number; lon: number } | null;
+  bezug: { lat: number; lon: number } | null;   // nur fürs Sortieren
+  ort?: Ort | null;                              // gewählter Ort: nur Linien dort, sonst deutschlandweit
   ausgewaehlt: Linie[];
   onChange: (linien: Linie[]) => void;
   umkreis: string;
   onUmkreis: (wert: string) => void;
 }
 
-export default function LinienFeld({ bezug, ausgewaehlt, onChange, umkreis, onUmkreis }: Props) {
+export default function LinienFeld({ bezug, ort = null, ausgewaehlt, onChange, umkreis, onUmkreis }: Props) {
   const [text, setText] = useState('');
   const [offen, setOffen] = useState(false);
   const [markiert, setMarkiert] = useState(-1);
   const listeId = useId();
-  const { begriff, treffer, laedt, fehler } = useLinienSuche(text, bezug, ausgewaehlt);
+  const { begriff, treffer, laedt, fehler, imOrt } = useLinienSuche(text, bezug, ausgewaehlt, { ort });
   const sichtbar = offen && begriff !== '' ? treffer.slice(0, MAX_LISTE) : [];
   const zeigeListe = offen && begriff !== '';
 
@@ -69,9 +71,10 @@ export default function LinienFeld({ bezug, ausgewaehlt, onChange, umkreis, onUm
       {zeigeListe && (
         <div id={listeId} role="listbox" aria-label="Linien"
           className="absolute left-0 right-0 top-full mt-2 bg-white border border-zinc-200 rounded-xl shadow-xl z-30 max-h-72 overflow-y-auto py-1 min-w-[280px]">
+          {imOrt && <p className="px-4 pt-1.5 pb-1 text-xs text-zinc-500">Linien in {imOrt}</p>}
           {fehler && <p role="alert" className="px-4 py-3 text-sm text-red-700">Die Linien konnten nicht geladen werden.</p>}
           {laedt && sichtbar.length === 0 && <p role="status" className="px-4 py-3 text-sm text-zinc-500">Linien werden gesucht…</p>}
-          {!laedt && !fehler && sichtbar.length === 0 && <p role="status" className="px-4 py-3 text-sm text-zinc-500">Keine passende Linie gefunden.</p>}
+          {!laedt && !fehler && sichtbar.length === 0 && <p role="status" className="px-4 py-3 text-sm text-zinc-500">Keine passende Linie{imOrt ? ` in ${imOrt}` : ''} gefunden.</p>}
           {sichtbar.map((l, i) => (
             <div key={l.linie_id} id={`${listeId}-${i}`} role="option" aria-selected={i === markiert}
               onMouseDown={(e) => e.preventDefault()} onClick={() => waehle(l)}

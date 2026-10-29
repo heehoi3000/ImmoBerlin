@@ -27,6 +27,26 @@ test.describe('Startseite', () => {
     await expect(page.getByRole('button', { name: 'ÖPNV-Linien: U8 · 1000 m' })).toBeVisible();
   });
 
+  test('ohne Ort alle U8 deutschlandweit, mit Ort nur die U8 dort', async ({ page }) => {
+    const auf = await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('');
+    const linie = page.getByRole('combobox', { name: 'ÖPNV-Linie' });
+    await linie.fill('U8');
+    await expect(page.getByRole('option', { name: /Nordstadt/ })).toBeVisible();
+    await expect(page.getByRole('option', { name: /Wittenau/ })).toBeVisible();
+    await linie.fill('');
+
+    await page.getByPlaceholder(/Ort oder PLZ/).fill('Berl');
+    await page.getByRole('option', { name: 'Berlin', exact: true }).click();
+    await linie.fill('U8');
+    await expect(page.getByText('Linien in Berlin')).toBeVisible();
+    await expect(page.getByRole('option', { name: /Wittenau/ })).toBeVisible();
+    await expect(page.getByRole('option', { name: /Nordstadt/ })).toHaveCount(0);
+    const anfrage = auf.rpc.find(r => r.name === 'linien_im_gebiet')?.body;
+    expect(anfrage?.p_begriff).toBe('U8');
+    expect((anfrage?.p_gebiet as { type: string }).type).toBe('Polygon');
+  });
+
   test('Rücktaste entfernt die zuletzt gewählte Linie', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('');

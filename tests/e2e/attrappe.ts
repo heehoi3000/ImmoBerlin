@@ -9,6 +9,7 @@ type Zeile = Record<string, unknown>;
 export interface Daten {
   anzeigen: Zeile[];
   linien: Zeile[];
+  linienAusserhalb?: number[];              // Linien ohne Haltestelle im gewählten Ort (linien_im_gebiet)
   haltestellen: Record<number, Zeile[]>;     // je linie_id
   naheLinien: Record<number, string[]>;     // je linie_id: ids der Anzeigen im Umkreis
   naheHalte?: Zeile[];                      // Antwort von haltestellen_in_der_naehe (Inseratsseite)
@@ -99,6 +100,11 @@ export async function attrappeEinrichten(page: Page, daten: Daten): Promise<Aufz
       if (name === 'altcha_aufgabe') return json(route, AUFGABE);
       if (name === 'haltestellen_in_der_naehe') return json(route, daten.naheHalte ?? []);
       if (name === 'grundversorgung_im_umkreis') return json(route, daten.grundversorgung ?? []);
+      if (name === 'linien_im_gebiet') {
+        const begriff = String(body.p_begriff ?? '').toLowerCase();
+        return json(route, daten.linien.filter(l => String(l.nummer).toLowerCase().startsWith(begriff) &&
+          !(daten.linienAusserhalb ?? []).includes(Number(l.linie_id))));
+      }
       if (name === 'tausch_partner') return json(route, daten.tauschPartner ?? []);
       return json(route, []);
     }
@@ -194,9 +200,11 @@ export const STANDARD_DATEN: Daten = {
     anzeige('a2', { titel: 'Neubau mit Balkon', preis: 1200, koordinate_lat: 52.55 }),
     anzeige('a3', { titel: 'Kleine Wohnung', preis: 500, zimmer: 1, koordinate_lat: 52.50 }),
   ],
+  linienAusserhalb: [9008],
   linien: [
     { linie_id: 8, typ: 'ubahn', nummer: 'U8', betreiber: 'BVG', endpunkte: 'S+U Wittenau – S+U Hermannstr.', mitte: null },
     { linie_id: 80, typ: 'bus', nummer: 'U80', betreiber: 'Testbus', endpunkte: 'A – B', mitte: null },
+    { linie_id: 9008, typ: 'ubahn', nummer: 'U8', betreiber: 'Testbahn Nord', endpunkte: 'Nordstadt – Südstadt', mitte: null },
   ],
   haltestellen: { 8: [{ stop_id: 's1', name: 'U Bernauer Str.', lat: 52.5375, lon: 13.3963 }] },
   naheLinien: { 8: ['a1', 'a3'] },

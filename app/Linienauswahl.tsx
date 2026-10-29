@@ -1,33 +1,40 @@
 "use client";
-// Auswahl einer oder mehrerer ÖPNV-Linien. Gesucht wird in ganz Deutschland,
-// Linien nahe dem gewählten Ort bzw. der Kartenmitte stehen oben.
+// Auswahl einer oder mehrerer ÖPNV-Linien. Mit gewähltem Ort nur Linien dort (samt Umkreis),
+// sonst in ganz Deutschland; Linien nahe dem Ort bzw. der Kartenmitte stehen oben.
 import { useState } from 'react';
 import { Linie, endpunkteKurz, LINIENTYPEN } from '../lib/oepnv';
 import { UMKREISE_M, useLinienSuche } from '../lib/linienSuche';
+import { Ort } from '../lib/filter';
 
 const MAX_LISTE = 60;
 
 interface Props {
   bezug: { lat: number; lon: number } | null;   // Ort oder Kartenmitte, nur fürs Sortieren
+  ort: Ort | null;                               // gewählter Ort: nur Linien mit Haltestelle dort
+  umkreisKm: number;                             // Umkreis um den Ort
   ausgewaehlt: Linie[];
   onChange: (linien: Linie[]) => void;
   umkreis: string;
   onUmkreis: (wert: string) => void;
 }
 
-export default function Linienauswahl({ bezug, ausgewaehlt, onChange, umkreis, onUmkreis }: Props) {
+export default function Linienauswahl({ bezug, ort, umkreisKm, ausgewaehlt, onChange, umkreis, onUmkreis }: Props) {
   const [suchtext, setSuchtext] = useState('');
-  const { begriff, treffer, laedt, fehler } = useLinienSuche(suchtext, bezug, ausgewaehlt);
+  const { begriff, treffer, laedt, fehler, imOrt } = useLinienSuche(suchtext, bezug, ausgewaehlt, { ort, umkreisKm });
 
   return (
     <div className="md:w-[460px]">
-      <p className="text-[11px] text-zinc-500 mb-2">Suche nach Liniennummer, Betreiber oder Endstation in ganz Deutschland. Linien in deiner Nähe stehen oben.</p>
+      <p className="text-[11px] text-zinc-500 mb-2">
+        {imOrt
+          ? `Suche nach Liniennummer, Betreiber oder Endstation. Es erscheinen nur Linien mit Haltestelle in ${imOrt}${umkreisKm > 0 ? ` oder im Umkreis von ${umkreisKm} km` : ''}.`
+          : 'Suche nach Liniennummer, Betreiber oder Endstation in ganz Deutschland. Linien in deiner Nähe stehen oben.'}
+      </p>
       <input type="text" aria-label="Linie suchen" placeholder="z.B. U2, BVG, Ruhleben" value={suchtext} onChange={(e) => setSuchtext(e.target.value)} className="w-full h-[38px] bg-white border border-zinc-200 rounded-md px-3 text-sm font-medium focus:ring-1 focus:ring-black outline-none placeholder:text-zinc-500" />
       {begriff !== '' && (
         <div className="mt-1 w-full bg-white border border-zinc-200 rounded-lg max-h-64 overflow-y-auto">
           {fehler && <p role="alert" className="px-4 py-3 text-xs text-red-600">Die Linien konnten nicht geladen werden.</p>}
           {laedt && treffer.length === 0 && <p role="status" className="px-4 py-3 text-xs text-zinc-500">Linien werden gesucht…</p>}
-          {!laedt && !fehler && treffer.length === 0 && <p role="status" className="px-4 py-3 text-xs text-zinc-500">Keine passende Linie gefunden.</p>}
+          {!laedt && !fehler && treffer.length === 0 && <p role="status" className="px-4 py-3 text-xs text-zinc-500">Keine passende Linie{imOrt ? ` in ${imOrt}` : ''} gefunden.</p>}
           {treffer.slice(0, MAX_LISTE).map(linie => (
             <button key={linie.linie_id} onClick={() => { onChange([...ausgewaehlt, linie]); setSuchtext(''); }} title={`${LINIENTYPEN[linie.typ] || linie.typ} · ${linie.betreiber}`} className="w-full text-left px-4 py-1.5 hover:bg-zinc-100 transition flex items-baseline gap-2">
               <span className="text-sm font-bold text-zinc-900 shrink-0 min-w-[2.5rem]">{linie.nummer}</span>

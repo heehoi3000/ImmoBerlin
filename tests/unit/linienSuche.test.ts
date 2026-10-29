@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { flaecheVereinfachen } from '../../lib/linienSuche';
+import { flaecheVereinfachen, nurNummer } from '../../lib/linienSuche';
 
 describe('flaecheVereinfachen', () => {
   it('dünnt lange Ringe aus und schließt sie wieder', () => {
@@ -19,5 +19,15 @@ describe('flaecheVereinfachen', () => {
     expect(f.type).toBe('MultiPolygon');
     expect(f.coordinates).toHaveLength(30);
     expect((f.coordinates as number[][][][])[0][0].length).toBe(44);
+  });
+});
+
+describe('nurNummer', () => {
+  it('kurze Begriffe und Begriffe mit Ziffern sind Liniennummern', () => {
+    expect(nurNummer('U')).toBe(true);
+    expect(nurNummer('U8')).toBe(true);
+    expect(nurNummer('M10')).toBe(true);
+    expect(nurNummer('BVG')).toBe(false);
+    expect(nurNummer('Ruhleben')).toBe(false);
   });
 });

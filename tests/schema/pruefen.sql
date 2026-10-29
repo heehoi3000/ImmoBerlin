@@ -96,18 +96,24 @@ begin
     (999801, 'ubahn', 'U8', 'Hier', 'A – B', 'SRID=4326;POINT(13.40 52.50)'),
     (999802, 'ubahn', 'U8', 'Dort', 'C – D', 'SRID=4326;POINT(14.90 52.50)'),
     (999803, 'bus', 'U80', 'Hier', 'E – F', 'SRID=4326;POINT(13.40 52.50)'),
-    (999804, 'bus', '100', 'Hier', 'G – H', 'SRID=4326;POINT(13.51 52.50)');
+    (999804, 'bus', '100', 'Hier', 'G – H', 'SRID=4326;POINT(13.51 52.50)'),
+    (999805, 'sbahn', 'S1', 'Hier', 'S+U Testplatz – Ende', 'SRID=4326;POINT(13.40 52.50)');
   insert into public.oepnv_haltestellen (stop_id, name, geom) values
     ('u8-hier', 'Hier', 'SRID=4326;POINT(13.40 52.50)'), ('u8-dort', 'Dort', 'SRID=4326;POINT(14.90 52.50)'),
     ('bus-rand', 'Rand', 'SRID=4326;POINT(13.52 52.50)');
   insert into public.oepnv_linie_haltestelle (linie_id, stop_id) values
-    (999801, 'u8-hier'), (999802, 'u8-dort'), (999803, 'u8-hier'), (999804, 'bus-rand');
+    (999801, 'u8-hier'), (999802, 'u8-dort'), (999803, 'u8-hier'), (999804, 'bus-rand'), (999805, 'u8-hier');
   select string_agg(linie_id::text, ',' order by linie_id) into ergebnis from public.linien_im_gebiet('U8', gebiet);
   if ergebnis is distinct from '999801,999803' then raise exception 'linien_im_gebiet(U8) liefert %', ergebnis; end if;
   select string_agg(linie_id::text, ',') into ergebnis from public.linien_im_gebiet('100', gebiet);
   if ergebnis is not null then raise exception 'Linie 100 außerhalb des Gebiets gefunden'; end if;
   select string_agg(linie_id::text, ',') into ergebnis from public.linien_im_gebiet('100', gebiet, 5000);
   if ergebnis is distinct from '999804' then raise exception 'Linie 100 im Umkreis fehlt: %', ergebnis; end if;
+  -- "U" sucht nur in der Nummer (0016), nicht in der Endstation "S+U Testplatz"
+  select string_agg(linie_id::text, ',' order by linie_id) into ergebnis from public.linien_im_gebiet('U', gebiet);
+  if ergebnis is distinct from '999801,999803' then raise exception 'linien_im_gebiet(U) liefert %', ergebnis; end if;
+  select string_agg(linie_id::text, ',') into ergebnis from public.linien_im_gebiet('Testplatz', gebiet);
+  if ergebnis is distinct from '999805' then raise exception 'Suche nach Endstation liefert %', ergebnis; end if;
   select string_agg(linie_id::text, ',') into ergebnis from public.linien_im_gebiet('U_', gebiet);
   if ergebnis is not null then raise exception 'Unterstrich wirkt als Platzhalter: %', ergebnis; end if;
   raise notice 'Liniensuche im Ort funktioniert';

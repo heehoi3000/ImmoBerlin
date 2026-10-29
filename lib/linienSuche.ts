@@ -59,6 +59,12 @@ export function ortsflaeche(ort: Ort): Promise<Flaeche | null> {
   return f;
 }
 
+// "U", "S4" oder "M10" ist eine Liniennummer: nur in der Nummer suchen, sonst träfe "U" jede Endstation "S+U …".
+// Gleiche Regel in linien_im_gebiet (Migration 0016).
+export function nurNummer(begriff: string) {
+  return begriff.length < 3 || /\d/.test(begriff);
+}
+
 // Zeichen, die in PostgREST-Filtern eine Bedeutung haben, entfernen
 function bereinigen(text: string) {
   return text.replace(/[,()*%"\\:]/g, ' ').trim();
@@ -99,9 +105,11 @@ export function useLinienSuche(suchtext: string, bezug: { lat: number; lon: numb
       // Genau passende Nummern immer vollständig, dazu eine begrenzte breite Suche
       const [genau, breit] = await Promise.all([
         supabase.from('oepnv_linien').select(spalten).ilike('nummer', begriff).limit(500),
-        supabase.from('oepnv_linien').select(spalten)
-          .or(`nummer.ilike.${begriff}*,betreiber.ilike.*${begriff}*,endpunkte.ilike.*${begriff}*`)
-          .limit(MAX_TREFFER),
+        nurNummer(begriff)
+          ? supabase.from('oepnv_linien').select(spalten).ilike('nummer', `${begriff}*`).limit(MAX_TREFFER)
+          : supabase.from('oepnv_linien').select(spalten)
+            .or(`nummer.ilike.${begriff}*,betreiber.ilike.*${begriff}*,endpunkte.ilike.*${begriff}*`)
+            .limit(MAX_TREFFER),
       ]);
       if (nr !== anfrageNr.current) return;
       if (genau.error || breit.error) {

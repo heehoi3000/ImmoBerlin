@@ -40,6 +40,21 @@ jobs:
           fi
           rm -rf gebiete-daten
 
+      - name: Streckenverlauf holen
+        # vom Workflow "Streckenverlauf erzeugen"; fehlt der Branch, zeigt die Karte nur den Korridor
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: strecken
+          path: strecken-daten
+
+      - name: Streckenverlauf in die Seite legen
+        run: |
+          if [ -f strecken-daten/stand.json ]; then
+            mkdir -p public/strecken && cp -r strecken-daten/i strecken-daten/r strecken-daten/stand.json public/strecken/
+          fi
+          rm -rf strecken-daten
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

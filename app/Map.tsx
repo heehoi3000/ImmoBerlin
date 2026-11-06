@@ -12,6 +12,7 @@ import { Bezirk } from '../lib/filter';
 import { bezirkeAusdehnung } from '../lib/bezirke';
 import { Anzeige, Haltestelle } from '../lib/suche';
 import { BASIS } from '../lib/basis';
+import { Verlauf, streckeLaden } from '../lib/strecken';
 import { Station } from '../lib/oepnvNaehe';
 import { Art, Ort, UMKREIS_M, artName, ortBeschriftung } from '../lib/grundversorgung';
 import { symbolSvg, verkehrArt, verkehrSvg } from '../lib/symbole';
@@ -255,6 +256,11 @@ export const linienFarbe = (i: number) => LINIENFARBEN[i % LINIENFARBEN.length];
 const KORRIDOR_EBENEN: Ebene[] = [
   { id: 'korridor-flaeche', type: 'fill', paint: { 'fill-color': ['get', 'farbe'], 'fill-opacity': 0.16 }, unterBeschriftung: true },
 ];
+const STRECKEN_EBENEN: Ebene[] = [{
+  id: 'strecken-linie', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' },
+  paint: { 'line-color': ['get', 'farbe'], 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 14, 4.5], 'line-opacity': 0.9 },
+  unterBeschriftung: true,
+}];
 const HALT_EBENEN: Ebene[] = [{
   id: 'halt-punkte', type: 'circle', minzoom: HALTESTELLEN_AB_ZOOM,
   paint: {
@@ -286,7 +292,26 @@ function Linienkorridore({ haltestellen, linien, umkreisM }: { haltestellen: Hal
       geometry: { type: 'Point' as const, coordinates: [h.lon, h.lat] },
     }))),
   }), [haltestellen, linien]);
+  const [verlaeufe, setVerlaeufe] = useState<Record<number, Verlauf>>({});
+  useEffect(() => {
+    let aktiv = true;
+    for (const l of linien) {
+      const halte = haltestellen.filter(h => h.linie_id === l.linie_id);
+      streckeLaden(l, halte).then(v => {
+        if (aktiv && v) setVerlaeufe(alt => ({ ...alt, [l.linie_id]: v }));
+      });
+    }
+    return () => { aktiv = false; };
+  }, [haltestellen, linien]);
+  const strecken = useMemo<FC>(() => ({
+    type: 'FeatureCollection',
+    features: linien.flatMap((l, i) => verlaeufe[l.linie_id] ? [{
+      type: 'Feature' as const, properties: { farbe: linienFarbe(i) },
+      geometry: { type: 'MultiLineString' as const, coordinates: verlaeufe[l.linie_id] },
+    }] : []),
+  }), [linien, verlaeufe]);
   useGeoJson('korridore', flaechen, KORRIDOR_EBENEN);
+  useGeoJson('strecken', strecken, STRECKEN_EBENEN);
   useGeoJson('haltestellen', punkte, HALT_EBENEN);
 
   useEffect(() => {

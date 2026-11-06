@@ -37,6 +37,37 @@ test.describe('Suche', () => {
     await expect(page.getByRole('button', { name: 'ÖPNV-Linien: U8 · 1000 m' })).toBeVisible();
   });
 
+  test('Linienfilter zeigt den echten Streckenverlauf, wenn es einen passenden gibt', async ({ page }) => {
+    const halte = [
+      { stop_id: 's1', name: 'U Bernauer Str.', lat: 52.5375, lon: 13.3963 },
+      { stop_id: 's2', name: 'U Rosenthaler Platz', lat: 52.5297, lon: 13.4015 },
+      { stop_id: 's3', name: 'U Weinmeisterstr.', lat: 52.5254, lon: 13.4053 },
+    ];
+    await attrappeEinrichten(page, { ...STANDARD_DATEN, haltestellen: { 8: halte } });
+    const geladen: string[] = [];
+    // U8 gibt es auch in Frankfurt; nur die Berliner Relation passt zu den Haltestellen
+    await page.route('**/strecken/**', route => {
+      const teil = new URL(route.request().url()).pathname.replace(/^.*\/strecken\//, '');
+      geladen.push(teil);
+      if (teil === 'i/u/u8.json') {
+        return route.fulfill({ json: [[939116, 'VGF', [8.621, 50.099, 8.687, 50.18]], [2679013, 'BVG', [13.39, 52.52, 13.41, 52.54]]] });
+      }
+      if (teil === 'r/2679013.json') {
+        // Polyline durch die drei Haltestellen (wie scripts/strecken/strecken_bauen.py sie schreibt)
+        return route.fulfill({ json: { p: ['kft_I{mwpAvo@o_@zYwV'] } });
+      }
+      return route.fulfill({ status: 404, body: '' });
+    });
+    await page.goto('suche/');
+    await page.getByRole('button', { name: 'ÖPNV-Linien' }).click();
+    await page.getByPlaceholder('z.B. U2, BVG, Ruhleben').fill('U8');
+    await page.getByRole('button', { name: /U8\s*S\+U Wittenau/ }).click();
+    await page.getByRole('button', { name: 'Ergebnisse anzeigen' }).click();
+    await expect(page.getByText('2 Wohnungen zur Miete')).toBeVisible();
+    await expect.poll(() => geladen).toContain('r/2679013.json');
+    expect(geladen).not.toContain('r/939116.json');
+  });
+
   test('Karte: nahe Angebote als Gruppe, Klick zoomt hinein, Pin wählt das Angebot', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('suche/');

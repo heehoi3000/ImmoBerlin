@@ -51,7 +51,7 @@ export default function Impressum() {
             Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>; von uns aufbereitet (Umleitungen und seltene Fahrten herausgefiltert, Bahnsteige zu Stationen zusammengefasst).
           </li>
           <li>
-            Barrierefreiheit der Haltestellen, „Einkaufen und Alltag“, „Kinder und Freizeit“, Orte und Gebietsgrenzen:
+            Barrierefreiheit der Haltestellen, „Einkaufen und Alltag“, „Kinder und Freizeit“, Streckenverlauf der Linien, Orte und Gebietsgrenzen:
             © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap-Mitwirkende</a>, Lizenz <a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener">ODbL</a>.
           </li>
         </ul>

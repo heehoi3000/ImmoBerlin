@@ -5,8 +5,8 @@ name: Tests
 # werden im Browser ersetzt, die echte Datenbank bleibt unberührt. Läuft so auch mit Forgejo Actions.
 on:
   push:
-    # Datenbranches der Gebietsdaten enthalten keinen Code
-    branches-ignore: [gebiete, gebiete-test]
+    # Datenbranches (Gebiete, Streckenverlauf) enthalten keinen Code
+    branches-ignore: [gebiete, gebiete-test, strecken]
   pull_request:
   workflow_dispatch:
 

@@ -1,17 +1,24 @@
-name: Streckenverlauf erzeugen (Probelauf)
+name: Streckenverlauf erzeugen
 
 # Baut aus OpenStreetMap (Geofabrik-Auszug Deutschland) den echten Streckenverlauf jeder Linie
-# (Linienrelationen route=bus, tram, subway, train, ...) mit scripts/strecken/strecken_bauen.py.
-# Probelauf: schreibt nichts ins Repository und ändert nichts an der Seite. Die Dateien landen nur als
-# Workflow-Artefakt, Kennzahlen (Größe, Abdeckung je Linientyp) in der Zusammenfassung des Laufs.
+# (Linienrelationen route=bus, tram, subway, train, ...) mit scripts/strecken/strecken_bauen.py und legt
+# die Dateien auf den Branch "strecken". Der Deploy holt sie von dort nach public/strecken (lib/strecken.ts).
+# Kennzahlen (Größe, Abdeckung je Linientyp) stehen in der Zusammenfassung des Laufs.
+# Probelauf: ziel leer lassen, dann landen die Dateien nur als Workflow-Artefakt.
 on:
   workflow_dispatch:
+    inputs:
+      ziel:
+        description: 'Ziel-Branch (leer = nur Probelauf als Artefakt)'
+        default: 'strecken'
+  schedule:
+    - cron: '0 4 2 * *'   # monatlich
   push:
     branches: ['claude/**']
     paths: ['.github/workflows/strecken.yml', 'scripts/strecken/**']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   erzeugen:
@@ -71,3 +78,18 @@ jobs:
           name: strecken
           path: strecken.tar.gz
           retention-days: 7
+
+      - name: Auf Branch "strecken" ablegen
+        # bei Push auf claude/** nur Probelauf; geplant und per Hand standardmäßig nach "strecken"
+        if: github.event_name != 'push' && (github.event_name == 'schedule' || inputs.ziel != '')
+        env:
+          ZIEL: ${{ inputs.ziel || 'strecken' }}
+        run: |
+          cd strecken
+          git init -q -b "$ZIEL"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Streckenverlauf $(date -u +%F)"
+          server="${{ github.server_url }}"
+          git push -f "${server/:\/\//://x-access-token:${{ github.token }}@}/${{ github.repository }}.git" "$ZIEL"

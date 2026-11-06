@@ -12,7 +12,7 @@ import { Bezirk } from '../lib/filter';
 import { bezirkeAusdehnung } from '../lib/bezirke';
 import { Anzeige, Haltestelle } from '../lib/suche';
 import { BASIS } from '../lib/basis';
-import { Verlauf, streckeLaden } from '../lib/strecken';
+import { Strecke, streckeLaden } from '../lib/strecken';
 import { Station } from '../lib/oepnvNaehe';
 import { Art, Ort, UMKREIS_M, artName, ortBeschriftung } from '../lib/grundversorgung';
 import { symbolSvg, verkehrArt, verkehrSvg } from '../lib/symbole';
@@ -250,9 +250,9 @@ function BezirkeAnzeige({ bezirke }: { bezirke: Bezirk[] }) {
 }
 
 // Eine Farbe je gewählter Linie, gut unterscheidbar
-// Gefilterte Linien in Schwarz-Weiß wie auf der Inseratsseite (Leeroys Wahl, 06.11.2026): Strecke anthrazit
-// mit weißem Rand, Umkreis zart grau mit gestrichelter Grenze. Die echten Linienfarben aus OpenStreetMap
-// stehen im Streckenverzeichnis (lib/strecken.ts), werden aber bewusst nicht genutzt.
+// Gefilterte Linien (Leeroy, 06.11.2026): Strecke in ihrer echten Farbe aus OpenStreetMap mit weißem Rand,
+// ohne eingetragene Farbe anthrazit; Umkreis zart grau mit gestrichelter Grenze, Bahnhöfe wie auf der
+// Inseratsseite.
 const LINIE = '#18181b';
 const KORRIDOR_EBENEN: Ebene[] = [
   { id: 'korridor-flaeche', type: 'fill', paint: { 'fill-color': LINIE, 'fill-opacity': 0.06 }, unterBeschriftung: true },
@@ -265,7 +265,7 @@ const STRECKEN_EBENEN: Ebene[] = [
   },
   {
     id: 'strecken-linie', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': LINIE, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 14, 4.5], 'line-opacity': 0.95 },
+    paint: { 'line-color': ['get', 'farbe'], 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 14, 4.5], 'line-opacity': 0.95 },
     unterBeschriftung: true,
   },
 ];
@@ -286,7 +286,9 @@ function stationenDerLinie(halte: Haltestelle[], abstandM = 150) {
 // vorher vereinigt, damit sich Überlappungen nicht dunkler färben. Dazu der echte Streckenverlauf aus
 // OpenStreetMap, wenn es für die Linie einen passenden gibt (lib/strecken.ts). Stationen erscheinen erst
 // beim Hineinzoomen, zuerst als kleines Quadrat, nah dran mit dem Symbol wie auf der Inseratsseite.
-function Linienkorridore({ haltestellen, linien, umkreisM }: { haltestellen: Haltestelle[]; linien: Linie[]; umkreisM: number }) {
+function Linienkorridore({ haltestellen, linien, umkreisM, verlaeufe }: {
+  haltestellen: Haltestelle[]; linien: Linie[]; umkreisM: number; verlaeufe: Record<number, Strecke>;
+}) {
   const { map } = useKarte();
   const flaechen = useMemo<FC>(() => ({
     type: 'FeatureCollection',
@@ -298,22 +300,11 @@ function Linienkorridore({ haltestellen, linien, umkreisM }: { haltestellen: Hal
       return [{ type: 'Feature' as const, properties: {}, geometry: { type: 'MultiPolygon' as const, coordinates: vereint } }];
     }),
   }), [haltestellen, linien, umkreisM]);
-  const [verlaeufe, setVerlaeufe] = useState<Record<number, Verlauf>>({});
-  useEffect(() => {
-    let aktiv = true;
-    for (const l of linien) {
-      const halte = haltestellen.filter(h => h.linie_id === l.linie_id);
-      streckeLaden(l, halte).then(v => {
-        if (aktiv && v) setVerlaeufe(alt => ({ ...alt, [l.linie_id]: v }));
-      });
-    }
-    return () => { aktiv = false; };
-  }, [haltestellen, linien]);
   const strecken = useMemo<FC>(() => ({
     type: 'FeatureCollection',
     features: linien.flatMap(l => verlaeufe[l.linie_id] ? [{
-      type: 'Feature' as const, properties: {},
-      geometry: { type: 'MultiLineString' as const, coordinates: verlaeufe[l.linie_id] },
+      type: 'Feature' as const, properties: { farbe: verlaeufe[l.linie_id].farbe ?? LINIE },
+      geometry: { type: 'MultiLineString' as const, coordinates: verlaeufe[l.linie_id].verlauf },
     }] : []),
   }), [linien, verlaeufe]);
   useGeoJson('korridore', flaechen, KORRIDOR_EBENEN);
@@ -586,6 +577,18 @@ interface MapProps {
 export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreisM, ortKreis, bezirke, fokus = null, aktivId = null, onAuswahl, onAusschnittChange, stationen, stationAuswahl = 0, orte, start3D = false }: MapProps) {
   const box = useRef<HTMLDivElement>(null);
   const [karte, setKarte] = useState<{ map: KartenMap; stil: number } | null>(null);
+  // Echter Streckenverlauf und Linienfarbe je gefilterter Linie (lib/strecken.ts); fehlt er, bleibt der Umkreis
+  const [verlaeufe, setVerlaeufe] = useState<Record<number, Strecke>>({});
+  useEffect(() => {
+    let aktiv = true;
+    for (const l of linien) {
+      const halte = haltestellen.filter(h => h.linie_id === l.linie_id);
+      streckeLaden(l, halte).then(v => {
+        if (aktiv && v) setVerlaeufe(alt => ({ ...alt, [l.linie_id]: v }));
+      });
+    }
+    return () => { aktiv = false; };
+  }, [haltestellen, linien]);
 
   useEffect(() => {
     const map = new KartenMap({
@@ -632,7 +635,7 @@ export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreis
           <OrtAnzeige ort={ortKreis} />
           <Fokus fokus={fokus} anzeigen={anzeigen} />
           <KlickLeer onKlick={() => onAuswahl?.(null)} />
-          <Linienkorridore haltestellen={haltestellen} linien={linien} umkreisM={linienUmkreisM} />
+          <Linienkorridore haltestellen={haltestellen} linien={linien} umkreisM={linienUmkreisM} verlaeufe={verlaeufe} />
           {stationen && anzeigen[0] && (
             <StationenAnzeige stationen={stationen} auswahl={stationAuswahl}
               von={{ lat: anzeigen[0].koordinate_lat, lon: anzeigen[0].koordinate_lon }} />
@@ -645,7 +648,7 @@ export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreis
         <div className="absolute left-3 top-3 z-[1000] flex flex-wrap gap-1.5 max-w-[70%] pointer-events-none">
           {linien.map(l => (
             <span key={l.linie_id} className="flex items-center gap-1.5 bg-white/95 rounded-full pl-1 pr-2.5 py-1 shadow-md text-xs font-semibold">
-              <span className="px-1.5 py-0.5 rounded-full text-white text-[11px] font-bold" style={{ background: LINIE }}>{l.nummer}</span>
+              <span className="px-1.5 py-0.5 rounded-full text-white text-[11px] font-bold" style={{ background: verlaeufe[l.linie_id]?.farbe ?? LINIE }}>{l.nummer}</span>
               {linienUmkreisM} m
             </span>
           ))}

@@ -50,7 +50,7 @@ test.describe('Suche', () => {
       const teil = new URL(route.request().url()).pathname.replace(/^.*\/strecken\//, '');
       geladen.push(teil);
       if (teil === 'i/u/u8.json') {
-        return route.fulfill({ json: [[939116, 'VGF', [8.621, 50.099, 8.687, 50.18]], [2679013, 'BVG', [13.39, 52.52, 13.41, 52.54]]] });
+        return route.fulfill({ json: [[939116, 'VGF', [8.621, 50.099, 8.687, 50.18]], [2679013, 'BVG', [13.39, 52.52, 13.41, 52.54], '#224f86']] });
       }
       if (teil === 'r/2679013.json') {
         // Polyline durch die drei Haltestellen (wie scripts/strecken/strecken_bauen.py sie schreibt)
@@ -66,6 +66,9 @@ test.describe('Suche', () => {
     await expect(page.getByText('2 Wohnungen zur Miete')).toBeVisible();
     await expect.poll(() => geladen).toContain('r/2679013.json');
     expect(geladen).not.toContain('r/939116.json');
+    // Das Linienschild auf der Karte bekommt die echte Linienfarbe (U8 der BVG)
+    await expect(page.locator('span.text-white', { hasText: /^U8$/ }))
+      .toHaveCSS('background-color', 'rgb(34, 79, 134)');
   });
 
   test('Karte: nahe Angebote als Gruppe, Klick zoomt hinein, Pin wählt das Angebot', async ({ page }) => {

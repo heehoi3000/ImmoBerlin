@@ -10,7 +10,7 @@ import { BASIS } from './basis';
 export const STRECKEN_URL = `${BASIS}/strecken`;
 
 type Punkt = { lat: number; lon: number };
-export type Eintrag = [number, string, [number, number, number, number]];
+export type Eintrag = [number, string, [number, number, number, number], string?];   // ..., Linienfarbe (#rrggbb oder '')
 export type Verlauf = [number, number][][];   // Linienzüge aus [lon, lat]
 
 // Liniennummer wie im Skript: klein, Umlaute ausgeschrieben, nur a-z/0-9 ("S 41" -> "s41")
@@ -107,21 +107,33 @@ function laden<T>(pfad: string): Promise<T | null> {
   return cache.get(pfad) as Promise<T | null>;
 }
 
-// Verlauf einer Linie oder null, wenn keiner sicher passt
-export async function streckeLaden(linie: { typ: string; nummer: string; betreiber?: string }, halte: Punkt[]): Promise<Verlauf | null> {
+// Linienfarbe aus OpenStreetMap (colour), nur wenn sie auf der hellen Karte sichtbar bleibt
+export function farbeGueltig(f?: string): string | null {
+  if (!f || !/^#[0-9a-f]{6}$/i.test(f)) return null;
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(f.slice(i, i + 2), 16) / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.85 ? null : f.toLowerCase();
+}
+
+export interface Strecke { verlauf: Verlauf; farbe: string | null }
+
+// Verlauf einer Linie (mit ihrer echten Farbe, falls eingetragen) oder null, wenn keiner sicher passt
+export async function streckeLaden(linie: { typ: string; nummer: string; betreiber?: string }, halte: Punkt[]): Promise<Strecke | null> {
   const k = schluessel(linie.nummer);
   if (!k || halte.length < 2) return null;
   for (const g of gruppenFuer(linie.typ)) {
     const eintraege = await laden<Eintrag[]>(`i/${g}/${k}.json`);
     if (!Array.isArray(eintraege)) continue;
-    const ids = kandidaten(eintraege, halte, linie.betreiber);
+    const ids = kandidaten(eintraege, halte, linie.betreiber).slice(0, MAX_RELATIONEN);
     const verlauf: Verlauf = [];
-    const daten = await Promise.all(ids.slice(0, MAX_RELATIONEN).map(rid => laden<{ p: string[] }>(`r/${rid}.json`)));
-    for (const d of daten) {
+    let farbe: string | null = null;
+    const daten = await Promise.all(ids.map(rid => laden<{ p: string[] }>(`r/${rid}.json`)));
+    daten.forEach((d, i) => {
       const zuege = (d?.p ?? []).map(dekodieren).filter(z => z.length >= 2);
-      if (zuege.length > 0 && passtZuHaltestellen(zuege, halte)) verlauf.push(...zuege);
-    }
-    if (verlauf.length > 0) return verlauf;
+      if (zuege.length === 0 || !passtZuHaltestellen(zuege, halte)) return;
+      verlauf.push(...zuege);
+      farbe ??= farbeGueltig(eintraege.find(e => e[0] === ids[i])?.[3]);
+    });
+    if (verlauf.length > 0) return { verlauf, farbe };
   }
   return null;
 }

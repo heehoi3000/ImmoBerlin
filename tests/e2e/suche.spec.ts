@@ -37,6 +37,24 @@ test.describe('Suche', () => {
     await expect(page.getByRole('button', { name: 'ÖPNV-Linien: U8 · 1000 m' })).toBeVisible();
   });
 
+  test('Karte: nahe Angebote als Gruppe, Klick zoomt hinein, Pin wählt das Angebot', async ({ page }) => {
+    await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('suche/');
+    const karte = page.locator('.maplibregl-map');
+    const gruppe = karte.locator('.preis-gruppe');
+    await expect(gruppe.first()).toBeVisible();
+    // Gruppen per Tastatur oder Klick öffnen, bis alle Pins einzeln stehen
+    for (let i = 0; i < 4 && await gruppe.count() > 0; i++) {
+      await gruppe.first().click();
+      await page.waitForTimeout(700);
+    }
+    const pin = karte.getByRole('button', { name: 'Neubau mit Balkon, 1.000 €' });
+    await expect(pin).toBeVisible();
+    await pin.click();
+    await expect(pin).toHaveClass(/aktiv/);
+    await expect(page.getByRole('button', { name: 'Schließen' })).toBeVisible();
+  });
+
   test('Ortssuche findet Berlin in den eigenen Ortsdaten, Bezirke werden angeboten', async ({ page }) => {
     await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('suche/');

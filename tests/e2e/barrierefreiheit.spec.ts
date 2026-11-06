@@ -10,7 +10,7 @@ async function pruefen(page: Page) {
   await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; }' });
   const ergebnis = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .exclude('.leaflet-container')
+    .exclude('.maplibregl-map')
     .analyze();
   const funde = ergebnis.violations.map(v =>
     `${v.id} (${v.impact}): ${v.help}\n` + v.nodes.slice(0, 5).map(n => `    ${n.target.join(' ')}: ${n.failureSummary?.split('\n')[1] ?? ''}`).join('\n'));

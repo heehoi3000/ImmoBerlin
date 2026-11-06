@@ -18,7 +18,7 @@ const TAUSCH = {
 
 // Barrierefreiheit wie in barrierefreiheit.spec.ts (WCAG 2.1 AA, ohne Karte)
 async function pruefen(page: Page) {
-  const ergebnis = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).exclude('.leaflet-container').analyze();
+  const ergebnis = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).exclude('.maplibregl-map').analyze();
   expect(ergebnis.violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`)).toEqual([]);
 }
 

@@ -19,7 +19,6 @@ import { symbolSvg, verkehrArt, verkehrSvg } from '../lib/symbole';
 // Hintergrundkarte: OpenFreeMap (weltweit, kostenlos, ohne API-Schlüssel), Vektorkacheln im Stil Positron.
 const KARTE_STIL = 'https://tiles.openfreemap.org/styles/positron';
 const KARTE_HINWEIS = '<a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/">OpenMapTiles</a> Daten von <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
-const FAHRPLAN_HINWEIS = 'Fahrplandaten: <a href="https://www.delfi.de">DELFI e.V.</a>, CC BY 4.0';
 
 // Ist OpenFreeMap nicht erreichbar, bleibt die Karte trotzdem bedienbar: schlichter Hintergrund,
 // Pins, Linien und Grenzen werden weiter gezeichnet.
@@ -508,10 +507,21 @@ export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreis
     map.touchZoomRotate.disableRotation();
     map.keyboard.disableRotation();
     map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
-    map.addControl(new AttributionControl({ compact: false, customAttribution: [KARTE_HINWEIS, FAHRPLAN_HINWEIS] }), 'bottom-right');
 
     let stil = 0, ersatz = false;
-    map.on('style.load', () => { stil += 1; setKarte({ map, stil }); });
+    // Quellenhinweis in der Kartenecke: der Kartenstil bringt ihn normalerweise selbst mit. Nur wenn nicht
+    // (z. B. Ersatzstil), steht unserer da, damit er nie doppelt erscheint. Fahrplandaten (DELFI) stehen in der
+    // Fußzeile und unter Impressum › Datenquellen.
+    let hinweis = false;
+    map.on('style.load', () => {
+      if (!hinweis) {
+        hinweis = true;
+        const eigener = Object.values(map.getStyle().sources).some(q => 'attribution' in q && q.attribution);
+        map.addControl(new AttributionControl({ compact: false, customAttribution: eigener ? undefined : KARTE_HINWEIS }), 'bottom-right');
+      }
+      stil += 1;
+      setKarte({ map, stil });
+    });
     map.on('error', () => {
       if (stil === 0 && !ersatz) { ersatz = true; map.setStyle(ERSATZ_STIL, { diff: false }); }
     });

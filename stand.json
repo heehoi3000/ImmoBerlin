@@ -1,0 +1,29 @@
+{
+ "stand": "2026-11-06T20:56:19Z",
+ "relationen": 59961,
+ "ohne_geometrie": 17,
+ "mit_farbe": 22734,
+ "je_verkehrsmittel": {
+  "bus": 56275,
+  "tram": 952,
+  "light_rail": 187,
+  "train": 2133,
+  "subway": 131,
+  "trolleybus": 22,
+  "ferry": 241,
+  "monorail": 20
+ },
+ "verzeichnisdateien": 5019,
+ "groesse_strecken_mb": 46.3,
+ "groesse_verzeichnis_mb": 4.2,
+ "abdeckung_nach_nummer": {
+  "bus": "20578/24054 (86 %)",
+  "ersatzverkehr": "214/520 (41 %)",
+  "faehre": "40/74 (54 %)",
+  "fern": "28/126 (22 %)",
+  "regional": "669/765 (87 %)",
+  "sbahn": "169/184 (92 %)",
+  "tram": "370/470 (79 %)",
+  "ubahn": "66/200 (33 %)"
+ }
+}

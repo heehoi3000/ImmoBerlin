@@ -250,13 +250,13 @@ function BezirkeAnzeige({ bezirke }: { bezirke: Bezirk[] }) {
 }
 
 // Eine Farbe je gewählter Linie, gut unterscheidbar
-// Gefilterte Linien (Leeroy, 06.11.2026): Strecke in ihrer echten Farbe aus OpenStreetMap mit weißem Rand,
-// ohne eingetragene Farbe anthrazit; Umkreis zart grau mit gestrichelter Grenze, Bahnhöfe wie auf der
-// Inseratsseite.
+// Gefilterte Linien (Leeroy, 06.11.2026): ein Streckenverlauf je Linie in ihrer echten Farbe aus OpenStreetMap
+// mit weißem Rand, Umkreis in derselben Farbe mit gestrichelter Grenze; ohne eingetragene Farbe beides
+// anthrazit bzw. zart grau. Bahnhöfe wie auf der Inseratsseite.
 const LINIE = '#18181b';
 const KORRIDOR_EBENEN: Ebene[] = [
-  { id: 'korridor-flaeche', type: 'fill', paint: { 'fill-color': LINIE, 'fill-opacity': 0.06 }, unterBeschriftung: true },
-  { id: 'korridor-rand', type: 'line', paint: { 'line-color': LINIE, 'line-opacity': 0.5, 'line-width': 1.3, 'line-dasharray': [3, 2] }, unterBeschriftung: true },
+  { id: 'korridor-flaeche', type: 'fill', paint: { 'fill-color': ['get', 'farbe'], 'fill-opacity': ['get', 'deckkraft'] }, unterBeschriftung: true },
+  { id: 'korridor-rand', type: 'line', paint: { 'line-color': ['get', 'farbe'], 'line-opacity': 0.6, 'line-width': 1.3, 'line-dasharray': [3, 2] }, unterBeschriftung: true },
 ];
 const STRECKEN_EBENEN: Ebene[] = [
   {
@@ -290,16 +290,21 @@ function Linienkorridore({ haltestellen, linien, umkreisM, verlaeufe }: {
   haltestellen: Haltestelle[]; linien: Linie[]; umkreisM: number; verlaeufe: Record<number, Strecke>;
 }) {
   const { map } = useKarte();
+  // Die Vereinigung der Kreise ist der teure Teil; sie hängt nicht an der Farbe
+  const umkreise = useMemo(() => linien.flatMap(l => {
+    const halte = haltestellen.filter(h => h.linie_id === l.linie_id);
+    if (halte.length === 0 || !(umkreisM > 0)) return [];
+    const kreise = halte.map(h => [kreisRing(h.lat, h.lon, umkreisM)] as PcPolygon);
+    return [{ id: l.linie_id, flaeche: polygonClipping.union(kreise[0], ...kreise.slice(1)) as PcMultiPolygon }];
+  }), [haltestellen, linien, umkreisM]);
+  // Umkreis in der Linienfarbe, solange keine bekannt ist zart grau
   const flaechen = useMemo<FC>(() => ({
     type: 'FeatureCollection',
-    features: linien.flatMap(l => {
-      const halte = haltestellen.filter(h => h.linie_id === l.linie_id);
-      if (halte.length === 0 || !(umkreisM > 0)) return [];
-      const kreise = halte.map(h => [kreisRing(h.lat, h.lon, umkreisM)] as PcPolygon);
-      const vereint: PcMultiPolygon = polygonClipping.union(kreise[0], ...kreise.slice(1));
-      return [{ type: 'Feature' as const, properties: {}, geometry: { type: 'MultiPolygon' as const, coordinates: vereint } }];
+    features: umkreise.map(({ id, flaeche }) => {
+      const farbe = verlaeufe[id]?.farbe;
+      return { type: 'Feature' as const, properties: { farbe: farbe ?? LINIE, deckkraft: farbe ? 0.12 : 0.06 }, geometry: { type: 'MultiPolygon' as const, coordinates: flaeche } };
     }),
-  }), [haltestellen, linien, umkreisM]);
+  }), [umkreise, verlaeufe]);
   const strecken = useMemo<FC>(() => ({
     type: 'FeatureCollection',
     features: linien.flatMap(l => verlaeufe[l.linie_id] ? [{

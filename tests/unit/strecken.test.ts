@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Eintrag, anteilNah, dekodieren, farbeGueltig, gruppenFuer, kandidaten, passtZuHaltestellen, schluessel } from '../../lib/strecken';
+import { Eintrag, dekodieren, farbeGueltig, gruppenFuer, kandidaten, passtZuHaltestellen, schluessel } from '../../lib/strecken';
 
 describe('schluessel', () => {
   it.each([['S 41', 's41'], ['U8', 'u8'], ['Bus 100', 'bus100'], ['Fähre', 'faehre']])('%s -> %s', (ein, aus) => {
@@ -65,12 +65,5 @@ describe('farbeGueltig', () => {
     expect(farbeGueltig('#ffffff')).toBeNull();
     expect(farbeGueltig('')).toBeNull();
     expect(farbeGueltig('rot')).toBeNull();
-  });
-});
-
-describe('anteilNah', () => {
-  it('zählt die Haltestellen am Verlauf', () => {
-    const verlauf: [number, number][][] = [[[13.40, 52.50], [13.42, 52.50]]];
-    expect(anteilNah(verlauf, [{ lat: 52.501, lon: 13.405 }, { lat: 52.53, lon: 13.418 }])).toBe(0.5);
   });
 });

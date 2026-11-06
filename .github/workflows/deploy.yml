@@ -7,6 +7,9 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: ["main"]
+  # Manuell neu veröffentlichen (Actions › Deploy to GitHub Pages › Run workflow), z. B. wenn GitHub Pages
+  # hängen blieb: ein "Re-run" scheitert dann an einem doppelten Artefakt, ein frischer Lauf nicht.
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -509,15 +509,14 @@ export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreis
     map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
 
     let stil = 0, ersatz = false;
-    // Quellenhinweis in der Kartenecke: der Kartenstil bringt ihn normalerweise selbst mit. Nur wenn nicht
-    // (z. B. Ersatzstil), steht unserer da, damit er nie doppelt erscheint. Fahrplandaten (DELFI) stehen in der
-    // Fußzeile und unter Impressum › Datenquellen.
+    // Quellenhinweis in der Kartenecke: OpenFreeMap liefert ihn mit den Kacheln (TileJSON) selbst. Unserer steht
+    // nur beim Ersatzstil da, damit er nie doppelt erscheint. Fahrplandaten (DELFI) stehen in der Fußzeile und
+    // unter Impressum › Datenquellen.
     let hinweis = false;
     map.on('style.load', () => {
       if (!hinweis) {
         hinweis = true;
-        const eigener = Object.values(map.getStyle().sources).some(q => 'attribution' in q && q.attribution);
-        map.addControl(new AttributionControl({ compact: false, customAttribution: eigener ? undefined : KARTE_HINWEIS }), 'bottom-right');
+        map.addControl(new AttributionControl({ compact: false, customAttribution: ersatz ? KARTE_HINWEIS : undefined }), 'bottom-right');
       }
       stil += 1;
       setKarte({ map, stil });

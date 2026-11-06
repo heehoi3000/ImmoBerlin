@@ -8,7 +8,8 @@ Eingabe:
 
 Ausgabe (im Zielordner):
   i/<gruppe>/<schluessel>.json   Verzeichnis je Verkehrsmittelgruppe und Liniennummer:
-                                 [[relation, betreiber, [west, süd, ost, nord]], ...]
+                                 [[relation, betreiber, [west, süd, ost, nord], farbe], ...]
+                                 farbe = OSM-Tag colour als #rrggbb, sonst ""
   r/<relation>.json              Streckenverlauf: {"p": ["<polyline>", ...]} (Google-Polyline, 5 Stellen)
   stand.json                     Erstellungszeit und Kennzahlen
 
@@ -39,6 +40,20 @@ GRUPPE_TYP = {'ubahn': 'u', 'tram': 't', 'sbahn': 'z', 'regional': 'z', 'fern': 
               'bus': 'b', 'ersatzverkehr': 'b', 'faehre': 'f'}
 VEREINFACHUNG = 0.00005  # Grad, etwa 4–5 m
 NICHT_STRECKE = re.compile(r'^(platform|stop|hail)', re.I)
+FARBNAMEN = {'red': '#ff0000', 'green': '#008000', 'blue': '#0000ff', 'yellow': '#ffff00', 'orange': '#ffa500',
+             'purple': '#800080', 'brown': '#a52a2a', 'black': '#000000', 'grey': '#808080', 'gray': '#808080',
+             'pink': '#ffc0cb', 'magenta': '#ff00ff', 'cyan': '#00ffff', 'white': '#ffffff'}
+
+
+def farbe(wert):
+    """OSM-Tag colour als #rrggbb ('#F00', 'red', 'ff0000' werden vereinheitlicht), sonst ''."""
+    w = (wert or '').strip().lower()
+    w = FARBNAMEN.get(w, w)
+    if re.fullmatch(r'#?[0-9a-f]{6}', w):
+        return '#' + w.lstrip('#')
+    if re.fullmatch(r'#?[0-9a-f]{3}', w):
+        return '#' + ''.join(c * 2 for c in w.lstrip('#'))
+    return ''
 
 
 def schluessel(ref):
@@ -101,7 +116,7 @@ def main():
         if not gruppen or not refs or not mitglieder:
             continue
         betreiber = (tags.get('operator') or tags.get('network') or '')[:60]
-        relationen.append((rid, gruppen, refs, betreiber, mitglieder, tags.get('route')))
+        relationen.append((rid, gruppen, refs, betreiber, mitglieder, tags.get('route'), farbe(tags.get('colour'))))
         benoetigt.update(mitglieder)
     print(f'{len(relationen)} Linienrelationen mit Nummer, {len(benoetigt)} Wege', flush=True)
 
@@ -126,7 +141,7 @@ def main():
     verzeichnis = defaultdict(list)
     zaehler = Counter()
     groesse_r = 0
-    for rid, gruppen, refs, betreiber, mitglieder, route in relationen:
+    for rid, gruppen, refs, betreiber, mitglieder, route, linienfarbe in relationen:
         stuecke = []
         for wid in mitglieder:
             a = wege.get(wid)
@@ -146,7 +161,9 @@ def main():
             f.write(daten)
         groesse_r += len(daten.encode())
         w, s, o, n = geom.bounds
-        eintrag = [rid, betreiber, [round(w, 3), round(s, 3), round(o, 3), round(n, 3)]]
+        eintrag = [rid, betreiber, [round(w, 3), round(s, 3), round(o, 3), round(n, 3)], linienfarbe]
+        if linienfarbe:
+            zaehler['mit_farbe'] += 1
         for g in gruppen:
             for ref in refs:
                 verzeichnis[(g, schluessel(ref))].append(eintrag)
@@ -162,9 +179,10 @@ def main():
 
     bericht = {
         'stand': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-        'relationen': sum(v for k, v in zaehler.items() if k != 'ohne_geometrie'),
+        'relationen': sum(v for k, v in zaehler.items() if k not in ('ohne_geometrie', 'mit_farbe')),
         'ohne_geometrie': zaehler['ohne_geometrie'],
-        'je_verkehrsmittel': {k: v for k, v in zaehler.items() if k != 'ohne_geometrie'},
+        'mit_farbe': zaehler['mit_farbe'],
+        'je_verkehrsmittel': {k: v for k, v in zaehler.items() if k not in ('ohne_geometrie', 'mit_farbe')},
         'verzeichnisdateien': len(verzeichnis),
         'groesse_strecken_mb': round(groesse_r / 1e6, 1),
         'groesse_verzeichnis_mb': round(groesse_i / 1e6, 1),

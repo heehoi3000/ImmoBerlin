@@ -11,7 +11,7 @@ SKRIPT = WURZEL / 'scripts' / 'strecken' / 'strecken_bauen.py'
 sys.path.insert(0, str(SKRIPT.parent))
 import strecken_bauen as sb  # noqa: E402
 
-OPL = ('r1 v1 dV c0 t i0 u Ttype=route,route=subway,ref=U8,operator=BVG Mw10@,w11@,n5@stop,w12@platform\n'
+OPL = ('r1 v1 dV c0 t i0 u Ttype=route,route=subway,ref=U8,operator=BVG,colour=#224F86 Mw10@,w11@,n5@stop,w12@platform\n'
        'r2 v1 dV c0 t i0 u Ttype=route,route=bus,ref=M41;N41,operator=BVG%20%Bus Mw11@\n')
 WEGE = [
     {'type': 'Feature', 'id': 'w10', 'geometry': {'type': 'LineString', 'coordinates': [[13.4, 52.5], [13.41, 52.51]]}},
@@ -25,6 +25,12 @@ class Strecken(unittest.TestCase):
         self.assertEqual(sb.schluessel('S 41'), 's41')
         self.assertEqual(sb.schluessel('Fähre'), 'faehre')
 
+    def test_farbe(self):
+        self.assertEqual(sb.farbe('#F00'), '#ff0000')
+        self.assertEqual(sb.farbe('red'), '#ff0000')
+        self.assertEqual(sb.farbe('224F86'), '#224f86')
+        self.assertEqual(sb.farbe('rot-weiß'), '')
+
     def test_polyline(self):
         self.assertEqual(sb.polyline([(13.4, 52.5), (13.42, 52.52)]), '_|l_I_expA_|B_|B')
 
@@ -33,7 +39,7 @@ class Strecken(unittest.TestCase):
             p = Path(d) / 'r.opl'
             p.write_text(OPL, encoding='utf-8')
             rel = list(sb.relationen_lesen(p))
-        self.assertEqual(rel[0], (1, {'type': 'route', 'route': 'subway', 'ref': 'U8', 'operator': 'BVG'}, [10, 11]))
+        self.assertEqual(rel[0], (1, {'type': 'route', 'route': 'subway', 'ref': 'U8', 'operator': 'BVG', 'colour': '#224F86'}, [10, 11]))
         self.assertEqual(rel[1][1]['operator'], 'BVG Bus')
 
     def test_bauen(self):
@@ -45,7 +51,7 @@ class Strecken(unittest.TestCase):
             subprocess.run([sys.executable, str(SKRIPT), str(d / 'r.opl'), str(d / 'w.geojsonseq'), str(d / 'aus'),
                             str(d / 'l.csv')], check=True, capture_output=True)
             u8 = json.loads((d / 'aus/i/u/u8.json').read_text())
-            self.assertEqual(u8, [[1, 'BVG', [13.4, 52.5, 13.42, 52.52]]])
+            self.assertEqual(u8, [[1, 'BVG', [13.4, 52.5, 13.42, 52.52], '#224f86']])
             # Bahnsteig (w12) gehört nicht zum Verlauf; zwei Wege werden zu einem Linienzug
             self.assertEqual(json.loads((d / 'aus/r/1.json').read_text()), {'p': ['_|l_I_expA_|B_|B']})
             self.assertTrue((d / 'aus/i/b/n41.json').exists())

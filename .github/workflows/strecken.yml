@@ -1,0 +1,73 @@
+name: Streckenverlauf erzeugen (Probelauf)
+
+# Baut aus OpenStreetMap (Geofabrik-Auszug Deutschland) den echten Streckenverlauf jeder Linie
+# (Linienrelationen route=bus, tram, subway, train, ...) mit scripts/strecken/strecken_bauen.py.
+# Probelauf: schreibt nichts ins Repository und ändert nichts an der Seite. Die Dateien landen nur als
+# Workflow-Artefakt, Kennzahlen (Größe, Abdeckung je Linientyp) in der Zusammenfassung des Laufs.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/strecken.yml', 'scripts/strecken/**']
+
+permissions:
+  contents: read
+
+jobs:
+  erzeugen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Werkzeuge installieren
+        run: |
+          als_root() { if command -v sudo >/dev/null; then sudo "$@"; else "$@"; fi; }
+          als_root apt-get update -q && als_root apt-get install -y -q osmium-tool python3-pip time
+          pip install shapely==2.0.6 || pip install --break-system-packages shapely==2.0.6
+
+      - name: OpenStreetMap-Auszug laden und Linien herausfiltern
+        run: |
+          set -euo pipefail
+          curl -sSfL -o deutschland.osm.pbf https://download.geofabrik.de/europe/germany-latest.osm.pbf
+          osmium tags-filter deutschland.osm.pbf \
+            r/route=bus,trolleybus,tram,light_rail,subway,train,monorail,ferry -o routen.osm.pbf
+          rm deutschland.osm.pbf
+          # nur die Relationen (mit Mitgliederliste) als Text
+          osmium tags-filter routen.osm.pbf r/route -R -f opl -o relationen.opl
+          # alle Wege als Linien, auch Wege ohne eigene Tags; geschlossene Wege nicht als Fläche
+          echo '{"linear_tags": true, "area_tags": false}' > export.json
+          osmium export routen.osm.pbf -c export.json -f geojsonseq --geometry-types=linestring \
+            --keep-untagged --add-unique-id=type_id -o wege.geojsonseq
+          ls -lh routen.osm.pbf relationen.opl wege.geojsonseq
+
+      - name: Unsere Linien für den Abdeckungsbericht holen
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then echo "Secret SUPABASE_DB_URL fehlt, Bericht ohne Abdeckung"; exit 0; fi
+          docker run --rm --network host -e DB="$SUPABASE_DB_URL" postgres:17 \
+            sh -c 'psql "$DB" -XA -v ON_ERROR_STOP=1 -c "\copy (select typ, nummer from oepnv_linien) to stdout with csv header"' > linien.csv
+          wc -l linien.csv
+
+      - name: Streckendateien bauen
+        run: |
+          set -euo pipefail
+          linien=""; [ -s linien.csv ] && linien=linien.csv
+          /usr/bin/time -v -o zeit.txt python3 scripts/strecken/strecken_bauen.py relationen.opl wege.geojsonseq strecken $linien
+          grep -E 'Maximum resident|Elapsed' zeit.txt
+          {
+            echo '### Streckenverlauf (Probelauf)'
+            echo '```json'; cat strecken/stand.json; echo; echo '```'
+            echo "Dateien: $(find strecken -type f | wc -l), auf der Platte: $(du -sh strecken | cut -f1)"
+            echo "Berlin U8: $(cat strecken/i/u/u8.json 2>/dev/null | head -c 400)"
+            echo "Berlin S41: $(cat strecken/i/z/s41.json 2>/dev/null | head -c 400)"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          tar czf strecken.tar.gz strecken
+          ls -lh strecken.tar.gz | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: strecken
+          path: strecken.tar.gz
+          retention-days: 7

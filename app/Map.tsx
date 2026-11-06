@@ -250,48 +250,54 @@ function BezirkeAnzeige({ bezirke }: { bezirke: Bezirk[] }) {
 }
 
 // Eine Farbe je gewählter Linie, gut unterscheidbar
-const LINIENFARBEN = ['#2563eb', '#16a34a', '#ea580c', '#9333ea', '#db2777', '#0891b2', '#ca8a04'];
-export const linienFarbe = (i: number) => LINIENFARBEN[i % LINIENFARBEN.length];
-
+// Gefilterte Linien in Schwarz-Weiß wie auf der Inseratsseite (Leeroys Wahl, 06.11.2026): Strecke anthrazit
+// mit weißem Rand, Umkreis zart grau mit gestrichelter Grenze. Die echten Linienfarben aus OpenStreetMap
+// stehen im Streckenverzeichnis (lib/strecken.ts), werden aber bewusst nicht genutzt.
+const LINIE = '#18181b';
 const KORRIDOR_EBENEN: Ebene[] = [
-  { id: 'korridor-flaeche', type: 'fill', paint: { 'fill-color': ['get', 'farbe'], 'fill-opacity': 0.16 }, unterBeschriftung: true },
+  { id: 'korridor-flaeche', type: 'fill', paint: { 'fill-color': LINIE, 'fill-opacity': 0.06 }, unterBeschriftung: true },
+  { id: 'korridor-rand', type: 'line', paint: { 'line-color': LINIE, 'line-opacity': 0.5, 'line-width': 1.3, 'line-dasharray': [3, 2] }, unterBeschriftung: true },
 ];
-const STRECKEN_EBENEN: Ebene[] = [{
-  id: 'strecken-linie', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' },
-  paint: { 'line-color': ['get', 'farbe'], 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 14, 4.5], 'line-opacity': 0.9 },
-  unterBeschriftung: true,
-}];
-const HALT_EBENEN: Ebene[] = [{
-  id: 'halt-punkte', type: 'circle', minzoom: HALTESTELLEN_AB_ZOOM,
-  paint: {
-    'circle-radius': ['step', ['zoom'], 3.5, 14, 5],
-    'circle-color': '#fff', 'circle-stroke-color': ['get', 'farbe'], 'circle-stroke-width': 2.5,
+const STRECKEN_EBENEN: Ebene[] = [
+  {
+    id: 'strecken-rand', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#fff', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 5, 14, 8] }, unterBeschriftung: true,
   },
-}];
+  {
+    id: 'strecken-linie', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': LINIE, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 14, 4.5], 'line-opacity': 0.95 },
+    unterBeschriftung: true,
+  },
+];
+const STATION_GROSS_AB_ZOOM = 13.5;
+
+// Haltestellen einer Linie zu Stationen zusammenfassen: Bahnsteige und Richtungen liegen meist nur wenige
+// Meter auseinander und sollen auf der Karte ein Symbol sein.
+function stationenDerLinie(halte: Haltestelle[], abstandM = 150) {
+  const aus: Haltestelle[] = [];
+  for (const h of halte) {
+    const nah = aus.some(s => Math.hypot((s.lat - h.lat) * 111320, (s.lon - h.lon) * 111320 * Math.cos(h.lat * Math.PI / 180)) < abstandM);
+    if (!nah) aus.push(h);
+  }
+  return aus;
+}
 
 // Einzugsbereich jeder Linie als eine zusammenhängende Fläche: die Kreise um alle Haltestellen werden
-// vorher vereinigt, damit sich Überlappungen nicht dunkler färben. Haltestellen erscheinen erst beim
-// Hineinzoomen als kleine Punkte, Antippen zeigt Linie und Namen.
+// vorher vereinigt, damit sich Überlappungen nicht dunkler färben. Dazu der echte Streckenverlauf aus
+// OpenStreetMap, wenn es für die Linie einen passenden gibt (lib/strecken.ts). Stationen erscheinen erst
+// beim Hineinzoomen, zuerst als kleines Quadrat, nah dran mit dem Symbol wie auf der Inseratsseite.
 function Linienkorridore({ haltestellen, linien, umkreisM }: { haltestellen: Haltestelle[]; linien: Linie[]; umkreisM: number }) {
-  const { map, stil } = useKarte();
+  const { map } = useKarte();
   const flaechen = useMemo<FC>(() => ({
     type: 'FeatureCollection',
-    features: linien.flatMap((l, i) => {
+    features: linien.flatMap(l => {
       const halte = haltestellen.filter(h => h.linie_id === l.linie_id);
       if (halte.length === 0 || !(umkreisM > 0)) return [];
       const kreise = halte.map(h => [kreisRing(h.lat, h.lon, umkreisM)] as PcPolygon);
       const vereint: PcMultiPolygon = polygonClipping.union(kreise[0], ...kreise.slice(1));
-      return [{ type: 'Feature' as const, properties: { farbe: linienFarbe(i) }, geometry: { type: 'MultiPolygon' as const, coordinates: vereint } }];
+      return [{ type: 'Feature' as const, properties: {}, geometry: { type: 'MultiPolygon' as const, coordinates: vereint } }];
     }),
   }), [haltestellen, linien, umkreisM]);
-  const punkte = useMemo<FC>(() => ({
-    type: 'FeatureCollection',
-    features: linien.flatMap((l, i) => haltestellen.filter(h => h.linie_id === l.linie_id).map(h => ({
-      type: 'Feature' as const,
-      properties: { farbe: linienFarbe(i), text: `<strong>${esc(l.nummer)}</strong> · ${esc(haltestelleKurz(h.name))}` },
-      geometry: { type: 'Point' as const, coordinates: [h.lon, h.lat] },
-    }))),
-  }), [haltestellen, linien]);
   const [verlaeufe, setVerlaeufe] = useState<Record<number, Verlauf>>({});
   useEffect(() => {
     let aktiv = true;
@@ -305,33 +311,37 @@ function Linienkorridore({ haltestellen, linien, umkreisM }: { haltestellen: Hal
   }, [haltestellen, linien]);
   const strecken = useMemo<FC>(() => ({
     type: 'FeatureCollection',
-    features: linien.flatMap((l, i) => verlaeufe[l.linie_id] ? [{
-      type: 'Feature' as const, properties: { farbe: linienFarbe(i) },
+    features: linien.flatMap(l => verlaeufe[l.linie_id] ? [{
+      type: 'Feature' as const, properties: {},
       geometry: { type: 'MultiLineString' as const, coordinates: verlaeufe[l.linie_id] },
     }] : []),
   }), [linien, verlaeufe]);
   useGeoJson('korridore', flaechen, KORRIDOR_EBENEN);
   useGeoJson('strecken', strecken, STRECKEN_EBENEN);
-  useGeoJson('haltestellen', punkte, HALT_EBENEN);
 
   useEffect(() => {
-    if (!stil) return;
-    const klick = (e: MapMouseEvent & { features?: GeoJSON.Feature[] }) => {
-      const f = e.features?.[0];
-      if (!f || f.geometry.type !== 'Point') return;
-      new Popup({ offset: 8, className: 'karte-popup' }).setLngLat(f.geometry.coordinates as [number, number]).setHTML(String(f.properties?.text ?? '')).addTo(map);
+    const elemente: HTMLElement[] = [];
+    const weg = linien.flatMap(l => stationenDerLinie(haltestellen.filter(h => h.linie_id === l.linie_id)).map(h => {
+      const name = haltestelleKurz(h.name);
+      const el = element('station-symbol linien-station', verkehrSvg(verkehrArt([l.typ]), 13), 24);
+      elemente.push(el);
+      return symbolSetzen(map, {
+        lat: h.lat, lon: h.lon, element: el, abstand: 12,
+        label: `Haltestelle ${name} · ${l.nummer}`, tooltip: name,
+        popup: `<strong>${esc(l.nummer)}</strong> · ${esc(name)}`,
+      });
+    }));
+    const zoomen = () => {
+      const z = map.getZoom();
+      for (const el of elemente) {
+        el.classList.toggle('versteckt', z < HALTESTELLEN_AB_ZOOM);
+        el.classList.toggle('klein', z < STATION_GROSS_AB_ZOOM);
+      }
     };
-    const zeiger = () => { map.getCanvas().style.cursor = 'pointer'; };
-    const normal = () => { map.getCanvas().style.cursor = ''; };
-    map.on('click', 'halt-punkte', klick);
-    map.on('mouseenter', 'halt-punkte', zeiger);
-    map.on('mouseleave', 'halt-punkte', normal);
-    return () => sicher(() => {
-      map.off('click', 'halt-punkte', klick);
-      map.off('mouseenter', 'halt-punkte', zeiger);
-      map.off('mouseleave', 'halt-punkte', normal);
-    });
-  }, [map, stil]);
+    zoomen();
+    map.on('zoom', zoomen);
+    return () => { sicher(() => map.off('zoom', zoomen)); weg.forEach(f => f()); };
+  }, [map, haltestellen, linien]);
   return null;
 }
 
@@ -633,9 +643,9 @@ export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreis
       )}
       {linien.length > 0 && (
         <div className="absolute left-3 top-3 z-[1000] flex flex-wrap gap-1.5 max-w-[70%] pointer-events-none">
-          {linien.map((l, i) => (
+          {linien.map(l => (
             <span key={l.linie_id} className="flex items-center gap-1.5 bg-white/95 rounded-full pl-1 pr-2.5 py-1 shadow-md text-xs font-semibold">
-              <span className="px-1.5 py-0.5 rounded-full text-white text-[11px] font-bold" style={{ background: linienFarbe(i) }}>{l.nummer}</span>
+              <span className="px-1.5 py-0.5 rounded-full text-white text-[11px] font-bold" style={{ background: LINIE }}>{l.nummer}</span>
               {linienUmkreisM} m
             </span>
           ))}

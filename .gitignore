@@ -43,6 +43,7 @@ next-env.d.ts
 # MapLibre-Worker, wird beim Build aus node_modules kopiert
 /public/maplibre/
 /public/gebiete/
+/public/strecken/
 
 # Tests
 /test-results/

@@ -8,6 +8,9 @@
 import { BASIS } from './basis';
 
 export const STRECKEN_URL = `${BASIS}/strecken`;
+// Stand der Daten beim Build (next.config.ts); als ?v= an jeder Adresse, damit ein Update den Browser-Zwischenspeicher umgeht
+const STAND = process.env.NEXT_PUBLIC_STRECKEN_STAND ?? '';
+const anhang = STAND ? `?v=${STAND}` : '';
 
 type Punkt = { lat: number; lon: number };
 export type Eintrag = [number, string, [number, number, number, number], string?];   // ..., Linienfarbe (#rrggbb oder '')
@@ -100,7 +103,7 @@ export function passtZuHaltestellen(verlauf: Verlauf, halte: Punkt[]): boolean {
 const cache = new Map<string, Promise<unknown>>();
 function laden<T>(pfad: string): Promise<T | null> {
   if (!cache.has(pfad)) {
-    cache.set(pfad, fetch(`${STRECKEN_URL}/${pfad}`)
+    cache.set(pfad, fetch(`${STRECKEN_URL}/${pfad}${anhang}`)
       .then(r => (r.ok ? r.json() : null))
       .catch(() => null));
   }

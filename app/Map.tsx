@@ -130,6 +130,58 @@ function element(klasse: string, html: string, groesse?: number) {
   return el;
 }
 
+// 3D-Gebäude aus den Kartenkacheln (OpenMapTiles "building", Höhe render_height). Erst ab Straßenzoom sichtbar,
+// damit es auch auf schwächeren Geräten flüssig bleibt; der Knopf "3D" neigt die Karte und blendet sie ein.
+// Wer am Gerät "Bewegung reduzieren" eingestellt hat, startet immer flach.
+const GEBAEUDE_AB_ZOOM = 14;
+const NEIGUNG = 50;
+function Gebaeude3D({ start }: { start: boolean }) {
+  const { map, stil } = useKarte();
+  const [an, setAn] = useState(() => start && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  const [moeglich, setMoeglich] = useState(false);
+  const anRef = useRef(an);
+  const erstesMal = useRef(false);
+  useEffect(() => { anRef.current = an; }, [an]);
+
+  useEffect(() => {
+    if (!stil) return;
+    const quelle = Object.entries(map.getStyle().sources).find(([, q]) => q.type === 'vector')?.[0];
+    setMoeglich(!!quelle); // eslint-disable-line react-hooks/set-state-in-effect
+    if (!quelle) return;
+    const beschriftung = map.getStyle().layers.find(l => l.type === 'symbol')?.id;
+    if (!map.getLayer('gebaeude-3d')) map.addLayer({
+      id: 'gebaeude-3d', type: 'fill-extrusion', source: quelle, 'source-layer': 'building', minzoom: GEBAEUDE_AB_ZOOM,
+      layout: { visibility: anRef.current ? 'visible' : 'none' },
+      paint: {
+        'fill-extrusion-color': '#e2e1dc',
+        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 0],
+        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+        'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], GEBAEUDE_AB_ZOOM, 0, GEBAEUDE_AB_ZOOM + 0.6, 0.85],
+      },
+    }, beschriftung);
+    return () => sicher(() => { if (map.getLayer('gebaeude-3d')) map.removeLayer('gebaeude-3d'); });
+  }, [map, stil]);
+
+  useEffect(() => {
+    sicher(() => { if (map.getLayer('gebaeude-3d')) map.setLayoutProperty('gebaeude-3d', 'visibility', an ? 'visible' : 'none'); });
+    const ziel = an ? NEIGUNG : 0;
+    if (Math.abs(map.getPitch() - ziel) < 0.5) return;
+    // Beim ersten Mal ohne Animation, sonst bricht das Einpassen der Inseratskarte die Neigung ab
+    const ruhig = !erstesMal.current || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (ruhig) map.jumpTo({ pitch: ziel }); else map.easeTo({ pitch: ziel, duration: 600 });
+  }, [map, an, stil]);
+  useEffect(() => { erstesMal.current = true; }, []);
+
+  if (!moeglich) return null;
+  return (
+    <button type="button" onClick={() => setAn(x => !x)} aria-pressed={an}
+      title={an ? '3D-Ansicht ausschalten' : '3D-Ansicht einschalten'}
+      className={`karte-3d absolute right-2.5 top-[92px] z-[2] w-9 h-9 rounded-xl text-[12px] font-extrabold shadow-[0_2px_10px_rgba(0,0,0,.15)] ${an ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-900 hover:bg-zinc-100'}`}>
+      3D
+    </button>
+  );
+}
+
 // Meldet den sichtbaren Kartenausschnitt an die Seite, damit sie die Linien dort laden kann.
 function AusschnittMelder({ onChange }: { onChange?: (a: Kartenausschnitt) => void }) {
   const { map } = useKarte();
@@ -492,9 +544,11 @@ interface MapProps {
   stationAuswahl?: number;
   // Inseratsseite: eingeblendete Orte der Grundversorgung
   orte?: Ort[];
+  // Karte startet geneigt mit 3D-Gebäuden (Inseratsseite)
+  start3D?: boolean;
 }
 
-export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreisM, ortKreis, bezirke, fokus = null, aktivId = null, onAuswahl, onAusschnittChange, stationen, stationAuswahl = 0, orte }: MapProps) {
+export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreisM, ortKreis, bezirke, fokus = null, aktivId = null, onAuswahl, onAusschnittChange, stationen, stationAuswahl = 0, orte, start3D = false }: MapProps) {
   const box = useRef<HTMLDivElement>(null);
   const [karte, setKarte] = useState<{ map: KartenMap; stil: number } | null>(null);
 
@@ -537,6 +591,7 @@ export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreis
       <div ref={box} style={{ position: 'absolute', inset: 0 }} />
       {karte && (
         <KarteKontext.Provider value={karte}>
+          <Gebaeude3D start={start3D} />
           <AusschnittMelder onChange={onAusschnittChange} />
           <BezirkeAnzeige bezirke={bezirke} />
           <OrtAnzeige ort={ortKreis} />

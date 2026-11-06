@@ -188,7 +188,7 @@ function Fusszeile() {
         </div>
       </div>
       <div className="border-t border-zinc-100 py-4 px-4 text-center text-[11px] text-zinc-500">
-        Karten © OpenStreetMap-Mitwirkende · Fahrplandaten DELFI e.V., CC BY 4.0
+        Karten und Umgebung © OpenStreetMap-Mitwirkende · Fahrplandaten DELFI e.V., CC BY 4.0 · <Link href="/impressum/#quellen" className="underline hover:text-black">Quellen</Link>
       </div>
     </footer>
   );

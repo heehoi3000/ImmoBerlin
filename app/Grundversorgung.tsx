@@ -1,6 +1,7 @@
 "use client";
 // Grundversorgung in der Nähe eines Inserats: je Kategorie ein Knopf, der alle Orte der Kategorie im Umkreis
 // auf der Karte darunter ein- oder ausblendet. Kategorien ohne Ort im Umkreis sind ausgegraut.
+import Link from 'next/link';
 import { ARTEN, Art, GRUPPEN, Ort, UMKREIS_TEXT } from '../lib/grundversorgung';
 import { symbolSvg } from '../lib/symbole';
 
@@ -37,7 +38,7 @@ export default function Grundversorgung({ orte, fehler, sichtbar, onUmschalten }
           </ul>
         </div>
       ))}
-      <p className="text-[11px] text-zinc-500 mt-3">Daten: © OpenStreetMap-Mitwirkende (ODbL), nicht überall vollständig. Hausarzt: nur Praxen mit Angabe Allgemeinmedizin, ohne Namen. Schulen aller Art, ohne Angabe zu Schulform oder Einzugsgebiet.</p>
+      <p className="text-[11px] text-zinc-500 mt-3">Nicht überall vollständig · <Link href="/impressum/#quellen" className="underline hover:text-black">Quellen</Link></p>
     </section>
   );
 }

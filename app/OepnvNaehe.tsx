@@ -1,6 +1,7 @@
 "use client";
 // Haltestellen in der Nähe eines Inserats: Entfernung (Luftlinie), Linien mit Takt und Barrierefreiheit.
 // Ein Klick auf eine Station zeigt sie auf der Karte darunter.
+import Link from 'next/link';
 import { BARRIEREFREI_TEXT, Station, taktText } from '../lib/oepnvNaehe';
 import { LINIENTYPEN, endpunkteKurz } from '../lib/oepnv';
 import Klappbereich from './Klappbereich';
@@ -70,9 +71,7 @@ export default function OepnvNaehe({ stationen, auswahl, onAuswahl, fehler, gewa
           ))}
         </ul>
       )}
-      <p className="text-[11px] text-zinc-500 mt-3">
-        Fahrplandaten: DELFI e.V. (CC BY 4.0). Barrierefreiheit: © OpenStreetMap-Mitwirkende (ODbL), nicht überall eingetragen.
-      </p>
+      <p className="text-[11px] text-zinc-500 mt-3">Barrierefreiheit nicht überall eingetragen · <Link href="/impressum/#quellen" className="underline hover:text-black">Quellen</Link></p>
     </Klappbereich>
   );
 }

@@ -250,8 +250,8 @@ function BezirkeAnzeige({ bezirke }: { bezirke: Bezirk[] }) {
 }
 
 // Eine Farbe je gewählter Linie, gut unterscheidbar
-// Gefilterte Linien (Leeroy, 06.11.2026): Strecke in ihrer echten Farbe aus OpenStreetMap mit weißem Rand,
-// Umkreis in derselben Farbe mit gestrichelter Grenze; ohne eingetragene Farbe beides
+// Gefilterte Linien (Leeroy, 06.11.2026): ein Streckenverlauf je Linie in ihrer echten Farbe aus OpenStreetMap
+// mit weißem Rand, Umkreis in derselben Farbe mit gestrichelter Grenze; ohne eingetragene Farbe beides
 // anthrazit bzw. zart grau. Bahnhöfe wie auf der Inseratsseite.
 const LINIE = '#18181b';
 const KORRIDOR_EBENEN: Ebene[] = [

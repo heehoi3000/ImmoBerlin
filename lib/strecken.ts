@@ -93,11 +93,15 @@ function abstandM(p: Punkt, verlauf: Verlauf): number {
   return best;
 }
 
+// Anteil der Haltestellen, an denen der Verlauf vorbeiführt
+export function anteilNah(verlauf: Verlauf, halte: Punkt[]): number {
+  if (halte.length === 0 || verlauf.length === 0) return 0;
+  return halte.filter(h => abstandM(h, verlauf) <= NAH_M).length / halte.length;
+}
+
 // Führt der Verlauf an (fast) allen Haltestellen vorbei?
 export function passtZuHaltestellen(verlauf: Verlauf, halte: Punkt[]): boolean {
-  if (halte.length === 0 || verlauf.length === 0) return false;
-  const nah = halte.filter(h => abstandM(h, verlauf) <= NAH_M).length;
-  return nah / halte.length >= MIN_ANTEIL;
+  return anteilNah(verlauf, halte) >= MIN_ANTEIL;
 }
 
 const cache = new Map<string, Promise<unknown>>();
@@ -119,7 +123,8 @@ export function farbeGueltig(f?: string): string | null {
 
 export interface Strecke { verlauf: Verlauf; farbe: string | null }
 
-// Verlauf einer Linie (mit ihrer echten Farbe, falls eingetragen) oder null, wenn keiner sicher passt
+// Ein Verlauf je Linie (meist gibt es eine Relation je Fahrtrichtung; gezeigt wird die, die an den meisten
+// Haltestellen vorbeiführt) mit der echten Farbe, falls eingetragen, oder null, wenn keiner sicher passt
 export async function streckeLaden(linie: { typ: string; nummer: string; betreiber?: string }, halte: Punkt[]): Promise<Strecke | null> {
   const k = schluessel(linie.nummer);
   if (!k || halte.length < 2) return null;
@@ -127,16 +132,14 @@ export async function streckeLaden(linie: { typ: string; nummer: string; betreib
     const eintraege = await laden<Eintrag[]>(`i/${g}/${k}.json`);
     if (!Array.isArray(eintraege)) continue;
     const ids = kandidaten(eintraege, halte, linie.betreiber).slice(0, MAX_RELATIONEN);
-    const verlauf: Verlauf = [];
-    let farbe: string | null = null;
     const daten = await Promise.all(ids.map(rid => laden<{ p: string[] }>(`r/${rid}.json`)));
-    daten.forEach((d, i) => {
-      const zuege = (d?.p ?? []).map(dekodieren).filter(z => z.length >= 2);
-      if (zuege.length === 0 || !passtZuHaltestellen(zuege, halte)) return;
-      verlauf.push(...zuege);
-      farbe ??= farbeGueltig(eintraege.find(e => e[0] === ids[i])?.[3]);
-    });
-    if (verlauf.length > 0) return { verlauf, farbe };
+    const passend = daten.map((d, i) => {
+      const verlauf = (d?.p ?? []).map(dekodieren).filter(z => z.length >= 2);
+      return { verlauf, anteil: anteilNah(verlauf, halte), farbe: farbeGueltig(eintraege.find(e => e[0] === ids[i])?.[3]) };
+    }).filter(k => k.anteil >= MIN_ANTEIL);
+    if (passend.length === 0) continue;
+    const beste = passend.reduce((a, b) => (b.anteil > a.anteil ? b : a));
+    return { verlauf: beste.verlauf, farbe: beste.farbe ?? passend.find(k => k.farbe)?.farbe ?? null };
   }
   return null;
 }

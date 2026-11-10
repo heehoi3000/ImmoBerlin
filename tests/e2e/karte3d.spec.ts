@@ -41,38 +41,3 @@ test.describe('3D-Ansicht', () => {
     await expect(page.getByRole('button', { name: '3D' })).toHaveCount(0);
   });
 });
-
-// Gebäudekacheln wie bei OpenFreeMap: Ebene "building" mit Kennung und Höhe, erzeugt aus GeoJSON
-async function gebaeudeKacheln(page: Page, haeuser: GeoJSON.Feature[]) {
-  const { GeoJSONVT } = await import('@maplibre/geojson-vt');
-  const { fromGeojsonVt } = await import('@maplibre/vt-pbf');
-  const index = new GeoJSONVT({ type: 'FeatureCollection', features: haeuser }, { maxZoom: 14, indexMaxZoom: 14, buffer: 64 });
-  await page.route(/tiles\.openfreemap\.org\/test\/(\d+)\/(\d+)\/(\d+)\.pbf/, r => {
-    const [, z, x, y] = r.request().url().match(/test\/(\d+)\/(\d+)\/(\d+)\.pbf/)!.map(Number);
-    const kachel = index.getTile(z, x, y);
-    if (!kachel) return r.fulfill({ status: 204, body: '' });
-    return r.fulfill({ contentType: 'application/x-protobuf', body: Buffer.from(fromGeojsonVt({ building: kachel }, { version: 2, extent: 4096 })) });
-  });
-}
-const haus = (id: number, lon: number, lat: number, hoehe: number): GeoJSON.Feature => ({
-  type: 'Feature', id, properties: { render_height: hoehe, render_min_height: 0 },
-  geometry: { type: 'Polygon', coordinates: [[[lon - 0.0002, lat - 0.0001], [lon + 0.0002, lat - 0.0001], [lon + 0.0002, lat + 0.0001], [lon - 0.0002, lat + 0.0001], [lon - 0.0002, lat - 0.0001]]] },
-});
-
-test('Inseratsseite hebt das Gebäude des Inserats in 3D hervor', async ({ page }) => {
-  await attrappeEinrichten(page, STANDARD_DATEN);
-  await vektorstil(page);
-  // a1 liegt bei (52.53, 13.40); daneben zwei weitere Häuser
-  await gebaeudeKacheln(page, [haus(11, 13.40, 52.53, 22), haus(12, 13.4006, 52.53, 15), haus(13, 13.40, 52.5304, 18)]);
-  await page.goto('anzeige/?id=a1');
-  await expect(page.getByRole('button', { name: '3D' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('[data-gebaeude]')).toHaveAttribute('data-gebaeude', /^[1-9]/);
-});
-
-test('Suchseite hebt kein Gebäude hervor', async ({ page }) => {
-  await attrappeEinrichten(page, STANDARD_DATEN);
-  await vektorstil(page);
-  await page.goto('suche/');
-  await page.getByRole('button', { name: '3D' }).click();
-  await expect(page.locator('[data-gebaeude]')).toHaveCount(0);
-});

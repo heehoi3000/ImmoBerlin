@@ -37,6 +37,10 @@ const START_ZOOM = 10;
 const MAX_ZOOM = 18;
 const HALTESTELLEN_AB_ZOOM = 12;
 const NAH_ZOOM = 15;
+// Inseratsseite: so nah darf die Karte an Inserat und Haltestelle heran, damit Haus, Weg und Gebäude in 3D
+// gut zu sehen sind (Leeroy, 11.11.2026)
+const INSERAT_ZOOM = 17;
+const INSERAT_MIN_ZOOM = 16.5;   // weiter weg nicht, sonst ist das Haus zu klein; die Luftlinie zeigt die Richtung
 
 // Die Karte und ein Zähler, der bei jedem geladenen Stil steigt (0 = Stil noch nicht da).
 // Eigene Flächen und Linien hängen am Stil und müssen nach einem Stilwechsel neu angelegt werden.
@@ -426,7 +430,10 @@ function StationenAnzeige({ stationen, auswahl, von }: { stationen: Station[]; a
     // Die Karte kann beim ersten Zeichnen noch ohne Größe sein; dann erst nach dem nächsten Frame ausrichten
     const ausrichten = () => {
       map.resize();
-      map.fitBounds(ausdehnung([von, ziel]), { padding: 50, maxZoom: NAH_ZOOM, animate: false });
+      // Inserat und Haltestelle zusammen, mit Rand für Preis-Pin und Haus; liegt die Haltestelle so weit weg,
+      // dass das Haus zu klein würde, bleibt das Inserat in der Mitte und die Luftlinie zeigt die Richtung
+      map.fitBounds(ausdehnung([von, ziel]), { padding: 80, maxZoom: INSERAT_ZOOM, animate: false });
+      if (map.getZoom() < INSERAT_MIN_ZOOM) map.jumpTo({ center: [von.lon, von.lat], zoom: INSERAT_MIN_ZOOM });
     };
     ausrichten();
     const f = requestAnimationFrame(ausrichten);

@@ -13,7 +13,7 @@ import { bezirkeAusdehnung } from '../lib/bezirke';
 import { Anzeige, Haltestelle } from '../lib/suche';
 import { BASIS } from '../lib/basis';
 import { Strecke, streckeLaden } from '../lib/strecken';
-import { NAH_M, gebaeudeAmPunkt, nachAussen } from '../lib/gebaeude';
+import { NAH_M, gebaeudeAmPunkt, nachAussen, nachHausnummer } from '../lib/gebaeude';
 import { Station } from '../lib/oepnvNaehe';
 import { Art, Ort, UMKREIS_M, artName, ortBeschriftung } from '../lib/grundversorgung';
 import { symbolSvg, verkehrArt, verkehrSvg } from '../lib/symbole';
@@ -204,11 +204,15 @@ function Gebaeude3D({ start, hervor }: { start: boolean; hervor?: { lat: number;
       if (stuecke.length === 0) return;
       gefunden = true;
       map.off('idle', suchen);
+      // Hausnummern in der Nähe, um verschmolzene Zeilen zu teilen (einmalig)
+      const nummern = map.querySourceFeatures(quelle, { sourceLayer: 'housenumber' })
+        .flatMap(f => (f.geometry.type === 'Point' ? [f.geometry.coordinates] : []))
+        .filter(([x, y]) => Math.abs(x - hLon) < 0.002 && Math.abs(y - hLat) < 0.0015);
       (map.getSource('gebaeude-hervor') as GeoJSONSource | undefined)?.setData({
         type: 'FeatureCollection',
         // Als reines JSON kopieren: Kachelobjekte lassen sich nicht an den Karten-Worker schicken
         features: JSON.parse(JSON.stringify(stuecke.map(f => ({
-          type: 'Feature', properties: f.properties, geometry: { type: 'Polygon', coordinates: nachAussen(f.geometry.coordinates, 0.25) },
+          type: 'Feature', properties: f.properties, geometry: { type: 'Polygon', coordinates: nachAussen(nachHausnummer(f.geometry.coordinates, nummern, hLon, hLat), 0.25) },
         })))),
       });
     });

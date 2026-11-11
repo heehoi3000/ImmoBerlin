@@ -97,3 +97,55 @@ export function nachAussen(polygon: Ring[], m: number): Ring[] {
     return [...neu, neu[0]];
   });
 }
+
+// Verschmolzene Gebäudezeilen nach Hausnummern teilen (Leeroy, 11.11.2026). Die Kacheln fügen aneinandergebaute
+// gleich hohe Häuser zu einer Fläche zusammen; die Hausnummern liegen dort als einzelne Punkte, meist am Eingang.
+// Jeder Teil der Fläche gehört zur nächstgelegenen Hausnummer (Voronoi), behalten wird der Teil um die Adresse
+// des Inserats. Die Trennlinien liegen so ungefähr an den Brandwänden.
+export const NUMMER_NAH_M = 8;       // Hausnummern so nah an der Fläche zählen zu ihr
+const GLEICHE_ADRESSE_M = 4;         // Punkte so nah am Inseratspunkt gelten als dieselbe Adresse
+
+type Punkt2 = [number, number];
+
+// Ring mit der Halbebene (x - m) · n <= 0 schneiden (Sutherland-Hodgman), in Metern
+function halbebene(ring: Punkt2[], m: Punkt2, n: Punkt2): Punkt2[] {
+  const wert = (p: Punkt2) => (p[0] - m[0]) * n[0] + (p[1] - m[1]) * n[1];
+  const aus: Punkt2[] = [];
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i], b = ring[(i + 1) % ring.length];
+    const wa = wert(a), wb = wert(b);
+    if (wa <= 0) aus.push(a);
+    if ((wa < 0 && wb > 0) || (wa > 0 && wb < 0)) {
+      const t = wa / (wa - wb);
+      aus.push([a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])]);
+    }
+  }
+  return aus;
+}
+
+export function nachHausnummer(polygon: Ring[], nummern: GeoJSON.Position[], lon: number, lat: number): Ring[] {
+  if (!polygon[0]?.length) return polygon;
+  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+  const inM = (p: GeoJSON.Position): Punkt2 => [(p[0] - lon) * kx, (p[1] - lat) * ky];
+  const zurueck = ([x, y]: Punkt2): GeoJSON.Position => [x / kx + lon, y / ky + lat];
+  const flaeche: GeoJSON.Feature = { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: polygon } };
+  const zurFlaeche = nummern.filter(p => punktInPolygon(p[0], p[1], polygon) || abstandM(p[0], p[1], flaeche) <= NUMMER_NAH_M);
+  if (zurFlaeche.length < 2) return polygon;
+  // Mittelpunkt der eigenen Zelle: die Hausnummer am Inseratspunkt, sonst der Punkt selbst
+  const nah = zurFlaeche.map(inM).sort((a, b) => Math.hypot(...a) - Math.hypot(...b));
+  const eigen: Punkt2 = Math.hypot(...nah[0]) <= 20 ? nah[0] : [0, 0];
+  const andere = nah.filter(q => Math.hypot(q[0] - eigen[0], q[1] - eigen[1]) > GLEICHE_ADRESSE_M
+    && Math.hypot(q[0], q[1]) > GLEICHE_ADRESSE_M);
+  if (andere.length === 0) return polygon;
+  const geschnitten = polygon.map(ring => {
+    let r: Punkt2[] = ring.slice(0, -1).map(inM);
+    for (const q of andere) {
+      const m: Punkt2 = [(eigen[0] + q[0]) / 2, (eigen[1] + q[1]) / 2];
+      r = halbebene(r, m, [q[0] - eigen[0], q[1] - eigen[1]]);
+      if (r.length < 3) return null;
+    }
+    return [...r.map(zurueck), zurueck(r[0])];
+  });
+  if (!geschnitten[0]) return polygon;
+  return geschnitten.filter((r): r is Ring => r !== null);
+}

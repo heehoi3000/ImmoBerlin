@@ -22,8 +22,8 @@ jobs:
           url=$(curl -sSf https://tiles.openfreemap.org/planet | python3 -c 'import json,sys; print(json.load(sys.stdin)["tiles"][0])')
           echo "Kachel-URL: $url"
           mkdir -p tests/e2e/kacheln
-          # Marzahn (Plattenbau), Mitte (Altbau, Blockrand), Kreuzberg (Altbau mit Hinterhöfen)
-          for punkt in "52.5569 13.5592" "52.5355 13.3900" "52.4986 13.4180"; do
+          # Marzahn (Plattenbau), Friedrichsfelde Am Tierpark (Zeile mit mehreren Hausnummern)
+          for punkt in "52.5569 13.5592" "52.5005617 13.5223821"; do
             set -- $punkt
             read x y < <(python3 -c "import math; lat,lon=$1,$2; n=2**14; print(int((lon+180)/360*n), int((1-math.asinh(math.tan(math.radians(lat)))/math.pi)/2*n))")
             for dx in -1 0 1; do for dy in -1 0 1; do

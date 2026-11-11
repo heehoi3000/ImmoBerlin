@@ -1,1 +1,0 @@
-https://tiles.openfreemap.org/planet/20261101_080013_pt/{z}/{x}/{y}.pbf

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { abstandM, gebaeudeAmPunkt, nachAussen, punktInPolygon } from '../../lib/gebaeude';
+import { abstandM, gebaeudeAmPunkt, nachAussen, nachHausnummer, punktInPolygon } from '../../lib/gebaeude';
 
 // Quadrat um (lon, lat) mit halber Kantenlänge d Grad
 const quadrat = (lon: number, lat: number, d: number) =>
@@ -88,5 +88,30 @@ describe('nachAussen', () => {
     neu.forEach((p, i) => expect(Math.hypot((p[0] - l[i][0]) * kx, (p[1] - l[i][1]) * 110540)).toBeLessThan(0.75));
     expect(neu[3][0]).toBeGreaterThan(l[3][0]);
     expect(neu[3][1]).toBeGreaterThan(l[3][1]);
+  });
+});
+
+describe('nachHausnummer', () => {
+  // Zeile aus drei Häusern, 60 m lang (Ost-West) und 10 m tief, als eine Fläche; Hausnummern an der Südseite
+  const lat = 52.5, kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+  const p = (x: number, y: number) => [13.4 + x / kx, lat + y / ky];
+  const zeile = [[p(0, 0), p(60, 0), p(60, 10), p(0, 10), p(0, 0)]];
+  const nummern = [p(10, -1), p(30, -1), p(50, -1)];
+  const xs = (poly: GeoJSON.Position[][]) => poly[0].map(q => Math.round((q[0] - 13.4) * kx));
+
+  it('behält nur das Haus um die Adresse des Inserats', () => {
+    const [x, y] = p(30, -1);
+    expect(Math.min(...xs(nachHausnummer(zeile, nummern, x, y)))).toBe(20);
+    expect(Math.max(...xs(nachHausnummer(zeile, nummern, x, y)))).toBe(40);
+    const [x2, y2] = p(51, 2);   // Inseratspunkt im Haus, Hausnummer am Eingang davor
+    expect(Math.min(...xs(nachHausnummer(zeile, nummern, x2, y2)))).toBe(40);
+    expect(Math.max(...xs(nachHausnummer(zeile, nummern, x2, y2)))).toBe(60);
+  });
+
+  it('lässt die Fläche ganz, wenn es nur eine Hausnummer gibt oder die anderen weit weg liegen', () => {
+    const [x, y] = p(30, -1);
+    expect(nachHausnummer(zeile, [p(30, -1)], x, y)).toBe(zeile);
+    expect(nachHausnummer(zeile, [p(30, -1), p(30, -40)], x, y)).toBe(zeile);
+    expect(nachHausnummer(zeile, [], x, y)).toBe(zeile);
   });
 });

@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 import { useNutzer } from '../../lib/konto';
 import { Adresse, adressenSuchen } from '../../lib/adresse';
-import { AUSSTATTUNG, ENERGIEKLASSEN, OBJEKTARTEN, WBS_ARTEN } from '../../lib/filter';
+import { AUSSTATTUNG, ENERGIEKLASSEN, INTERNET_ARTEN, OBJEKTARTEN, WBS_ARTEN } from '../../lib/filter';
 import { MAX_EINGANG_MB, bildVorbereiten } from '../../lib/bilder';
 import { FOTO_BUCKET, fotoFallback, fotoUrl, kleinPfad } from '../../lib/fotos';
 import { DOKUMENT_ARTEN, Dokument, DokumentArt, InseratLink, MAX_DOKUMENTE, MAX_DOKUMENT_MB, MAX_LINKS, dokumentPfad, dokumentUrl, dokumenteVon, istPdf, linkPruefen, linksVon } from '../../lib/dokumente';
@@ -31,6 +31,7 @@ interface Formular {
   ausstattung: string[];
   wbs_erforderlich: boolean;
   wbs_art: string;
+  internet: string; internet_mbit: string;
   energieausweis_art: '' | 'verbrauch' | 'bedarf' | 'nicht_erforderlich';
   energiekennwert: string; energietraeger: string; energieeffizienzklasse: string;
   anbieter_typ: 'privat' | 'gewerblich';
@@ -48,7 +49,7 @@ const LEER: Formular = {
   transaktions_typ: 'mieten', immobilien_typ: 'wohnung', objektart: '', titel: '', beschreibung: '',
   preis: '', nebenkosten: '', warmmiete: '', kaution: '', provision: '',
   quadratmeter: '', zimmer: '', etage: '', baujahr: '', verfuegbar_ab: '',
-  ausstattung: [], wbs_erforderlich: false, wbs_art: '',
+  ausstattung: [], wbs_erforderlich: false, wbs_art: '', internet: '', internet_mbit: '',
   energieausweis_art: '', energiekennwert: '', energietraeger: '', energieeffizienzklasse: '',
   anbieter_typ: 'privat', anbieter_name: '', bilder: [], dokumente: [], links: [],
 };
@@ -57,6 +58,8 @@ const ENERGIETRAEGER = ['Gas', 'Öl', 'Fernwärme', 'Wärmepumpe', 'Strom', 'Hol
 
 const feld = "w-full h-11 border border-zinc-200 rounded-lg px-3 text-sm bg-white focus:ring-2 focus:ring-black/10 focus:border-black outline-none";
 const zahl = (s: string) => { const n = parseFloat(s.replace(',', '.')); return Number.isFinite(n) ? n : null; };
+// Mbit/s als ganze Zahl im erlaubten Bereich, sonst leer (Prüfung in der Datenbank: 1 bis 100.000)
+const ganzMbit = (s: string) => { const n = Math.round(zahl(s) ?? 0); return n >= 1 && n <= 100000 ? n : null; };
 const text = (n: unknown) => (n === null || n === undefined ? '' : String(n));
 
 function Karte({ titel, beschreibung, children }: { titel: string; beschreibung?: string; children: ReactNode }) {
@@ -231,6 +234,8 @@ export default function Inserieren() {
       ...Object.fromEntries(AUSSTATTUNG.map(a => [a.wert, f.ausstattung.includes(a.wert)])),
       wbs_erforderlich: miete && f.wbs_erforderlich,
       wbs_art: miete && f.wbs_erforderlich && f.wbs_art ? f.wbs_art : null,
+      internet: f.internet || null,
+      internet_mbit: f.internet ? ganzMbit(f.internet_mbit) : null,
       // Beim Tausch inseriert der Mieter: kein Energieausweis (Pflicht des Vermieters), immer privat
       energieausweis_art: tausch ? null : f.energieausweis_art,
       energiekennwert: tausch || f.energieausweis_art === 'nicht_erforderlich' ? null : zahl(f.energiekennwert),
@@ -436,6 +441,19 @@ export default function Inserieren() {
               );
             })}
           </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Feld titel="Internet im Haus" hinweis="Freiwillig, nur wenn du es weißt">
+            <select value={f.internet} onChange={(e) => setze({ internet: e.target.value, ...(e.target.value ? {} : { internet_mbit: '' }) })} className={feld}>
+              <option value="">Weiß ich nicht</option>
+              {INTERNET_ARTEN.map(o => <option key={o.wert} value={o.wert}>{o.name}</option>)}
+            </select>
+          </Feld>
+          {f.internet && (
+            <Feld titel="Bis zu Mbit/s" hinweis="Freiwillig, z.B. 1000">
+              <input inputMode="numeric" value={f.internet_mbit} onChange={(e) => setze({ internet_mbit: e.target.value })} className={feld} />
+            </Feld>
+          )}
         </div>
       </Karte>
 

@@ -36,6 +36,7 @@ export interface Filter {
   bezugsfreiBis: string;         // Datum yyyy-mm-dd, leer = egal
   energieMindestens: string;     // z. B. 'C' = A+ bis C, leer = egal
   wbs: 'egal' | 'ohne' | 'nur';
+  internet: '' | 'kabel' | 'glasfaser';   // '' = egal, 'kabel' = Glasfaser oder Kabel
   linien: Linie[];
   linienUmkreisM: string;
   sortierung: string;
@@ -58,6 +59,7 @@ export const STANDARD_FILTER: Filter = {
   bezugsfreiBis: '',
   energieMindestens: '',
   wbs: 'egal',
+  internet: '',
   linien: [],
   linienUmkreisM: '600',
   sortierung: 'neueste',
@@ -107,6 +109,13 @@ export const AUSSTATTUNG: { wert: string; name: string }[] = [
   { wert: 'moebliert', name: 'Möbliert' },
 ];
 
+// Internetanschluss im Haus (Spalte anzeigen.internet, Migration 0017), schnellste zuerst; null = unbekannt
+export const INTERNET_ARTEN: { wert: string; name: string }[] = [
+  { wert: 'glasfaser', name: 'Glasfaser' },
+  { wert: 'kabel', name: 'Kabel' },
+  { wert: 'dsl', name: 'DSL' },
+];
+
 export const ENERGIEKLASSEN = ['A+', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 export const UMKREISE_KM = [0, 1, 2, 5, 10, 20, 50];
@@ -128,6 +137,7 @@ export function weitereFilterAnzahl(f: Filter): number {
     f.bezugsfreiBis,
     f.energieMindestens,
     f.wbs !== 'egal',
+    f.internet,
   ].filter(Boolean).length;
 }
 

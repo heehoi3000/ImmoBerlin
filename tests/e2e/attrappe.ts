@@ -194,10 +194,10 @@ export const STANDARD_DATEN: Daten = {
   anzeigen: [
     anzeige('a1', { titel: 'Altbau an der U8', preis: 750, nebenkosten: 250, kaution: 2250, objektart: 'etagenwohnung',
       wbs_erforderlich: true, wbs_art: 'wbs_160', baujahr: 1905, etage: 3, energieausweis_art: 'verbrauch',
-      energiekennwert: 110, energietraeger: 'Fernwärme', energieeffizienzklasse: 'D',
+      energiekennwert: 110, energietraeger: 'Fernwärme', energieeffizienzklasse: 'D', internet: 'glasfaser', internet_mbit: 1000,
       dokumente: [{ art: 'grundriss', titel: 'Grundriss 3. OG', pfad: '00000000-0000-4000-8000-000000000001/1729000000000-ab12cd34.pdf' }],
       links: [{ titel: '360°-Rundgang', url: 'https://example.org/rundgang' }] }),
-    anzeige('a2', { titel: 'Neubau mit Balkon', preis: 1200, koordinate_lat: 52.55 }),
+    anzeige('a2', { titel: 'Neubau mit Balkon', preis: 1200, koordinate_lat: 52.55, internet: 'kabel' }),
     anzeige('a3', { titel: 'Kleine Wohnung', preis: 500, zimmer: 1, koordinate_lat: 52.50 }),
   ],
   linienAusserhalb: [9008],

@@ -17,6 +17,23 @@ test.describe('Suche', () => {
     await expect(page.getByRole('button', { name: 'Kaltmiete: bis 800 €' })).toBeVisible();
   });
 
+  test('Filter Internet im Haus: Glasfaser oder Kabel, nur Glasfaser', async ({ page }) => {
+    await attrappeEinrichten(page, STANDARD_DATEN);
+    await page.goto('suche/');
+    await expect(page.getByText('3 Wohnungen zur Miete')).toBeVisible();
+    await page.getByRole('button', { name: /^Weitere Filter/ }).click();
+    await page.getByRole('button', { name: 'Glasfaser oder Kabel' }).click();
+    await page.getByRole('button', { name: 'Ergebnisse anzeigen' }).click();
+    await expect(page.getByText('2 Wohnungen zur Miete')).toBeVisible();
+    await expect(page.getByText('Kleine Wohnung')).toHaveCount(0);
+
+    await page.getByRole('button', { name: /^Weitere Filter/ }).click();
+    await page.getByRole('button', { name: 'Nur Glasfaser' }).click();
+    await page.getByRole('button', { name: 'Ergebnisse anzeigen' }).click();
+    await expect(page.getByText('1 Wohnung zur Miete')).toBeVisible();
+    await expect(page.getByText('Altbau an der U8')).toBeVisible();
+  });
+
   test('Linienfilter sucht im Umkreis der Haltestellen', async ({ page }) => {
     const auf = await attrappeEinrichten(page, STANDARD_DATEN);
     await page.goto('suche/');

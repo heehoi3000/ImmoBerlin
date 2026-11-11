@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { supabase } from '../../lib/supabase';
 import { Anzeige } from '../../lib/suche';
 import { fotoUrl } from '../../lib/fotos';
-import { AUSSTATTUNG, OBJEKTARTEN, WBS_ARTEN } from '../../lib/filter';
+import { AUSSTATTUNG, INTERNET_ARTEN, OBJEKTARTEN, WBS_ARTEN } from '../../lib/filter';
 import { useMerkliste } from '../../lib/merkliste';
 import { useNutzer } from '../../lib/konto';
 import { useMelden } from '../Meldedialog';
@@ -26,6 +26,7 @@ const Map = dynamic(() => import('../Map'), { ssr: false, loading: () => <div cl
 
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const objektartName: Record<string, string> = Object.fromEntries([...OBJEKTARTEN.wohnung, ...OBJEKTARTEN.haus].map(o => [o.wert, o.name]));
+const internetName: Record<string, string> = Object.fromEntries(INTERNET_ARTEN.map(o => [o.wert, o.name]));
 const wbsArtName: Record<string, string> = Object.fromEntries(WBS_ARTEN.map(o => [o.wert, o.name]));
 const AUSWEIS: Record<string, string> = { verbrauch: 'Verbrauchsausweis', bedarf: 'Bedarfsausweis', nicht_erforderlich: 'Nicht erforderlich' };
 
@@ -232,6 +233,7 @@ export default function AnzeigeSeite() {
                 ['Verfügbar ab', !a.verfuegbar_ab || new Date(a.verfuegbar_ab) <= new Date() ? 'sofort' : new Date(a.verfuegbar_ab).toLocaleDateString('de-DE')],
                 ['WBS erforderlich', miete ? (a.wbs_erforderlich ? 'Ja' : 'Nein') : null],
                 ['WBS-Art', miete && a.wbs_erforderlich ? (a.wbs_art ? wbsArtName[a.wbs_art] : 'ohne Angabe') : null],
+                ['Internet', a.internet && [internetName[a.internet], a.internet_mbit && `bis ${a.internet_mbit.toLocaleString('de-DE')} Mbit/s`].filter(Boolean).join(', ')],
                 ['Energieausweis', AUSWEIS[a.energieausweis_art]],
                 ['Energiekennwert', a.energiekennwert && `${a.energiekennwert} kWh/(m²·a)`],
                 ['Energieträger', a.energietraeger],

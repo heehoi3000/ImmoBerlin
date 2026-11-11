@@ -313,6 +313,13 @@ export default function Suche() {
                       </select>
                     </Abschnitt>
                   </div>
+                  <Abschnitt titel="Internet im Haus">
+                    <div className="flex flex-wrap gap-1.5">
+                      <Chip aktiv={filter.internet === ''} onClick={() => setze({ internet: '' })}>Egal</Chip>
+                      <Chip aktiv={filter.internet === 'kabel'} onClick={() => setze({ internet: 'kabel' })}>Glasfaser oder Kabel</Chip>
+                      <Chip aktiv={filter.internet === 'glasfaser'} onClick={() => setze({ internet: 'glasfaser' })}>Nur Glasfaser</Chip>
+                    </div>
+                  </Abschnitt>
                   {istMiete && (
                     <Abschnitt titel="Wohnberechtigungsschein (WBS)">
                       <div className="flex gap-1.5">

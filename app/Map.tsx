@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
   AttributionControl, Map as KartenMap, Marker, NavigationControl, Popup, setWorkerUrl,
-  type AddLayerObject, type GeoJSONSource, type LngLatBoundsLike, type MapMouseEvent, type StyleSpecification,
+  type AddLayerObject, type ExpressionSpecification, type GeoJSONSource, type LngLatBoundsLike, type MapMouseEvent, type StyleSpecification,
 } from 'maplibre-gl';
 import Supercluster from 'supercluster';
 import polygonClipping, { type MultiPolygon as PcMultiPolygon, type Polygon as PcPolygon } from 'polygon-clipping';
@@ -13,6 +13,7 @@ import { bezirkeAusdehnung } from '../lib/bezirke';
 import { Anzeige, Haltestelle } from '../lib/suche';
 import { BASIS } from '../lib/basis';
 import { Strecke, streckeLaden } from '../lib/strecken';
+import { NAH_M, gebaeudeAmPunkt, nachAussen } from '../lib/gebaeude';
 import { Station } from '../lib/oepnvNaehe';
 import { Art, Ort, UMKREIS_M, artName, ortBeschriftung } from '../lib/grundversorgung';
 import { symbolSvg, verkehrArt, verkehrSvg } from '../lib/symbole';
@@ -136,7 +137,13 @@ function element(klasse: string, html: string, groesse?: number) {
 // Wer am Gerät "Bewegung reduzieren" eingestellt hat, startet immer flach.
 const GEBAEUDE_AB_ZOOM = 14;
 const NEIGUNG = 50;
-function Gebaeude3D({ start }: { start: boolean }) {
+// Gebäude des Inserats (nur Inseratsseite): dunkel wie die Preis-Pins, die übrigen bleiben hellgrau
+const GEBAEUDE_FARBE = '#e2e1dc';
+const HERVOR_FARBE = '#27272a';
+const HOEHE: ExpressionSpecification = ['coalesce', ['get', 'render_height'], 0];
+const SOCKEL: ExpressionSpecification = ['coalesce', ['get', 'render_min_height'], 0];
+const DECKKRAFT: ExpressionSpecification = ['interpolate', ['linear'], ['zoom'], GEBAEUDE_AB_ZOOM, 0, GEBAEUDE_AB_ZOOM + 0.6, 0.85];
+function Gebaeude3D({ start, hervor }: { start: boolean; hervor?: { lat: number; lon: number } | null }) {
   const { map, stil } = useKarte();
   const [an, setAn] = useState(() => start && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   const [moeglich, setMoeglich] = useState(false);
@@ -154,17 +161,70 @@ function Gebaeude3D({ start }: { start: boolean }) {
       id: 'gebaeude-3d', type: 'fill-extrusion', source: quelle, 'source-layer': 'building', minzoom: GEBAEUDE_AB_ZOOM,
       layout: { visibility: anRef.current ? 'visible' : 'none' },
       paint: {
-        'fill-extrusion-color': '#e2e1dc',
-        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 0],
-        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-        'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], GEBAEUDE_AB_ZOOM, 0, GEBAEUDE_AB_ZOOM + 0.6, 0.85],
+        'fill-extrusion-color': GEBAEUDE_FARBE,
+        'fill-extrusion-height': HOEHE,
+        'fill-extrusion-base': SOCKEL,
+        'fill-extrusion-opacity': DECKKRAFT,
       },
     }, beschriftung);
     return () => sicher(() => { if (map.getLayer('gebaeude-3d')) map.removeLayer('gebaeude-3d'); });
   }, [map, stil]);
 
+  // Gebäude am Inseratspunkt suchen und als eigene Ebene darüberlegen, ein paar Zentimeter größer, damit die
+  // Wände nicht mit der normalen Ebene flackern. Gesucht wird nur in einem kleinen Fenster um den Punkt
+  // (queryRenderedFeatures nutzt den Index der Karte) und nur, bis das Gebäude gefunden ist.
+  const hLat = hervor?.lat, hLon = hervor?.lon;
   useEffect(() => {
-    sicher(() => { if (map.getLayer('gebaeude-3d')) map.setLayoutProperty('gebaeude-3d', 'visibility', an ? 'visible' : 'none'); });
+    if (!stil || hLat == null || hLon == null) return;
+    const quelle = Object.entries(map.getStyle().sources).find(([, q]) => q.type === 'vector')?.[0];
+    if (!quelle) return;
+    const beschriftung = map.getStyle().layers.find(l => l.type === 'symbol')?.id;
+    if (!map.getSource('gebaeude-hervor')) map.addSource('gebaeude-hervor', { type: 'geojson', data: LEER });
+    if (!map.getLayer('gebaeude-hervor')) map.addLayer({
+      id: 'gebaeude-hervor', type: 'fill-extrusion', source: 'gebaeude-hervor', minzoom: GEBAEUDE_AB_ZOOM,
+      layout: { visibility: anRef.current ? 'visible' : 'none' },
+      paint: {
+        'fill-extrusion-color': HERVOR_FARBE,
+        'fill-extrusion-height': ['+', HOEHE, 0.25],
+        'fill-extrusion-base': SOCKEL,
+        'fill-extrusion-opacity': DECKKRAFT,
+      },
+    }, beschriftung);
+    let gefunden = false;
+    const suchen = () => sicher(() => {
+      if (gefunden || !anRef.current || map.getZoom() < GEBAEUDE_AB_ZOOM) return;
+      const p = map.project([hLon, hLat]);
+      const { clientWidth: b, clientHeight: h } = map.getContainer();
+      if (p.x < 0 || p.y < 0 || p.x > b || p.y > h) return;
+      const meterJePixel = 156543.03 * Math.cos(hLat * Math.PI / 180) / 2 ** map.getZoom();
+      const r = Math.max(4, NAH_M / meterJePixel);
+      const unterPunkt = map.queryRenderedFeatures([[p.x - r, p.y - r], [p.x + r, p.y + r]], { layers: ['gebaeude-3d'] });
+      const stuecke = gebaeudeAmPunkt(unterPunkt, hLon, hLat);
+      map.getContainer().dataset.gebaeude = String(stuecke.length);   // Anzahl hervorgehobener Teile (Tests)
+      if (stuecke.length === 0) return;
+      gefunden = true;
+      map.off('idle', suchen);
+      (map.getSource('gebaeude-hervor') as GeoJSONSource | undefined)?.setData({
+        type: 'FeatureCollection',
+        // Als reines JSON kopieren: Kachelobjekte lassen sich nicht an den Karten-Worker schicken
+        features: JSON.parse(JSON.stringify(stuecke.map(f => ({
+          type: 'Feature', properties: f.properties, geometry: { type: 'Polygon', coordinates: nachAussen(f.geometry.coordinates, 0.25) },
+        })))),
+      });
+    });
+    map.on('idle', suchen);
+    suchen();
+    return () => sicher(() => {
+      map.off('idle', suchen);
+      if (map.getLayer('gebaeude-hervor')) map.removeLayer('gebaeude-hervor');
+      if (map.getSource('gebaeude-hervor')) map.removeSource('gebaeude-hervor');
+    });
+  }, [map, stil, hLat, hLon]);
+
+  useEffect(() => {
+    sicher(() => {
+      for (const id of ['gebaeude-3d', 'gebaeude-hervor']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', an ? 'visible' : 'none');
+    });
     const ziel = an ? NEIGUNG : 0;
     if (Math.abs(map.getPitch() - ziel) < 0.5) return;
     // Beim ersten Mal ohne Animation, sonst bricht das Einpassen der Inseratskarte die Neigung ab
@@ -577,9 +637,11 @@ interface MapProps {
   orte?: Ort[];
   // Karte startet geneigt mit 3D-Gebäuden (Inseratsseite)
   start3D?: boolean;
+  // Gebäude an diesem Punkt in der 3D-Ansicht hervorheben (Inseratsseite)
+  gebaeude?: { lat: number; lon: number } | null;
 }
 
-export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreisM, ortKreis, bezirke, fokus = null, aktivId = null, onAuswahl, onAusschnittChange, stationen, stationAuswahl = 0, orte, start3D = false }: MapProps) {
+export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreisM, ortKreis, bezirke, fokus = null, aktivId = null, onAuswahl, onAusschnittChange, stationen, stationAuswahl = 0, orte, start3D = false, gebaeude = null }: MapProps) {
   const box = useRef<HTMLDivElement>(null);
   const [karte, setKarte] = useState<{ map: KartenMap; stil: number } | null>(null);
   // Echter Streckenverlauf und Linienfarbe je gefilterter Linie (lib/strecken.ts); fehlt er, bleibt der Umkreis
@@ -634,7 +696,7 @@ export default function Map({ anzeigen, haltestellen, linien = [], linienUmkreis
       <div ref={box} style={{ position: 'absolute', inset: 0 }} />
       {karte && (
         <KarteKontext.Provider value={karte}>
-          <Gebaeude3D start={start3D} />
+          <Gebaeude3D start={start3D} hervor={gebaeude} />
           <AusschnittMelder onChange={onAusschnittChange} />
           <BezirkeAnzeige bezirke={bezirke} />
           <OrtAnzeige ort={ortKreis} />

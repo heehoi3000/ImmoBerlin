@@ -260,7 +260,7 @@ export default function AnzeigeSeite() {
                 ortKreis={stationen?.length ? null : { lat: a.koordinate_lat, lon: a.koordinate_lon, m: 0 }} bezirke={[]} fokus={null}
                 stationen={stationen ?? undefined} stationAuswahl={station}
                 orte={orte && orteSichtbar.size ? orte.filter(o => orteSichtbar.has(o.art)) : undefined}
-                start3D />
+                start3D gebaeude={{ lat: a.koordinate_lat, lon: a.koordinate_lon }} />
             </section>
             <div className="self-start">
               <Grundversorgung orte={orte} fehler={orteFehler} sichtbar={orteSichtbar} onUmschalten={orteUmschalten} />

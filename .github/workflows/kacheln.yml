@@ -1,0 +1,42 @@
+name: Testkacheln holen
+
+# Holt einige echte Kartenkacheln (OpenFreeMap, OpenMapTiles-Schema, ODbL) für Browsertests der 3D-Gebäude
+# nach tests/e2e/kacheln. Die Sandbox der Entwicklung erreicht OpenFreeMap nicht, GitHub Actions schon.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths: ['.github/workflows/kacheln.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  holen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kacheln laden
+        run: |
+          set -euo pipefail
+          url=$(curl -sSf https://tiles.openfreemap.org/planet | python3 -c 'import json,sys; print(json.load(sys.stdin)["tiles"][0])')
+          echo "Kachel-URL: $url"
+          mkdir -p tests/e2e/kacheln
+          # Marzahn (Plattenbau), Mitte (Altbau, Blockrand), Kreuzberg (Altbau mit Hinterhöfen)
+          for punkt in "52.5569 13.5592" "52.5355 13.3900" "52.4986 13.4180"; do
+            set -- $punkt
+            read x y < <(python3 -c "import math; lat,lon=$1,$2; n=2**14; print(int((lon+180)/360*n), int((1-math.asinh(math.tan(math.radians(lat)))/math.pi)/2*n))")
+            for dx in -1 0 1; do for dy in -1 0 1; do
+              ziel="tests/e2e/kacheln/14-$((x+dx))-$((y+dy)).pbf"
+              curl -sSf --compressed -o "$ziel" "$(echo "$url" | sed "s/{z}/14/;s/{x}/$((x+dx))/;s/{y}/$((y+dy))/")"
+            done; done
+          done
+          ls -l tests/e2e/kacheln | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "$url" > tests/e2e/kacheln/QUELLE.txt
+      - name: Auf den Branch legen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tests/e2e/kacheln
+          git commit -q -m "Testkacheln (OpenFreeMap, © OpenMapTiles © OpenStreetMap-Mitwirkende, ODbL)" || exit 0
+          git push origin "HEAD:${GITHUB_REF_NAME}"

@@ -91,6 +91,7 @@ export async function anzeigenSuchen(f: Filter): Promise<Suchergebnis> {
   if (f.energieMindestens) {
     query = query.in('energieeffizienzklasse', ENERGIEKLASSEN.slice(0, ENERGIEKLASSEN.indexOf(f.energieMindestens) + 1));
   }
+  if (f.internet) query = query.in('internet', f.internet === 'glasfaser' ? ['glasfaser'] : ['glasfaser', 'kabel']);
   if (f.transaktion !== 'kaufen' && f.wbs !== 'egal') query = query.eq('wbs_erforderlich', f.wbs === 'nur');
 
   const sortierung: Record<string, [string, boolean]> = {

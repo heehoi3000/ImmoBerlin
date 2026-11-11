@@ -40,13 +40,14 @@ describe('anzeigenSuchen', () => {
   });
 
   it('Warmmiete und weitere Filter', async () => {
-    const f: Filter = { ...STANDARD_FILTER, preisArt: 'warm', preisMax: '900', ausstattung: ['aufzug'], wbs: 'ohne', energieMindestens: 'B' };
+    const f: Filter = { ...STANDARD_FILTER, preisArt: 'warm', preisMax: '900', ausstattung: ['aufzug'], wbs: 'ohne', energieMindestens: 'B', internet: 'kabel' };
     await anzeigenSuchen(f);
     const p = parameter('/rest/v1/anzeigen');
     expect(p.get('warmmiete')).toBe('lte.900');
     expect(p.get('aufzug')).toBe('eq.true');
     expect(p.get('wbs_erforderlich')).toBe('eq.false');
     expect(p.get('energieeffizienzklasse')).toBe('in.(A+,A,B)');
+    expect(p.get('internet')).toBe('in.(glasfaser,kabel)');
   });
 
   it('mit Linien sucht die Datenbankfunktion im Umkreis der Haltestellen', async () => {

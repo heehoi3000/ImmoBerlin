@@ -160,9 +160,10 @@ test.describe('Inserat ansehen und Anbieter kontaktieren', () => {
     await expect(gebaeude).toContainText('TypEtagenwohnung');
     await expect(gebaeude).toContainText('WBS erforderlichJa');
     await expect(gebaeude).toContainText('WBS-ArtWBS 160');
-    // 10 Angaben, je 5 pro Spalte; Effizienzklasse als farbiges Schild
+    await expect(gebaeude).toContainText('InternetGlasfaser, bis 1.000 Mbit/s');
+    // 11 Angaben, 6 und 5 pro Spalte; Effizienzklasse als farbiges Schild
     const spalten = gebaeude.locator('div.grid > div');
-    await expect(spalten.nth(0).locator('> div')).toHaveCount(5);
+    await expect(spalten.nth(0).locator('> div')).toHaveCount(6);
     await expect(spalten.nth(1).locator('> div')).toHaveCount(5);
     await expect(gebaeude.getByText('D', { exact: true })).toHaveCSS('background-color', 'rgb(255, 242, 0)');
     // keine Schilder „Miete“/Typ unter den Fotos, kein Preis über „Merken“

@@ -34,6 +34,9 @@ test.describe('Inserieren', () => {
     await page.getByLabel(/^Effizienzklasse/).selectOption('C');
     await page.getByLabel(/^Baujahr/).fill('1910');
     await page.getByRole('button', { name: 'Balkon/Terrasse' }).click();
+    await expect(page.getByLabel(/^Bis zu Mbit/)).toHaveCount(0);
+    await page.getByLabel(/^Internet im Haus/).selectOption('Glasfaser');
+    await page.getByLabel(/^Bis zu Mbit/).fill('1000');
     await expect(page.getByLabel('Art des WBS')).toHaveCount(0);
     await page.getByLabel('Wohnberechtigungsschein (WBS) erforderlich').check();
     await page.getByLabel('Art des WBS').selectOption('WBS 140');
@@ -47,7 +50,7 @@ test.describe('Inserieren', () => {
       preis: 900, nebenkosten: 150, warmmiete: 1050, quadratmeter: 62.5, zimmer: 2,
       energieausweis_art: 'verbrauch', energiekennwert: 95, energieeffizienzklasse: 'C', baujahr: 1910,
       balkon_terrasse: true, aufzug: false, anbieter_typ: 'privat', provision: null,
-      wbs_erforderlich: true, wbs_art: 'wbs_140',
+      wbs_erforderlich: true, wbs_art: 'wbs_140', internet: 'glasfaser', internet_mbit: 1000,
     });
     expect(auf.neueAnzeigen[0]).not.toHaveProperty('inserent_id');   // setzt die Datenbank selbst
     expect(auf.botschutz[0].loesung).toBeTruthy();
